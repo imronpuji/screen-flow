@@ -6,14 +6,15 @@ interface LayoutProps {
   children: ReactNode;
   showBack?: boolean;
   rightAction?: ReactNode;
+  hideHeader?: boolean;
 }
 
-export function Layout({ title, children, showBack, rightAction }: LayoutProps) {
+export function Layout({ title, children, showBack, rightAction, hideHeader }: LayoutProps) {
   const navigate = useNavigate();
 
   return (
     <div className="app-shell">
-      {(title || showBack || rightAction) && (
+      {!hideHeader && (title || showBack || rightAction) && (
         <header className="app-header">
           {showBack && (
             <button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">

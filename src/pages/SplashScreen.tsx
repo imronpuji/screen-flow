@@ -7,7 +7,7 @@ import { clearToken, hasValidToken } from '../utils/storage';
 
 export function SplashScreen() {
   const navigate = useNavigate();
-  const [announcement, setAnnouncement] = useState<string | null>('Loading application');
+  const [announcement, setAnnouncement] = useState<string | null>('Memuat aplikasi');
   useAnnounce(announcement);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function SplashScreen() {
 
       try {
         await getProfile();
-        setAnnouncement('Welcome back');
+        setAnnouncement('Selamat datang kembali');
         navigate('/dashboard', { replace: true });
       } catch {
         clearToken();
@@ -33,10 +33,11 @@ export function SplashScreen() {
 
   return (
     <div className="splash-screen fullscreen-center">
-      <div className="logo" aria-hidden="true">
-        LoanApp
+      <div className="gojek-logo splash-logo" aria-hidden="true">
+        <span className="logo-mark">G</span>
+        <span className="logo-text">GoLoan</span>
       </div>
-      <Spinner label="Loading application" />
+      <Spinner label="Memuat aplikasi" />
     </div>
   );
 }

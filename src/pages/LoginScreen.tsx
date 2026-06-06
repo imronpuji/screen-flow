@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { login } from '../api/auth';
 import { ApiClientError } from '../api/client';
+import {
+  isBiometricEnabled,
+  enrollFromToken,
+  mockBiometricLoginDemo,
+} from '../api/mock/biometric';
+import { BiometricPrompt } from '../components/BiometricPrompt';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Layout } from '../components/Layout';
@@ -19,13 +25,14 @@ export function LoginScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [biometricOpen, setBiometricOpen] = useState(false);
   const [announcement, setAnnouncement] = useState<string | null>(null);
   useAnnounce(announcement);
 
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!isValidEmail(email)) next.email = 'Enter a valid email address';
-    if (!isValidPassword(password)) next.password = 'Password must be at least 8 characters';
+    if (!isValidEmail(email)) next.email = 'Masukkan email yang valid';
+    if (!isValidPassword(password)) next.password = 'Password minimal 8 karakter';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -39,22 +46,42 @@ export function LoginScreen() {
     try {
       const { access_token } = await login(email, password);
       await loginWithToken(access_token);
-      setAnnouncement('Login successful');
+      enrollFromToken(access_token);
+      setAnnouncement('Login berhasil');
       navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {
         setServerError(err.message);
       } else {
-        setServerError('Something went wrong. Please try again.');
+        setServerError('Terjadi kesalahan. Coba lagi.');
       }
     } finally {
       setLoading(false);
     }
   };
 
+  const handleBiometricScan = useCallback(async () => {
+    const { access_token } = await mockBiometricLoginDemo();
+    await loginWithToken(access_token);
+  }, [loginWithToken]);
+
+  const handleBiometricSuccess = useCallback(() => {
+    setBiometricOpen(false);
+    setAnnouncement('Login biometrik berhasil');
+    navigate('/dashboard', { replace: true });
+  }, [navigate]);
+
   return (
-    <Layout title="Login">
-      <form className="form" onSubmit={handleSubmit} noValidate>
+    <Layout hideHeader>
+      <div className="auth-hero">
+        <div className="gojek-logo" aria-hidden="true">
+          <span className="logo-mark">G</span>
+          <span className="logo-text">GoLoan</span>
+        </div>
+        <p className="auth-tagline">Pinjaman cepat, aman, terpercaya</p>
+      </div>
+
+      <form className="form auth-form" onSubmit={handleSubmit} noValidate>
         <Input
           label="Email"
           type="email"
@@ -81,16 +108,49 @@ export function LoginScreen() {
           </p>
         )}
         <Button type="submit" loading={loading} className="btn-block">
-          Login
+          Masuk
         </Button>
-        <div className="demo-hint card">
-          <strong>Demo login</strong>
-          <p className="text-muted">demo@loanapp.com / Password1</p>
+
+        <div className="divider">
+          <span>atau</span>
         </div>
+
+        <button
+          type="button"
+          className="btn-biometric"
+          onClick={() => setBiometricOpen(true)}
+          disabled={loading}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="btn-biometric-icon">
+            <path
+              d="M12 2C9.5 2 7.5 4 7.5 6.5V9M16.5 6.5V9M7.5 15v2.5c0 2.5 2 4.5 4.5 4.5s4.5-2 4.5-4.5V15M9 11.5h6"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          Masuk dengan Biometrik
+        </button>
+
+        <div className="demo-hint card">
+          <strong>Demo</strong>
+          <p className="text-muted">demo@loanapp.com / Password1</p>
+          {isBiometricEnabled() && (
+            <p className="text-muted biometric-enrolled">✓ Biometrik terdaftar</p>
+          )}
+        </div>
+
         <p className="form-footer">
-          Don&apos;t have an account? <Link to="/register">Register</Link>
+          Belum punya akun? <Link to="/register">Daftar</Link>
         </p>
       </form>
+
+      <BiometricPrompt
+        open={biometricOpen}
+        onScan={handleBiometricScan}
+        onSuccess={handleBiometricSuccess}
+        onCancel={() => setBiometricOpen(false)}
+      />
     </Layout>
   );
 }

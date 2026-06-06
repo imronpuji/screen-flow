@@ -12,6 +12,23 @@ export interface UserProfile {
   kyc_status: 'pending' | 'verified' | 'rejected' | 'not_submitted';
 }
 
+export interface KtpExtractedData {
+  nik: string;
+  full_name: string;
+  place_of_birth: string;
+  date_of_birth: string;
+  gender: string;
+  address: string;
+  rt_rw: string;
+  village: string;
+  district: string;
+  religion: string;
+  marital_status: string;
+  occupation: string;
+  nationality: string;
+  confidence: number;
+}
+
 export interface Loan {
   id: string;
   amount: number;
