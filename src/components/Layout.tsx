@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BottomNav } from './BottomNav';
 
 interface LayoutProps {
   title?: string;
@@ -7,17 +8,18 @@ interface LayoutProps {
   showBack?: boolean;
   rightAction?: ReactNode;
   hideHeader?: boolean;
+  showBottomNav?: boolean;
 }
 
-export function Layout({ title, children, showBack, rightAction, hideHeader }: LayoutProps) {
+export function Layout({ title, children, showBack, rightAction, hideHeader, showBottomNav }: LayoutProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${showBottomNav ? ' has-bottom-nav' : ''}`}>
       {!hideHeader && (title || showBack || rightAction) && (
         <header className="app-header">
           {showBack && (
-            <button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+            <button type="button" className="back-btn" onClick={() => navigate(-1)} aria-label="Kembali">
               ←
             </button>
           )}
@@ -26,6 +28,7 @@ export function Layout({ title, children, showBack, rightAction, hideHeader }: L
         </header>
       )}
       <main className="app-main">{children}</main>
+      {showBottomNav && <BottomNav />}
       <div id="sr-announce" className="sr-only" aria-live="polite" />
     </div>
   );

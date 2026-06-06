@@ -37,7 +37,7 @@ export function LoanApplicationScreen() {
   };
 
   return (
-    <Layout title="Loan Application" showBack>
+    <Layout title="Ajukan Pinjaman" showBottomNav>
       <form
         className="form"
         onSubmit={(e) => {

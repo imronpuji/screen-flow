@@ -91,7 +91,7 @@ export function ProfileScreen() {
   const kycStatus = user?.kyc_status ?? 'not_submitted';
 
   return (
-    <Layout title="Profil" showBack>
+    <Layout title="Profil" showBottomNav>
       <div className="card profile-card">
         <div className="profile-avatar" aria-hidden="true">
           {user?.full_name?.charAt(0) ?? '?'}

@@ -55,7 +55,8 @@ export function DashboardScreen() {
 
   return (
     <Layout
-      title="Dashboard"
+      title="Beranda"
+      showBottomNav
       rightAction={
         <button
           type="button"
@@ -75,21 +76,25 @@ export function DashboardScreen() {
       ) : (
         <>
           <section className="greeting-card card">
-            <h2>Hello, {user?.full_name?.split(' ')[0] ?? 'there'}!</h2>
+            <h2>Halo, {user?.full_name?.split(' ')[0] ?? 'kamu'}!</h2>
             <div className="row-between">
-              <span>KYC Status</span>
+              <span>Status KYC</span>
               <span className={`badge ${KYC_BADGE[kycStatus] ?? 'badge-muted'}`}>
                 {kycStatus.replace('_', ' ')}
               </span>
             </div>
             <button type="button" className="link-btn" onClick={() => navigate('/profile')}>
-              View Profile →
+              Lihat Profil →
             </button>
           </section>
 
-          <button type="button" className="cta-card card" onClick={() => navigate('/loan/apply')}>
-            <span className="cta-title">Apply for a Loan</span>
-            <span className="text-muted">Get funds quickly</span>
+          <button type="button" className="cta-card card cta-card-prominent" onClick={() => navigate('/loan/apply')}>
+            <span className="cta-emoji" aria-hidden="true">💰</span>
+            <div>
+              <span className="cta-title">Ajukan Pinjaman</span>
+              <span className="text-muted">Tap di sini atau menu Ajukan di bawah</span>
+            </div>
+            <span className="cta-arrow" aria-hidden="true">→</span>
           </button>
 
           {activeLoan ? (
@@ -98,16 +103,16 @@ export function DashboardScreen() {
               className="card loan-card"
               onClick={() => navigate('/loan/active')}
             >
-              <h3>Active Loan</h3>
+              <h3>Pinjaman Aktif</h3>
               <p className="amount">
                 Rp {activeLoan.remaining_balance?.toLocaleString('id-ID') ?? activeLoan.amount.toLocaleString('id-ID')}
               </p>
-              <span className="text-muted">Remaining balance</span>
+              <span className="text-muted">Sisa saldo</span>
             </button>
           ) : (
             <div className="card empty-state">
-              <p>No active loan</p>
-              <span className="text-muted">Apply for a loan to get started</span>
+              <p>Belum ada pinjaman aktif</p>
+              <span className="text-muted">Ajukan pinjaman lewat menu <strong>Ajukan</strong> di bawah</span>
             </div>
           )}
 

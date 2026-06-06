@@ -44,11 +44,11 @@ export function InstallmentListScreen() {
 
   return (
     <Layout
-      title="Installments"
-      showBack
+      title="Tagihan"
+      showBottomNav
       rightAction={
-        <button type="button" className="link-btn" onClick={() => navigate('/payments/history')}>
-          History
+        <button type="button" className="link-btn header-link" onClick={() => navigate('/payments/history')}>
+          Riwayat
         </button>
       }
     >
