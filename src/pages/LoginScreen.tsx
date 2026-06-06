@@ -83,6 +83,10 @@ export function LoginScreen() {
         <Button type="submit" loading={loading} className="btn-block">
           Login
         </Button>
+        <div className="demo-hint card">
+          <strong>Demo login</strong>
+          <p className="text-muted">demo@loanapp.com / Password1</p>
+        </div>
         <p className="form-footer">
           Don&apos;t have an account? <Link to="/register">Register</Link>
         </p>

@@ -1,7 +1,14 @@
 import { getToken, clearToken } from '../utils/storage';
+import { ApiClientError } from './errors';
+import { mockRequest } from './mock/handlers';
 import type { ApiError } from './types';
 
+export { ApiClientError };
+
 const BASE_URL = 'https://api.example.com';
+
+/** Mock mode on by default. Set VITE_USE_MOCK=false to hit real API. */
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 type OnUnauthorized = () => void;
 
@@ -9,19 +16,6 @@ let onUnauthorized: OnUnauthorized | null = null;
 
 export function setUnauthorizedHandler(handler: OnUnauthorized): void {
   onUnauthorized = handler;
-}
-
-export class ApiClientError extends Error {
-  status: number;
-  code?: string;
-  fields?: Record<string, string[]>;
-
-  constructor(status: number, body: ApiError) {
-    super(body.error);
-    this.status = status;
-    this.code = body.code;
-    this.fields = body.fields;
-  }
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -62,19 +56,32 @@ export async function apiRequest<T>(
   options: RequestInit & { skipAuth?: boolean; skipRetry?: boolean } = {}
 ): Promise<T> {
   const { skipAuth, skipRetry, ...fetchOptions } = options;
-  const headers = new Headers(fetchOptions.headers);
+  const method = (fetchOptions.method ?? 'GET').toUpperCase();
+  const token = skipAuth ? null : getToken();
 
-  if (!skipAuth) {
-    const token = getToken();
-    if (token) headers.set('Authorization', `Bearer ${token}`);
+  if (USE_MOCK) {
+    try {
+      return await mockRequest<T>(path, {
+        method,
+        body: typeof fetchOptions.body === 'string' ? fetchOptions.body : undefined,
+        token,
+      });
+    } catch (err) {
+      if (err instanceof ApiClientError && err.status === 401) {
+        clearToken();
+        onUnauthorized?.();
+      }
+      throw err;
+    }
   }
 
+  const headers = new Headers(fetchOptions.headers);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (!(fetchOptions.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
   const url = `${BASE_URL}${path}`;
-  const method = (fetchOptions.method ?? 'GET').toUpperCase();
   const isIdempotentGet = method === 'GET' && !skipRetry;
 
   const response = isIdempotentGet

@@ -173,6 +173,17 @@ a {
   color: var(--muted);
 }
 
+.demo-hint {
+  text-align: center;
+  padding: 12px;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.demo-hint p {
+  margin: 4px 0 0;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

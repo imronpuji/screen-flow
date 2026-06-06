@@ -24,11 +24,15 @@ npm run build
 npm run preview
 ```
 
-## API Configuration
+## API Mode
 
-Base URL: `https://api.example.com`
+**Mock mode is ON by default** — no real network calls. Data is stored in `localStorage`.
 
-All protected endpoints send `Authorization: Bearer <token>` and `Content-Type: application/json`.
+### Demo login
+- Email: `demo@loanapp.com`
+- Password: `Password1`
+
+To use a real API, set `VITE_USE_MOCK=false` and point `BASE_URL` in `src/api/client.ts`.
 
 ## Screens
 

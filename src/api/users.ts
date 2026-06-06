@@ -1,4 +1,6 @@
-import { apiRequest } from './client';
+import { apiRequest, USE_MOCK } from './client';
+import { mockUploadKtp } from './mock/handlers';
+import { getToken } from '../utils/storage';
 import type { UserProfile } from './types';
 
 export function getProfile() {
@@ -6,6 +8,10 @@ export function getProfile() {
 }
 
 export function uploadKtp(file: File, onProgress?: (pct: number) => void) {
+  if (USE_MOCK) {
+    return mockUploadKtp(getToken(), onProgress);
+  }
+
   const formData = new FormData();
   formData.append('ktp', file);
 
@@ -13,7 +19,7 @@ export function uploadKtp(file: File, onProgress?: (pct: number) => void) {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'https://api.example.com/api/users/ktp');
 
-    const token = localStorage.getItem('access_token');
+    const token = getToken();
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
 
     xhr.upload.onprogress = (e) => {
