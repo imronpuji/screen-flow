@@ -8,7 +8,7 @@ Entri terbaru di ATAS.
   - `CameraBubble` — keyboard wiring + title hint; review hint updated.
   - Smoke `smoke:camera` covers wrap, custom→nearest step, shape lock on circle.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
-- **Commit:** `5c89d18` (feature)
+- **Commit:** `5c89d18` (feature) / `04087d8` (memory)
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; background presets polish atau zoom add-at-playhead.
 
