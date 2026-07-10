@@ -7,8 +7,12 @@ import type {
   ExportMp4Request,
   ExportMp4Result,
   ExportProgressEvent,
+  GetMediaUrlRequest,
+  GetMediaUrlResult,
   ListSourcesRequest,
   PermissionStatus,
+  ReadCursorEventsRequest,
+  ReadCursorEventsResult,
   RecordingStatus,
   SaveExportRequest,
   SaveExportResult,
@@ -133,4 +137,20 @@ export function isElectronBridgeAvailable(): boolean {
 
 export function isExportCancelledError(err: unknown): boolean {
   return err instanceof Error && err.message.includes('EXPORT_CANCELLED')
+}
+
+export async function readCursorEvents(
+  request: ReadCursorEventsRequest,
+): Promise<ReadCursorEventsResult> {
+  if (!window.screenFlow?.readCursorEvents) {
+    throw new Error('Cursor events require the Electron app')
+  }
+  return window.screenFlow.readCursorEvents(request)
+}
+
+export async function getMediaUrl(request: GetMediaUrlRequest): Promise<GetMediaUrlResult> {
+  if (!window.screenFlow?.getMediaUrl) {
+    throw new Error('Media playback requires the Electron app')
+  }
+  return window.screenFlow.getMediaUrl(request)
 }

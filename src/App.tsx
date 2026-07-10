@@ -15,13 +15,17 @@ import {
   fetchCaptureSources,
   fetchPermissionStatus,
   fetchRecordingStatus,
+  getMediaUrl,
   isElectronBridgeAvailable,
   isExportCancelledError,
   onExportProgress,
+  readCursorEvents,
   saveExport,
   startRecording,
   stopRecording,
 } from './lib/runtime'
+import { AutoZoomPlayback } from './components/AutoZoomPlayback'
+import type { CursorEvent } from '../shared/cursor'
 import './App.css'
 
 const idleRecording: RecordingStatus = {
@@ -52,6 +56,8 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
+  const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState<ExportProgressEvent | null>(null)
   const previewRef = useRef<HTMLVideoElement | null>(null)
@@ -163,6 +169,26 @@ export default function App() {
         const result = await stopRecording()
         setRecording(result.status)
         setLastWebmPath(result.outputPath)
+        setPlaybackUrl(null)
+        setPlaybackCursorEvents([])
+
+        if (result.outputPath) {
+          try {
+            const [media, cursor] = await Promise.all([
+              getMediaUrl({ filePath: result.outputPath }),
+              result.cursorEventsPath
+                ? readCursorEvents({ eventsPath: result.cursorEventsPath })
+                : Promise.resolve({ ok: true as const, events: [] as CursorEvent[] }),
+            ])
+            setPlaybackUrl(media.url)
+            setPlaybackCursorEvents(cursor.events)
+          } catch (loadErr) {
+            setError(
+              loadErr instanceof Error ? loadErr.message : 'Failed to load playback preview',
+            )
+          }
+        }
+
         const size = formatBytes(result.bytesWritten)
         const secs = (result.durationMs / 1000).toFixed(1)
         setLastSummary(
@@ -173,6 +199,8 @@ export default function App() {
       } else {
         setLastSummary(null)
         setLastWebmPath(null)
+        setPlaybackUrl(null)
+        setPlaybackCursorEvents([])
         const started = await startRecording({ sourceId: selectedSourceId! })
         setRecording(started.status)
 
@@ -224,6 +252,8 @@ export default function App() {
         cleanupTemp: true,
       })
       setLastWebmPath(null)
+      setPlaybackUrl(null)
+      setPlaybackCursorEvents([])
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
 
       // Offer Save As → Documents/Screen Flow (user can cancel and keep temp path).
@@ -373,7 +403,12 @@ export default function App() {
               autoPlay
             />
             {!isRecording ? (
-              !inElectron ? (
+              playbackUrl ? (
+                <AutoZoomPlayback
+                  mediaUrl={playbackUrl}
+                  cursorEvents={playbackCursorEvents}
+                />
+              ) : !inElectron ? (
                 <p className="preview-frame__hint">
                   Open via Electron to list displays with desktopCapturer.
                 </p>

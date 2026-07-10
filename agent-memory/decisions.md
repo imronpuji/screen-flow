@@ -68,6 +68,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User mendapat file permanen di Documents tanpa path traversal ke temp via IPC; dialog di main (bukan renderer); CI tetap bisa uji naming/copy tanpa Electron dialog.
 - **Status:** aktif
 
+## [2026-07-10] Auto-zoom preview engine
+
+- **Keputusan:** `shared/autozoom.ts` membangun zoom segments dari click/down di JSONL (cubic ease-in/out, peak 1.6×, hold 800ms). Renderer memuat events via IPC `recording:read-cursor-events` + `recording:get-media-url` (file:// guard temp); `AutoZoomPlayback` menerapkan CSS `transform-origin` + `scale` pada `timeupdate`. Export ffmpeg belum membakar zoom.
+- **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
+- **Status:** aktif (preview); export bake = follow-up
+
 ## [2026-07-10] Cursor event capture (JSONL)
 
 - **Keputusan:** Saat `recording:start`, main menulis `cursor-events.jsonl` di session temp. Event: `{ t, x, y, kind: move|down|up|click, button? }` dengan `t` = ms sejak start. Primary: `uiohook-napi` global hook (posisi + klik). Fallback: poll `screen.getCursorScreenPoint()` ~60Hz (posisi saja). Move di-throttle (≥16ms atau ≥2px). Stop menutup stream dan expose `cursorEventsPath` + `cursorEventCount` di `StopRecordingResult`.

@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 05:46] Auto-zoom engine + playback preview
+
+- **Dikerjakan:** `shared/autozoom.ts` (parse JSONL, build zoom segments, cubic easing); IPC `recording:read-cursor-events` + `recording:get-media-url`; komponen `AutoZoomPlayback` dengan CSS zoom pada klik; smoke `smoke:autozoom`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke autozoom/cursor hijau.
+- **Status:** done (preview MVP)
+- **Next:** Bake auto-zoom ke ffmpeg export; cursor smoothing + click ring; background padding preview.
+
 ## [2026-07-10 05:05] Cursor event capture → JSONL
 
 - **Dikerjakan:** `cursor-events.jsonl` per session via `uiohook-napi` (move/down/up/click) + fallback poll `screen.getCursorScreenPoint()`; types di `shared/cursor.ts`; throttle move; `StopRecordingResult.cursorEventsPath/count`; smoke `smoke:cursor-events`; UI summary menampilkan jumlah event.

@@ -9,8 +9,12 @@ import {
   type ExportMp4Request,
   type ExportMp4Result,
   type ExportProgressEvent,
+  type GetMediaUrlRequest,
+  type GetMediaUrlResult,
   type ListSourcesRequest,
   type PermissionStatus,
+  type ReadCursorEventsRequest,
+  type ReadCursorEventsResult,
   type RecordingStatus,
   type SaveExportRequest,
   type SaveExportResult,
@@ -54,6 +58,13 @@ const api: ScreenFlowApi = {
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_CANCEL) as Promise<CancelExportResult>,
   saveExport: (request: SaveExportRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_SAVE, request) as Promise<SaveExportResult>,
+  readCursorEvents: (request: ReadCursorEventsRequest) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.RECORDING_READ_CURSOR_EVENTS,
+      request,
+    ) as Promise<ReadCursorEventsResult>,
+  getMediaUrl: (request: GetMediaUrlRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.RECORDING_GET_MEDIA_URL, request) as Promise<GetMediaUrlResult>,
 }
 
 contextBridge.exposeInMainWorld('screenFlow', api)
