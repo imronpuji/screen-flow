@@ -5,7 +5,7 @@ Entri terbaru di ATAS.
 
 - **Dikerjakan:** Root cause — background `gradients` + `loop=-1` infinite as overlay main input; full export omitted `-t` → ffmpeg never EOF, UI stuck at 100%, CPU panas. Fix: `shortest=1` on background overlays, trim gradients to duration, padded `-t` ceiling for effects graphs, progress "Finalizing…" at 100%. Smoke encodes **without** `-t` to catch regression.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke export-effects/camera/trim/beautify hijau (termasuk hang test).
-- **Commit:** (pending)
+- **Commit:** `9826674`
 - **Status:** done
 - **Next:** Rectangle camera shape; border/shadow bake; A/V drift compensation.
 
