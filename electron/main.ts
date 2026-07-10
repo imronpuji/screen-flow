@@ -1,7 +1,18 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { IPC_CHANNELS, type AppInfo } from '../shared/ipc.js'
+import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
+import {
+  getRecordingStatus,
+  startRecordingStub,
+  stopRecordingStub,
+} from './recording/session.js'
+import {
+  IPC_CHANNELS,
+  type AppInfo,
+  type ListSourcesRequest,
+  type StartRecordingRequest,
+} from '../shared/ipc.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -42,6 +53,23 @@ function registerIpc(): void {
   }))
 
   ipcMain.handle(IPC_CHANNELS.APP_GET_PLATFORM, (): AppInfo['platform'] => process.platform)
+
+  ipcMain.handle(IPC_CHANNELS.PERMISSION_GET_STATUS, () => getScreenPermissionStatus())
+
+  ipcMain.handle(IPC_CHANNELS.SOURCES_LIST, (_event, request?: ListSourcesRequest) =>
+    listCaptureSources(request ?? {}),
+  )
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_GET_STATUS, () => getRecordingStatus())
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_START, (_event, request: StartRecordingRequest) => {
+    if (!request || typeof request.sourceId !== 'string') {
+      throw new Error('Invalid start recording payload')
+    }
+    return startRecordingStub(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_STOP, () => stopRecordingStub())
 }
 
 app.whenReady().then(() => {

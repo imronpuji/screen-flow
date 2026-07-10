@@ -5,9 +5,9 @@
 ## Fondasi
 
 - [x] Electron + React + TS boilerplate (main/preload/renderer, contextIsolation)
-- [~] IPC typed: app info done; permission status + sources list next
-- [ ] Izin TCC Screen Recording (macOS) — probe + UX saat ditolak
-- [ ] Capture dasar via `desktopCapturer`
+- [x] IPC typed: app info, permission status, sources list, recording stub session
+- [x] Izin TCC Screen Recording (macOS) — probe + UX saat ditolak
+- [~] Capture dasar via `desktopCapturer` (list sources done; frame stream next)
 - [ ] Simpan frame/stream via ffmpeg (child process di main)
 - [ ] Preview real-time (canvas)
 - [ ] Export MP4 (H.264; VideoToolbox di macOS)
