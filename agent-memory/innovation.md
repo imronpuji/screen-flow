@@ -33,5 +33,6 @@
 - [x] Empty-state CTAs — Refresh sources · Add zoom at playhead + discard confirm dialog
 - [x] Export toast feedback — success/cancel/error + Show in folder (reveal IPC)
 - [x] Export size estimate — ~low–high from format/quality/kept length (+ mic)
+- [x] Beautify toast — success toast with preset label/hint after B / chips
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

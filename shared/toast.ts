@@ -91,6 +91,20 @@ export function exportFailedToast(message: string): ToastSpec {
   }
 }
 
+/** Confirm one-click Beautify applied a look (header B / preset chips). */
+export function beautifyAppliedToast(options: {
+  label: string
+  hint?: string
+}): ToastSpec {
+  const label = options.label.trim() || 'Beautify'
+  return {
+    tone: 'success',
+    title: `${label} look applied`,
+    body: options.hint?.trim() || undefined,
+    durationMs: TOAST_INFO_DURATION_MS,
+  }
+}
+
 /** Strip stack-ish noise; keep a short actionable line. */
 export function humanizeExportError(message: string): string {
   const firstLine = message.split(/\r?\n/)[0]?.trim() ?? message

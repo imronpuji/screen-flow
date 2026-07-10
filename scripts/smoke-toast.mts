@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { assertRevealableExportPath } from '../electron/ffmpeg/revealExport.ts'
 import {
+  beautifyAppliedToast,
   exportCancelledToast,
   exportFailedToast,
   exportSavedToast,
@@ -13,6 +14,7 @@ import {
   humanizeExportError,
   makeToast,
   TOAST_DEFAULT_DURATION_MS,
+  TOAST_INFO_DURATION_MS,
 } from '../shared/toast.ts'
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -48,6 +50,26 @@ function testExportToasts(): void {
   assert(failed.tone === 'error', 'fail tone')
   assert(failed.body?.includes('missing'), 'humanized enoent')
   console.log('ok export toasts')
+}
+
+function testBeautifyToast(): void {
+  const tutorial = beautifyAppliedToast({
+    label: 'Tutorial',
+    hint: 'Auto-zoom + spotlight cursor · Aurora frame · Good quality',
+  })
+  assert(tutorial.tone === 'success', 'beautify tone')
+  assert(tutorial.title.includes('Tutorial'), 'tutorial title')
+  assert((tutorial.body?.length ?? 0) > 0, 'tutorial body')
+  assert(tutorial.durationMs === TOAST_INFO_DURATION_MS, 'beautify duration')
+  assert(tutorial.action == null, 'no action on beautify')
+
+  const demo = beautifyAppliedToast({ label: 'Product demo' })
+  assert(demo.title.includes('Product demo'), 'demo title')
+  assert(demo.body == null, 'no hint → no body')
+
+  const blank = beautifyAppliedToast({ label: '  ' })
+  assert(blank.title.startsWith('Beautify'), 'blank label fallback')
+  console.log('ok beautify toast')
 }
 
 function testHumanize(): void {
@@ -99,6 +121,7 @@ function testRevealPath(): void {
 }
 
 testExportToasts()
+testBeautifyToast()
 testHumanize()
 testRevealPath()
 console.log('smoke:toast ok')
