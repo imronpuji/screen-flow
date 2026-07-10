@@ -10,9 +10,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 ## [2026-07-10] Camera layout: relative coords + drag snap
 
-- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame; bubble kotak), `anchor` (`corner` preset | `free`), `shape`. Preview CSS (`left`/`top` %) dan ffmpeg `cameraBubbleNormRect` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame. Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed, aspect lock square, `anchor: 'free'`).
-- **Alasan:** FOKUS 3B — corner-only terasa kasar; drag+snap+resize = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
-- **Status:** aktif (MVP); rect shape + border bake = follow-up
+- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame; bubble kotak), `anchor` (`corner` preset | `free`), `shape` (`circle` | `rounded` | `rectangle`). Preview CSS (`left`/`top` % + `borderRadius` via `cameraShapeBorderRadius`) dan ffmpeg `cameraBubbleNormRect` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame. Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed, aspect lock square, `anchor: 'free'`). Export: circle/rounded = 1-frame geq mask; **rectangle = no mask** (opaque square overlay).
+- **Alasan:** FOKUS 3B/3E — corner-only terasa kasar; drag+snap+resize+3 bentuk = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
+- **Status:** aktif (MVP); border/shadow bake = follow-up
 
 ## [2026-07-10] Owner merge callback (ngrok) — diizinkan
 
