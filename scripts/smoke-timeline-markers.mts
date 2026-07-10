@@ -4,10 +4,12 @@
 import type { CursorEvent } from '../shared/cursor.ts'
 import type { ZoomSegment } from '../shared/autozoom.ts'
 import {
+  buildCameraActiveRangeMarkers,
   buildTimelineMarkers,
   markerPercent,
   markersInTrimRange,
-} from '../shared/timelineMarkers.ts'
+  wallMsToScreenTimelineMs,
+} from '../dist-electron/shared/timelineMarkers.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)
@@ -99,7 +101,51 @@ function testTrimFilter(): void {
   console.log('ok trim filter', inRange.length)
 }
 
+function testCameraRanges(): void {
+  assert(wallMsToScreenTimelineMs(120, 40) === 80, 'wall→screen subtract origin')
+  assert(wallMsToScreenTimelineMs(10, 40) === 0, 'wall→screen clamp')
+  assert(wallMsToScreenTimelineMs(50, null) === 50, 'wall→screen null origin')
+
+  const empty = buildCameraActiveRangeMarkers([], { wallDurationMs: 5000 })
+  assert(empty.length === 0, 'empty ranges → no markers')
+
+  const openClosed = buildCameraActiveRangeMarkers(
+    [
+      { startMs: 200, endMs: 1200 },
+      { startMs: 3000, endMs: null },
+    ],
+    { screenFirstChunkMs: 100, wallDurationMs: 5000 },
+  )
+  assert(openClosed.length === 2, `expected 2 camera markers, got ${openClosed.length}`)
+  assert(
+    openClosed[0]?.kind === 'camera' &&
+      openClosed[0]?.startMs === 100 &&
+      openClosed[0]?.endMs === 1100 &&
+      openClosed[0]?.tMs === 100,
+    'first range mapped to screen timeline',
+  )
+  assert(
+    openClosed[1]?.startMs === 2900 && openClosed[1]?.endMs === 4900,
+    'open range closed at wallDuration',
+  )
+
+  const merged = buildTimelineMarkers([], [], {
+    cameraActiveRanges: [{ startMs: 500, endMs: 1500 }],
+    screenFirstChunkMs: 0,
+    wallDurationMs: 4000,
+  })
+  assert(merged.some((m) => m.kind === 'camera'), 'buildTimelineMarkers includes camera')
+
+  const skipped = buildTimelineMarkers([], [], {
+    cameraActiveRanges: [{ startMs: 0, endMs: 1000 }],
+    includeCamera: false,
+  })
+  assert(skipped.every((m) => m.kind !== 'camera'), 'includeCamera false')
+  console.log('ok camera ranges', openClosed.length)
+}
+
 testPercent()
 testBuild()
 testTrimFilter()
+testCameraRanges()
 console.log('smoke-timeline-markers: all ok')
