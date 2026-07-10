@@ -10,6 +10,7 @@ import {
 } from 'react'
 import {
   CAMERA_DEFAULT_ASPECT,
+  applyCameraSnapPreset,
   cameraBubbleChromeStyle,
   cameraBubblePosition,
   cameraBubbleSizeNorm,
@@ -24,6 +25,7 @@ import {
   resetCameraLayout,
   type CameraNudgeDirection,
   type CameraOverlayStyle,
+  type CameraSnapTarget,
 } from '../../shared/camera'
 
 export interface CameraLayoutMapProps {
@@ -43,7 +45,8 @@ export interface CameraLayoutMapProps {
  *
  * Interaction (FOKUS 3B) — full keyboard parity with live bubble because the
  * bubble is hidden on the capture preview while recording:
- * - Click or drag to place (magnetic snap) + snap guide dots while dragging
+ * - Always-visible snap guide dots (8 corners + edge mids); click a guide to snap
+ * - Click or drag elsewhere to place (magnetic snap); guides highlight while dragging
  * - Scroll wheel to resize (Shift = larger steps)
  * - Arrows nudge · +/- resize · [ ] snap cycle · C shape · 0 / double-click reset
  * - Numpad-style 7/9/1/3/5 for quick corners + center
@@ -69,14 +72,24 @@ export function CameraLayoutMap({
   }, [style])
 
   // Same 8 magnetic targets as live CameraBubble (corners + edge mids).
+  // Always shown when interactive so orang awam can click a corner/edge without
+  // hunting the position dropdown or memorizing [ ] / numpad keys.
   const { w: guideW, h: guideH } = cameraBubbleSizeNorm(
     style.sizePercent,
     frameAspect,
     style.heightPercent,
   )
-  const guideTargets = dragging
+  const guideTargets = interactive
     ? cameraSnapTargets(style.sizePercent, frameAspect, style.heightPercent)
     : []
+
+  const snapToGuide = useCallback(
+    (target: CameraSnapTarget) => {
+      if (!onLayoutChange || disabled) return
+      onLayoutChange(applyCameraSnapPreset(styleRef.current, target, frameAspect))
+    },
+    [disabled, frameAspect, onLayoutChange],
+  )
 
   const placeFromClient = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -232,7 +245,7 @@ export function CameraLayoutMap({
         tabIndex={interactive ? 0 : undefined}
         title={
           interactive
-            ? 'Drag to place (snap guides) · scroll or +/- resize · arrows nudge · [ ] snap · C shape · 0 / double-click reset'
+            ? 'Click a snap guide or drag to place · scroll or +/- resize · arrows nudge · [ ] snap · C shape · 0 / double-click reset'
             : undefined
         }
         onPointerDown={onPointerDown}
@@ -243,20 +256,41 @@ export function CameraLayoutMap({
         onWheel={onWheel}
         onDoubleClick={onDoubleClick}
       >
-        {dragging ? (
-          <div className="camera-layout-map__guides" aria-hidden="true">
-            {guideTargets.map((t) => (
-              <span
-                key={t.id}
-                className={`camera-layout-map__guide${
-                  snap === t.id ? ' camera-layout-map__guide--active' : ''
-                }`}
-                style={{
-                  left: `${(t.x + guideW / 2) * 100}%`,
-                  top: `${(t.y + guideH / 2) * 100}%`,
-                }}
-              />
-            ))}
+        {guideTargets.length > 0 ? (
+          <div
+            className={`camera-layout-map__guides${
+              dragging ? ' camera-layout-map__guides--dragging' : ''
+            }`}
+            role="group"
+            aria-label="Snap positions"
+          >
+            {guideTargets.map((t) => {
+              const guideLabel = cameraSnapPresetLabel(t.id)
+              const active = snap === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  tabIndex={-1}
+                  className={`camera-layout-map__guide${
+                    active ? ' camera-layout-map__guide--active' : ''
+                  }`}
+                  style={{
+                    left: `${(t.x + guideW / 2) * 100}%`,
+                    top: `${(t.y + guideH / 2) * 100}%`,
+                  }}
+                  title={`Snap ${guideLabel}`}
+                  aria-label={`Snap ${guideLabel}`}
+                  aria-pressed={active}
+                  onPointerDown={(e) => {
+                    // Don't start a free drag — exact preset snap for orang awam.
+                    e.preventDefault()
+                    e.stopPropagation()
+                    snapToGuide(t.id)
+                  }}
+                />
+              )
+            })}
           </div>
         ) : null}
         <div
@@ -281,7 +315,7 @@ export function CameraLayoutMap({
       </div>
       <span className="camera-layout-map__label" role="status">
         Layout · {label}
-        {interactive ? ' · drag · snap guides · keys / scroll' : ''}
+        {interactive ? ' · click guides · drag · keys / scroll' : ''}
       </span>
     </div>
   )

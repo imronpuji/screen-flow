@@ -2,11 +2,17 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] FaceTime layout map clickable snap guides (FOKUS 3B)
+
+- **Keputusan:** `CameraLayoutMap` selalu menampilkan 8 snap guide dots saat interaktif (bukan hanya saat drag). Klik guide → `applyCameraSnapPreset` (exact corner/edge, stopPropagation supaya tidak mulai free-drag). Highlight aktif via `matchCameraSnapTarget`; saat drag guides lebih kuat visual (`guides--dragging`). Koordinat relatif tetap preview ≡ export.
+- **Alasan:** FOKUS 3B — orang awam sering tidak tahu dropdown posisi / shortcut `[` `]` / numpad; dots yang selalu terlihat + clickable = preset 8 posisi tanpa hafalan. Melanjutkan “snap guides while dragging”.
+- **Status:** aktif
+
 ## [2026-07-10] FaceTime layout map snap guides (FOKUS 3B)
 
 - **Keputusan:** Saat drag di `CameraLayoutMap`, tampilkan 8 snap guide dots (4 pojok + 4 edge mid) dari `cameraSnapTargets` + highlight target aktif via `matchCameraSnapTarget` — sama dengan live `CameraBubble`. Marker bubble menonaktifkan CSS transition selama drag supaya magnetic snap tidak dilawan easing. Koordinat relatif tetap preview ≡ export.
 - **Alasan:** FOKUS 3B — tanpa guide, drag di chrome map terasa buta (live bubble disembunyikan saat rekam); orang awam butuh feedback visual yang sama dengan preview bubble.
-- **Status:** aktif
+- **Status:** digantikan (lihat “clickable snap guides” — guides sekarang always-on + clickable)
 
 ## [2026-07-10] FaceTime layout map keyboard parity (FOKUS 3B)
 

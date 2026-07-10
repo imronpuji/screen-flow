@@ -1593,22 +1593,34 @@
 .camera-layout-map__guides {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 3;
   pointer-events: none;
 }
 
 .camera-layout-map__guide {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  margin: -3px;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  padding: 0;
   border-radius: 50%;
-  border: 1px solid rgba(232, 238, 244, 0.35);
-  background: rgba(10, 14, 18, 0.4);
-  opacity: 0.55;
+  border: 1px solid rgba(232, 238, 244, 0.4);
+  background: rgba(10, 14, 18, 0.45);
+  opacity: 0.42;
   transform: scale(1);
+  pointer-events: auto;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   transition: opacity 120ms ease, transform 120ms ease, background 120ms ease,
-    border-color 120ms ease;
+    border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.camera-layout-map__guide:hover {
+  opacity: 0.9;
+  transform: scale(1.35);
+  border-color: rgba(61, 214, 198, 0.75);
+  background: rgba(61, 214, 198, 0.45);
 }
 
 .camera-layout-map__guide--active {
@@ -1617,6 +1629,15 @@
   border-color: rgba(61, 214, 198, 0.95);
   background: rgba(61, 214, 198, 0.85);
   box-shadow: 0 0 0 2px rgba(61, 214, 198, 0.22);
+}
+
+/* While dragging, guides are stronger visual magnets (still clickable). */
+.camera-layout-map__guides--dragging .camera-layout-map__guide {
+  opacity: 0.7;
+}
+
+.camera-layout-map__guides--dragging .camera-layout-map__guide--active {
+  opacity: 1;
 }
 
 .camera-layout-map__bubble {
