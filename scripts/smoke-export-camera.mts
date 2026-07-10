@@ -52,6 +52,19 @@ function testCameraPlan(): void {
     { width: 320, height: 180 },
   )
   assert(!off.hasCamera, 'disabled skips camera')
+
+  const rectPlan = planCameraExport(
+    { ...style, shape: 'rectangle' },
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+  )
+  assert(rectPlan.hasCamera, 'rectangle enabled')
+  assert(!rectPlan.filterComplex.includes('alphamerge'), 'rectangle skips alpha mask')
+  assert(!rectPlan.filterComplex.includes('geq='), 'rectangle skips geq mask')
+  assert(rectPlan.filterComplex.includes('overlay='), 'rectangle still overlays')
+  assert(rectPlan.filterComplex.includes('format=yuv420p'), 'rectangle yuv420p')
   console.log('ok camera plan')
 }
 
@@ -125,6 +138,43 @@ async function testFfmpegCameraEncode(): Promise<void> {
 
   assert(result.code === 0, `ffmpeg camera encode failed: ${result.stderr.slice(-600)}`)
   assert(fs.existsSync(outPath) && fs.statSync(outPath).size > 500, 'mp4 written')
+
+  // Rectangle path (no alphamerge) must also encode cleanly.
+  const rectOut = path.join(dir, 'out-rect.mp4')
+  const rectPlan = planExportFilters({ width: 320, height: 180 }, 1200, {
+    camera: {
+      style: { ...style, shape: 'rectangle', corner: 'top-right', sizePercent: 30 },
+      inputIndex: 1,
+    },
+  })
+  assert(rectPlan.filterComplex != null, 'rectangle graph')
+  assert(!rectPlan.filterComplex!.includes('alphamerge'), 'rectangle encode skips mask')
+  const rectResult = await runFfmpeg([
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=gray:s=320x180:d=1.2',
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=green:s=640x480:d=1.2',
+    '-filter_complex',
+    rectPlan.filterComplex!,
+    '-map',
+    `[${rectPlan.outputLabel}]`,
+    '-c:v',
+    'libx264',
+    '-preset',
+    'ultrafast',
+    '-pix_fmt',
+    'yuv420p',
+    '-t',
+    '1.2',
+    rectOut,
+  ])
+  assert(rectResult.code === 0, `ffmpeg rectangle encode failed: ${rectResult.stderr.slice(-600)}`)
+  assert(fs.existsSync(rectOut) && fs.statSync(rectOut).size > 500, 'rectangle mp4 written')
   console.log('ok ffmpeg camera encode')
 }
 

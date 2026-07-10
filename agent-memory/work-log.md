@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:35] Camera bubble rectangle shape (FOKUS 3B/3E)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `CameraShape` + `rectangle`; `CAMERA_SHAPES`; `cameraShapeBorderRadius` (circle 50% / rounded 22% / rect 0).
+  - `shared/ffmpegCamera.ts` — rectangle path skips geq/alphamerge (opaque square overlay); circle/rounded unchanged.
+  - Setup + review UI shape pickers; Beautify Product demo → rectangle.
+  - Smoke camera/export-camera cover normalize + plan + real ffmpeg encode for rectangle.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects hijau.
+- **Commit:** `7f2778a`
+- **Status:** done (FOKUS 3E slice — rectangle shape)
+- **Next:** Configurable border/shadow bake; A/V drift compensation.
+
 ## [2026-07-10 09:30] Allow owner ngrok merge callback
 
 - **Dikerjakan:** `decisions.md` — ganti blokir callback eksternal; izinkan `POST …/merge` ke tunnel ngrok owner (`pr-auto-merge`). Curl merge setelah PR.

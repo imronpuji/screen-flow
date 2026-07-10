@@ -9,11 +9,18 @@
  * - Safe margin: 3% of each axis from the frame edge (snap + clamp).
  * - Size clamp: 12–40% of frame width (min readable face; max keeps screen readable).
  * - Resize: corner handles keep the opposite corner fixed; aspect always locked (square).
+ * - Shapes: circle (50% radius), rounded (~22%), rectangle (0 — no ffmpeg alpha mask).
  */
 
 export type CameraCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
 
-export type CameraShape = 'circle' | 'rounded'
+export type CameraShape = 'circle' | 'rounded' | 'rectangle'
+
+export const CAMERA_SHAPES: readonly CameraShape[] = [
+  'circle',
+  'rounded',
+  'rectangle',
+] as const
 
 /** How the bubble is anchored — corner presets recompute x/y; free keeps drag position. */
 export type CameraAnchor = CameraCorner | 'free'
@@ -77,6 +84,17 @@ function clamp(n: number, min: number, max: number): number {
 
 function isCameraCorner(value: unknown): value is CameraCorner {
   return typeof value === 'string' && (CAMERA_CORNERS as readonly string[]).includes(value)
+}
+
+function isCameraShape(value: unknown): value is CameraShape {
+  return typeof value === 'string' && (CAMERA_SHAPES as readonly string[]).includes(value)
+}
+
+/** CSS border-radius for preview — must match ffmpeg mask (circle/rounded) or none (rectangle). */
+export function cameraShapeBorderRadius(shape: CameraShape): string {
+  if (shape === 'circle') return '50%'
+  if (shape === 'rounded') return '22%'
+  return '0'
 }
 
 /** Normalized bubble size (width fraction + height fraction for a square bubble). */
@@ -276,7 +294,9 @@ export function normalizeCameraOverlay(
   const corner = isCameraCorner(partial?.corner)
     ? partial!.corner
     : DEFAULT_CAMERA_OVERLAY.corner
-  const shape: CameraShape = partial?.shape === 'rounded' ? 'rounded' : 'circle'
+  const shape: CameraShape = isCameraShape(partial?.shape)
+    ? partial!.shape
+    : DEFAULT_CAMERA_OVERLAY.shape
   const sizeRaw = partial?.sizePercent ?? DEFAULT_CAMERA_OVERLAY.sizePercent
   const sizePercent = Math.round(
     clamp(sizeRaw, CAMERA_MIN_SIZE_PERCENT, CAMERA_MAX_SIZE_PERCENT),
@@ -350,7 +370,7 @@ export function cameraBubblePosition(style: CameraOverlayStyle): {
     top: `${normalized.y * 100}%`,
     left: `${normalized.x * 100}%`,
     width: `${normalized.sizePercent}%`,
-    borderRadius: normalized.shape === 'circle' ? '50%' : '22%',
+    borderRadius: cameraShapeBorderRadius(normalized.shape),
   }
 }
 

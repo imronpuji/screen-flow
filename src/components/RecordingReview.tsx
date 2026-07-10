@@ -623,7 +623,7 @@ export function RecordingReview({
                   <div className="review__field">
                     <span className="review__label">Shape</span>
                     <div className="review__presets" role="group" aria-label="Camera shape">
-                      {(['circle', 'rounded'] as const).map((shape: CameraShape) => (
+                      {(['circle', 'rounded', 'rectangle'] as const).map((shape: CameraShape) => (
                         <button
                           key={shape}
                           type="button"
@@ -636,7 +636,11 @@ export function RecordingReview({
                           onClick={() => patchCamera({ shape })}
                         >
                           <span className="review__preset-label">
-                            {shape === 'circle' ? 'Circle' : 'Rounded'}
+                            {shape === 'circle'
+                              ? 'Circle'
+                              : shape === 'rounded'
+                                ? 'Rounded'
+                                : 'Rectangle'}
                           </span>
                         </button>
                       ))}
