@@ -41,7 +41,8 @@
     "smoke:timeline-cut": "node --experimental-strip-types scripts/smoke-timeline-cut.mts",
     "smoke:tooltips": "node --experimental-strip-types scripts/smoke-tooltips.mts",
     "smoke:timeline-markers": "node --experimental-strip-types scripts/smoke-timeline-markers.mts",
-    "smoke:zoom-points": "node --experimental-strip-types scripts/smoke-zoom-points.mts"
+    "smoke:zoom-points": "node --experimental-strip-types scripts/smoke-zoom-points.mts",
+    "smoke:editor-panels": "node --experimental-strip-types scripts/smoke-editor-panels.mts"
   },
   "dependencies": {
     "react": "^19.2.6",
