@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] FaceTime layout map drag + scroll resize (FOKUS 3B)
+
+- **Keputusan:** `CameraLayoutMap` mendukung **drag-to-place** (pointer capture + move → `placeCameraAtPoint` magnetic snap) dan **scroll-wheel resize** (`nudgeCameraSize`; Shift = step besar). Marker bubble mencerminkan border/shadow dari `cameraBubbleChromeStyle`. Setup + review memakai komponen yang sama; koordinat relatif tetap preview ≡ export. Tidak di capture preview (hindari burn-in).
+- **Alasan:** FOKUS 3B — click-once terasa kasar saat rekam (live bubble disembunyikan); drag + scroll di chrome map = cara utama orang awam rapikan posisi/ukuran mid-recording tanpa double FaceTime di screen WebM.
+- **Status:** aktif
+
 ## [2026-07-10] Auto-highlight clicks (preview ≡ export)
 
 - **Keputusan:** `CursorAppearance.clickHighlightEnabled` (default **true**) mengontrol soft filled pulse di titik klik, terpisah dari outline click ring. Preview: `.cursor-overlay__highlight` (radial teal, scale+fade ~700ms via `getActiveClickHighlights`). Export: `drawbox@hl` fill `0x3dd6c6@alpha` di-drive sendcmd — ukuran dari `resolveCursorHighlightPx` (base 96×sizeScale). Legacy prefs tanpa key → **on**. Beautify semua preset menyalakan highlight. Outline ring tetap ada (lebih pendek ~450ms).
