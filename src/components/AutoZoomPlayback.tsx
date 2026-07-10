@@ -20,6 +20,11 @@ import {
 } from '../../shared/cursorSmoothing'
 import { formatTimeMs } from '../../shared/edit'
 import { resolveBackgroundFrame, type BackgroundStyle } from '../../shared/background'
+import {
+  DEFAULT_CAMERA_OVERLAY,
+  type CameraOverlayStyle,
+} from '../../shared/camera'
+import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
   mediaUrl: string
@@ -28,6 +33,9 @@ export interface AutoZoomPlaybackProps {
   cursorSmoothingEnabled?: boolean
   cursorAppearance?: CursorAppearance
   background?: BackgroundStyle
+  /** Recorded camera.webm URL; bubble stays outside zoom (matches export). */
+  cameraMediaUrl?: string | null
+  cameraOverlay?: CameraOverlayStyle
   trimStartMs?: number
   trimEndMs?: number
   onDurationMs?: (ms: number) => void
@@ -41,6 +49,8 @@ export function AutoZoomPlayback({
   cursorSmoothingEnabled = true,
   cursorAppearance = DEFAULT_CURSOR_APPEARANCE,
   background,
+  cameraMediaUrl = null,
+  cameraOverlay = DEFAULT_CAMERA_OVERLAY,
   trimStartMs = 0,
   trimEndMs,
   onDurationMs,
@@ -203,6 +213,19 @@ export function AutoZoomPlayback({
       ? 'cursor-overlay__pointer cursor-overlay__pointer--crosshair'
       : 'cursor-overlay__dot'
 
+  const showCamera =
+    Boolean(cameraMediaUrl) && cameraOverlay.enabled
+
+  const cameraBubble = showCamera ? (
+    <CameraBubble
+      mediaUrl={cameraMediaUrl}
+      currentTimeSec={currentMs / 1000}
+      mirrored={false}
+      style={cameraOverlay}
+      label="Camera overlay"
+    />
+  ) : null
+
   const stage = (
     <div
       className="zoom-playback__stage"
@@ -298,9 +321,14 @@ export function AutoZoomPlayback({
                 {stage}
               </div>
             </div>
+            {/* Camera on full canvas (after zoom+bg) — matches ffmpeg order. */}
+            {cameraBubble}
           </div>
         ) : (
-          stage
+          <div className="zoom-playback__composite" style={{ aspectRatio }}>
+            {stage}
+            {cameraBubble}
+          </div>
         )}
       </div>
 
@@ -336,6 +364,7 @@ export function AutoZoomPlayback({
               ? ' · cursor hidden'
               : ''}
           {backgroundFrame ? ' · background on' : ''}
+          {showCamera ? ' · camera on' : ''}
         </span>
       </div>
     </div>

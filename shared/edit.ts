@@ -1,5 +1,7 @@
 import type { BackgroundStyle } from './background.js'
 import { DEFAULT_BACKGROUND_STYLE } from './background.js'
+import type { CameraOverlayStyle } from './camera.js'
+import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from './camera.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
@@ -19,6 +21,8 @@ export interface ReviewEditState {
   /** Size / style / hide / spotlight for composited cursor. */
   cursorAppearance: CursorAppearance
   background: BackgroundStyle
+  /** FaceTime bubble layout for review preview + export bake. */
+  cameraOverlay: CameraOverlayStyle
 }
 
 /** Clamp trim handles to a valid export window (≥100ms). */
@@ -44,7 +48,10 @@ export function msToFfmpegSec(ms: number): string {
   return (ms / 1000).toFixed(3)
 }
 
-export function defaultReviewEdit(durationMs: number): ReviewEditState {
+export function defaultReviewEdit(
+  durationMs: number,
+  cameraOverlay?: Partial<CameraOverlayStyle> | null,
+): ReviewEditState {
   return {
     trimStartMs: 0,
     trimEndMs: Math.max(0, durationMs),
@@ -52,6 +59,7 @@ export function defaultReviewEdit(durationMs: number): ReviewEditState {
     cursorSmoothingEnabled: true,
     cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
     background: { ...DEFAULT_BACKGROUND_STYLE },
+    cameraOverlay: normalizeCameraOverlay(cameraOverlay ?? DEFAULT_CAMERA_OVERLAY),
   }
 }
 

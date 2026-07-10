@@ -83,6 +83,7 @@ export default function App() {
   const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
   const [lastCameraPath, setLastCameraPath] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
+  const [playbackCameraUrl, setPlaybackCameraUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
   const [reviewDurationMs, setReviewDurationMs] = useState(0)
   const [reviewBytesWritten, setReviewBytesWritten] = useState(0)
@@ -220,6 +221,7 @@ export default function App() {
     setLastCursorEventsPath(null)
     setLastCameraPath(null)
     setPlaybackUrl(null)
+    setPlaybackCameraUrl(null)
     setPlaybackCursorEvents([])
     setReviewDurationMs(0)
     setReviewBytesWritten(0)
@@ -293,13 +295,17 @@ export default function App() {
         }
 
         try {
-          const [media, cursor] = await Promise.all([
+          const [media, cursor, cameraMedia] = await Promise.all([
             getMediaUrl({ filePath: result.outputPath }),
             result.cursorEventsPath
               ? readCursorEvents({ eventsPath: result.cursorEventsPath })
               : Promise.resolve({ ok: true as const, events: [] as CursorEvent[] }),
+            result.cameraOutputPath
+              ? getMediaUrl({ filePath: result.cameraOutputPath })
+              : Promise.resolve(null),
           ])
           setPlaybackUrl(media.url)
+          setPlaybackCameraUrl(cameraMedia?.url ?? null)
           setPlaybackCursorEvents(cursor.events)
           setMode('review')
           setLastSummary(
@@ -412,10 +418,10 @@ export default function App() {
           appearance: _edit.cursorAppearance,
         }
       }
-      if (lastCameraPath && cameraOverlay.enabled) {
+      if (lastCameraPath && _edit.cameraOverlay.enabled) {
         exportRequest.camera = {
           cameraPath: lastCameraPath,
-          style: cameraOverlay,
+          style: _edit.cameraOverlay,
         }
       }
       const result = await exportWebmToMp4(exportRequest)
@@ -491,6 +497,8 @@ export default function App() {
             webmPath={lastWebmPath}
             cursorEvents={playbackCursorEvents}
             cursorEventsPath={lastCursorEventsPath}
+            cameraMediaUrl={playbackCameraUrl}
+            initialCameraOverlay={cameraOverlay}
             durationMs={reviewDurationMs}
             bytesWritten={reviewBytesWritten}
             chunkCount={reviewChunkCount}

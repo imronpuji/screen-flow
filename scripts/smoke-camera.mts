@@ -8,6 +8,7 @@ import {
   cameraBubblePosition,
   normalizeCameraOverlay,
 } from '../shared/camera.ts'
+import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)
@@ -77,7 +78,28 @@ function testNormRect(): void {
   console.log('ok norm rect')
 }
 
+function testReviewEditCamera(): void {
+  const plain = defaultReviewEdit(5000)
+  assert(plain.cameraOverlay.enabled === false, 'default review camera off')
+  assert(plain.cameraOverlay.corner === 'bottom-right', 'default corner')
+
+  const withCam = defaultReviewEdit(3000, {
+    enabled: true,
+    deviceId: 'facetime',
+    corner: 'top-left',
+    sizePercent: 28,
+    shape: 'rounded',
+  })
+  assert(withCam.cameraOverlay.enabled === true, 'seeded enabled')
+  assert(withCam.cameraOverlay.deviceId === 'facetime', 'seeded device')
+  assert(withCam.cameraOverlay.corner === 'top-left', 'seeded corner')
+  assert(withCam.cameraOverlay.sizePercent === 28, 'seeded size')
+  assert(withCam.cameraOverlay.shape === 'rounded', 'seeded shape')
+  console.log('ok review edit camera')
+}
+
 testNormalize()
 testPosition()
 testNormRect()
+testReviewEditCamera()
 console.log('smoke-camera: all ok')
