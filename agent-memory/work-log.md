@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 21:00] Export format picker — MP4 / WebM / GIF
+
+- **Dikerjakan:**
+  - `shared/exportFormat.ts` — presets + GIF palette helpers + VP9 quality map.
+  - `electron/ffmpeg/transcode.ts` — format-aware encode (H.264 / VP9 / gif); GIF wraps effects graph; no audio on GIF; Opus on WebM mic.
+  - Save As (`savePath` / `saveExport`) multi-ext; review format picker; IPC `format` on export + save.
+  - Smoke `smoke:export-format` (+ live ffmpeg gif/webm) + save/quality/beautify updated.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke export-format/save/quality/beautify/export-effects/camera*/export-camera/camera-sync hijau.
+- **Commit:** `97c2548` (feature) / `109c17b` (memory)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional persist export format prefs; auto-highlight klik.
+
 ## [2026-07-10 20:25] Background gradient fidelity (export ≡ CSS)
 
 - **Dikerjakan:**

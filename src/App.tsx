@@ -738,6 +738,7 @@ export default function App() {
         inputPath: lastWebmPath,
         cleanupTemp: true,
         quality: _edit.exportQuality,
+        format: _edit.exportFormat,
         trim: {
           startMs: _edit.trimStartMs,
           endMs: _edit.trimEndMs,
@@ -787,19 +788,21 @@ export default function App() {
       if (result.cursorApplied) baked.push('cursor')
       if (result.cameraApplied) baked.push('camera')
       const bakedLabel = baked.length ? `, ${baked.join(' + ')} baked` : ''
+      const formatLabel = (result.format ?? _edit.exportFormat ?? 'mp4').toUpperCase()
       const qualityLabel = result.quality ? `, ${result.quality}` : ''
 
       const saved = await saveExport({
         sourcePath: result.outputPath,
         cleanupSource: true,
+        format: result.format ?? _edit.exportFormat,
       })
       if (saved.cancelled) {
         setLastSummary(
-          `Exported MP4 (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
+          `Exported ${formatLabel} (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
         )
       } else {
         setLastSummary(
-          `Saved MP4 (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+          `Saved ${formatLabel} (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
         )
       }
       setExportProgress({ phase: 'done', percent: 100 })

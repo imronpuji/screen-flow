@@ -6,6 +6,8 @@ import type { CameraActiveRange } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import { DEFAULT_CURSOR_APPEARANCE, normalizeCursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
+import type { ExportFormatId } from './exportFormat.js'
+import { DEFAULT_EXPORT_FORMAT, normalizeExportFormat } from './exportFormat.js'
 import type { ExportQualityId } from './exportQuality.js'
 import { DEFAULT_EXPORT_QUALITY, normalizeExportQuality } from './exportQuality.js'
 import type { ManualZoomPoint, ZoomPointOverride } from './zoomPoints.js'
@@ -43,8 +45,10 @@ export interface ReviewEditState {
    * Non-null = explicit windows for preview + export (`[]` = always-on).
    */
   cameraActiveRangesOverride: CameraActiveRange[] | null
-  /** MP4 encode quality (draft | good | high). */
+  /** Encode quality (draft | good | high) — maps per format. */
   exportQuality: ExportQualityId
+  /** Container format (mp4 | webm | gif). */
+  exportFormat: ExportFormatId
 }
 
 /** Clamp trim handles to a valid export window (≥100ms). */
@@ -76,6 +80,7 @@ export function defaultReviewEdit(
   exportQuality?: ExportQualityId | null,
   background?: BackgroundStyle | null,
   cursorAppearance?: CursorAppearance | null,
+  exportFormat?: ExportFormatId | null,
 ): ReviewEditState {
   return {
     trimStartMs: 0,
@@ -95,6 +100,7 @@ export function defaultReviewEdit(
     cameraOverlay: normalizeCameraOverlay(cameraOverlay ?? DEFAULT_CAMERA_OVERLAY),
     cameraActiveRangesOverride: null,
     exportQuality: normalizeExportQuality(exportQuality ?? DEFAULT_EXPORT_QUALITY),
+    exportFormat: normalizeExportFormat(exportFormat ?? DEFAULT_EXPORT_FORMAT),
   }
 }
 

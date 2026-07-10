@@ -186,5 +186,7 @@ export function applyBeautifyPreset(
     // Keep review-edited mute windows; beautify only restyles the bubble.
     cameraActiveRangesOverride: edit.cameraActiveRangesOverride,
     exportQuality: normalizeExportQuality(preset.exportQuality),
+    // Keep user-chosen container (MP4 / WebM / GIF).
+    exportFormat: edit.exportFormat,
   }
 }

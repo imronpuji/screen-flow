@@ -12,6 +12,7 @@ import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
+import type { ExportFormatId } from './exportFormat.js'
 import type { ExportQualityId } from './exportQuality.js'
 import type { ManualZoomPoint, ZoomPointOverride } from './zoomPoints.js'
 
@@ -234,11 +235,11 @@ export interface ExportCameraOverlayRequest {
 /** Trim window baked into export (matches review sliders). */
 export type ExportTrimRequest = TrimRange
 
-/** Transcode a finished temp WebM (under screen-flow temp) to H.264 MP4 via ffmpeg. */
+/** Transcode a finished temp WebM (under screen-flow temp) to MP4 / WebM / GIF via ffmpeg. */
 export interface ExportMp4Request {
   /** Absolute path to capture.webm from StopRecordingResult.outputPath. */
   inputPath: string
-  /** Optional destination; defaults to sibling export.mp4 in the same session dir. */
+  /** Optional destination; defaults to sibling export.<ext> in the same session dir. */
   outputPath?: string
   /** Delete the source WebM after a successful encode. Default true. */
   cleanupTemp?: boolean
@@ -254,16 +255,20 @@ export interface ExportMp4Request {
   trim?: ExportTrimRequest
   /** Encode quality preset (draft | good | high). Default good. */
   quality?: ExportQualityId
+  /** Container format (mp4 | webm | gif). Default mp4. */
+  format?: ExportFormatId
 }
 
 export interface ExportMp4Result {
   ok: true
   outputPath: string
   bytesWritten: number
-  /** Encoder used: h264_videotoolbox | libx264 */
+  /** Encoder used: h264_videotoolbox | libx264 | libvpx-vp9 | gif */
   codec: string
   /** Quality preset applied during encode. */
   quality?: ExportQualityId
+  /** Container format written. */
+  format?: ExportFormatId
   /** True when auto-zoom sendcmd filter was applied. */
   autoZoomApplied?: boolean
   /** True when background gradient frame was composited. */
@@ -301,19 +306,21 @@ export interface CancelExportResult {
   cancelled: boolean
 }
 
-/** Move/copy a finished temp MP4 to a permanent location (Save As). */
+/** Move/copy a finished temp export to a permanent location (Save As). */
 export interface SaveExportRequest {
-  /** Absolute path to temp export.mp4 under screen-flow temp. */
+  /** Absolute path to temp export under screen-flow temp. */
   sourcePath: string
   /**
    * Optional absolute destination. When omitted, main shows a Save dialog
-   * defaulting to Documents/Screen Flow/ScreenFlow-….mp4.
+   * defaulting to Documents/Screen Flow/ScreenFlow-….<ext>.
    */
   destinationPath?: string
   /** Suggested file name for the dialog (basename only). */
   defaultFileName?: string
-  /** Delete the temp MP4 (and empty session dir) after a successful copy. Default true. */
+  /** Delete the temp file (and empty session dir) after a successful copy. Default true. */
   cleanupSource?: boolean
+  /** Expected container — drives Save As filter + extension check. Default mp4. */
+  format?: ExportFormatId
 }
 
 export interface ReadCursorEventsRequest {

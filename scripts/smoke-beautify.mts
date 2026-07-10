@@ -29,11 +29,13 @@ function testApplyPreservesTrim(): void {
   const base = defaultReviewEdit(10_000)
   base.trimStartMs = 500
   base.trimEndMs = 8_000
+  base.exportFormat = 'webm'
   const next = applyBeautifyPreset(base, 'demo', { hasCameraTrack: false })
   assert(next.trimStartMs === 500, 'trim start kept')
   assert(next.trimEndMs === 8_000, 'trim end kept')
   assert(next.background.presetId === 'midnight', 'demo midnight')
   assert(next.exportQuality === 'high', 'demo high quality')
+  assert(next.exportFormat === 'webm', 'export format preserved')
   assert(next.cameraOverlay.enabled === false, 'no camera track → stay off')
   console.log('ok apply preserves trim')
 }

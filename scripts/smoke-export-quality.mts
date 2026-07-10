@@ -65,6 +65,7 @@ function testReviewDefault(): void {
   const distEdit = path.join(__dirname, '../dist-electron/shared/edit.js')
   let defaultReviewEdit: (durationMs: number) => {
     exportQuality: string
+    exportFormat: string
   }
   try {
     ;({ defaultReviewEdit } = require(distEdit) as typeof import('../dist-electron/shared/edit.js'))
@@ -75,6 +76,7 @@ function testReviewDefault(): void {
   }
   const edit = defaultReviewEdit(5000)
   assert(edit.exportQuality === 'good', 'review default quality')
+  assert(edit.exportFormat === 'mp4', 'review default format mp4')
   console.log('ok review default')
 }
 

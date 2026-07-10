@@ -25,6 +25,10 @@ import {
   getExportQualityPreset,
 } from '../../shared/exportQuality'
 import {
+  EXPORT_FORMAT_PRESETS,
+  getExportFormatPreset,
+} from '../../shared/exportFormat'
+import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_SIZE_PRESETS,
   CAMERA_SNAP_PRESETS,
@@ -453,7 +457,7 @@ export function RecordingReview({
               disabled={exporting}
               onClick={() => onExport(edit)}
             >
-              {exporting ? 'Exporting…' : 'Export MP4'}
+              {exporting ? 'Exporting…' : `Export ${getExportFormatPreset(edit.exportFormat).label}`}
             </button>
           </Tooltip>
           {exporting ? (
@@ -1483,6 +1487,39 @@ export function RecordingReview({
             </div>
             <p className="review__hint">
               Instant polished look — zoom, cursor, background, and quality in one tap.
+            </p>
+          </div>
+
+          <div className="review__field">
+            <span className="review__label" id="export-format-label">
+              Export format
+            </span>
+            <div
+              className="review__presets"
+              role="group"
+              aria-labelledby="export-format-label"
+            >
+              {EXPORT_FORMAT_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`review__preset${
+                    edit.exportFormat === preset.id ? ' review__preset--active' : ''
+                  }`}
+                  disabled={exporting}
+                  onClick={() =>
+                    setEdit((prev) => ({
+                      ...prev,
+                      exportFormat: preset.id,
+                    }))
+                  }
+                >
+                  <span className="review__preset-label">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="review__hint">
+              {getExportFormatPreset(edit.exportFormat).hint}
             </p>
           </div>
 
