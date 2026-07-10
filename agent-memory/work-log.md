@@ -10,7 +10,7 @@ Entri terbaru di ATAS.
   - Review UI — “Add at playhead” + list Manual N (enable/scale/remove); focus follows smoothed cursor (else center).
   - Shortcut **Z** (`add-zoom`) di review.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/shortcuts/beautify/export-effects/export-autozoom/camera* hijau.
-- **Commit:** (pending)
+- **Commit:** `57843d5`
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; focus nudge on zoom points; background presets polish.
 
