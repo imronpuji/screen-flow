@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import type { CursorEvent } from '../../shared/cursor'
 import {
   appearanceToCursorDrawOptions,
@@ -48,7 +48,6 @@ import {
 } from '../../shared/shortcuts'
 import {
   buildTimelineMarkers,
-  markerPercent,
 } from '../../shared/timelineMarkers'
 import {
   discardedKeepWindows,
@@ -64,6 +63,20 @@ import {
   snapKeepEdgeMagnetically,
   snapPlayheadMagnetically,
 } from '../../shared/timelineSnap'
+import {
+  clientXToTimelineMs,
+  formatTimelineZoom,
+  normalizeTimelineZoom,
+  panTimelineViewport,
+  resolveTimelineViewport,
+  stepTimelineZoom,
+  viewportPercent,
+  viewportSpanPercent,
+  visibleDurationMs,
+  TIMELINE_ZOOM_MAX,
+  TIMELINE_ZOOM_MIN,
+  type TimelineViewport,
+} from '../../shared/timelineZoom'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
@@ -113,6 +126,13 @@ export interface AutoZoomPlaybackProps {
    * timeline). Keyboard frame-step and internal gap-skip seeks stay free.
    */
   magneticSnapEnabled?: boolean
+  /**
+   * Scrubber magnification (1× = full clip). Discrete steps 1…8.
+   * Higher zoom = shorter visible window around the playhead.
+   */
+  timelineZoom?: number
+  /** Persist zoom changes from +/- / wheel / Fit. */
+  onTimelineZoomChange?: (zoom: number) => void
   onDurationMs?: (ms: number) => void
   onTimeMs?: (ms: number) => void
 }
@@ -138,12 +158,16 @@ export function AutoZoomPlayback({
   keepRanges,
   onKeepRangesChange,
   magneticSnapEnabled = true,
+  timelineZoom = 1,
+  onTimelineZoomChange,
   onDurationMs,
   onTimeMs,
 }: AutoZoomPlaybackProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const currentMsRef = useRef(0)
   const markersTrackRef = useRef<HTMLDivElement | null>(null)
+  const timelineZoomRef = useRef(normalizeTimelineZoom(timelineZoom))
+  const viewportRef = useRef<TimelineViewport>({ startMs: 0, endMs: 0 })
   const cameraRangeDragRef = useRef<{
     rangeIndex: number
     edge: 'start' | 'end'
@@ -168,8 +192,16 @@ export function AutoZoomPlayback({
   const [currentMs, setCurrentMs] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const zoomLevel = normalizeTimelineZoom(timelineZoom)
+  const [viewAnchorMs, setViewAnchorMs] = useState(0)
+  const viewAnchorMsRef = useRef(0)
 
   const effectiveEndMs = trimEndMs ?? durationMs
+  const viewport = useMemo(
+    () => resolveTimelineViewport(durationMs, zoomLevel, viewAnchorMs),
+    [durationMs, viewAnchorMs, zoomLevel],
+  )
+
   const normalizedKeepRanges = useMemo(() => {
     if (!keepRanges || keepRanges.length === 0 || durationMs <= 0) return null
     return normalizeKeepRanges(keepRanges, durationMs)
@@ -187,6 +219,63 @@ export function AutoZoomPlayback({
   useEffect(() => {
     keepRangesRef.current = keepRanges
   }, [keepRanges])
+
+  useEffect(() => {
+    timelineZoomRef.current = zoomLevel
+  }, [zoomLevel])
+
+  useEffect(() => {
+    viewAnchorMsRef.current = viewAnchorMs
+  }, [viewAnchorMs])
+
+  useEffect(() => {
+    viewportRef.current = viewport
+  }, [viewport])
+
+  const snapThresholdMs = useMemo(() => {
+    const visible = visibleDurationMs(durationMs, zoomLevel)
+    return magneticSnapThresholdMs(visible > 0 ? visible : durationMs)
+  }, [durationMs, zoomLevel])
+
+  const changeTimelineZoom = useCallback(
+    (nextZoom: number, anchorMs?: number) => {
+      const normalized = normalizeTimelineZoom(nextZoom)
+      const anchor = anchorMs ?? currentMsRef.current
+      setViewAnchorMs(anchor)
+      if (normalized === timelineZoomRef.current) return
+      onTimelineZoomChange?.(normalized)
+    },
+    [onTimelineZoomChange],
+  )
+
+  const onTimelineWheel = useCallback(
+    (event: ReactWheelEvent<HTMLDivElement>) => {
+      if (durationMs <= 0 || Boolean(loadError)) return
+      // Ctrl/Meta + wheel → zoom; Shift + wheel → pan; plain wheel ignored
+      // so page scroll still works when the timeline isn't the focus.
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+        const direction: 1 | -1 = event.deltaY < 0 ? 1 : -1
+        changeTimelineZoom(stepTimelineZoom(zoomLevel, direction))
+        return
+      }
+      if (event.shiftKey && zoomLevel > 1) {
+        event.preventDefault()
+        const windowMs = Math.max(1, viewport.endMs - viewport.startMs)
+        const delta = (event.deltaY || event.deltaX) * (windowMs / 400)
+        const panned = panTimelineViewport(viewport, delta, durationMs)
+        setViewAnchorMs((panned.startMs + panned.endMs) / 2)
+      }
+    },
+    [
+      changeTimelineZoom,
+      durationMs,
+      loadError,
+      viewport,
+      zoomLevel,
+    ],
+  )
+
   const cursorDraw = useMemo(
     () => appearanceToCursorDrawOptions(cursorAppearance),
     [cursorAppearance],
@@ -268,8 +357,11 @@ export function AutoZoomPlayback({
       if (!track) return
       const rect = track.getBoundingClientRect()
       if (rect.width <= 0) return
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const screenMs = ratio * durationMs
+      const vp =
+        viewportRef.current.endMs > viewportRef.current.startMs
+          ? viewportRef.current
+          : { startMs: 0, endMs: durationMs }
+      const screenMs = clientXToTimelineMs(clientX, rect.left, rect.width, vp)
       const wallMs = screenTimelineMsToWallMs(screenMs, cameraSync?.screenFirstChunkMs)
       const next = resizeCameraActiveRangeEdge(
         effectiveCameraRangesRef.current,
@@ -343,8 +435,11 @@ export function AutoZoomPlayback({
       if (!track) return
       const rect = track.getBoundingClientRect()
       if (rect.width <= 0) return
-      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      let tMs = ratio * durationMs
+      const vp =
+        viewportRef.current.endMs > viewportRef.current.startMs
+          ? viewportRef.current
+          : { startMs: 0, endMs: durationMs }
+      let tMs = clientXToTimelineMs(clientX, rect.left, rect.width, vp)
       const ranges = keepRangesRef.current
       if (!ranges || ranges.length === 0) return
 
@@ -360,7 +455,7 @@ export function AutoZoomPlayback({
           tMs,
           targets,
           [`keep-${rangeIndex}-${edge === 'start' ? 'start' : 'end'}`],
-          magneticSnapThresholdMs(durationMs),
+          snapThresholdMs,
         )
         tMs = snapped.ms
       }
@@ -373,6 +468,7 @@ export function AutoZoomPlayback({
       effectiveEndMs,
       magneticSnapEnabled,
       onKeepRangesChange,
+      snapThresholdMs,
       timelineMarkers,
       trimStartMs,
     ],
@@ -488,7 +584,7 @@ export function AutoZoomPlayback({
         const snapped = snapPlayheadMagnetically(
           clamped,
           targets,
-          magneticSnapThresholdMs(durationMs),
+          snapThresholdMs,
         )
         clamped = Math.max(trimStartMs, Math.min(effectiveEndMs, snapped.ms))
       }
@@ -497,6 +593,7 @@ export function AutoZoomPlayback({
       }
       el.currentTime = clamped / 1000
       setCurrentMs(clamped)
+      setViewAnchorMs(clamped)
       onTimeMs?.(clamped)
       updateCursorOverlay(clamped)
     },
@@ -506,6 +603,7 @@ export function AutoZoomPlayback({
       magneticSnapEnabled,
       normalizedKeepRanges,
       onTimeMs,
+      snapThresholdMs,
       timelineMarkers,
       trimStartMs,
       updateCursorOverlay,
@@ -529,6 +627,7 @@ export function AutoZoomPlayback({
     if (startMs > 0) {
       el.currentTime = startMs / 1000
       setCurrentMs(startMs)
+      setViewAnchorMs(startMs)
       updateCursorOverlay(startMs)
       onTimeMs?.(startMs)
     }
@@ -549,6 +648,7 @@ export function AutoZoomPlayback({
           seekToMs(resolved.ms)
         } else {
           setCurrentMs(resolved.ms)
+          setViewAnchorMs(resolved.ms)
           onTimeMs?.(resolved.ms)
           updateCursorOverlay(resolved.ms)
         }
@@ -559,6 +659,7 @@ export function AutoZoomPlayback({
         el.currentTime = resolved.ms / 1000
         tMs = resolved.ms
         setCurrentMs(tMs)
+        setViewAnchorMs(tMs)
         onTimeMs?.(tMs)
         updateCursorOverlay(tMs)
         if (autoZoomEnabled) {
@@ -580,6 +681,7 @@ export function AutoZoomPlayback({
     }
 
     setCurrentMs(tMs)
+    setViewAnchorMs(tMs)
     onTimeMs?.(tMs)
     updateCursorOverlay(tMs)
     if (!autoZoomEnabled) return
@@ -829,7 +931,10 @@ export function AutoZoomPlayback({
         <span className="zoom-playback__time">
           {formatTimeMs(currentMs)} / {formatTimeMs(durationMs)}
         </span>
-        <div className="zoom-playback__timeline">
+        <div
+          className="zoom-playback__timeline"
+          onWheel={onTimelineWheel}
+        >
           <div
             ref={markersTrackRef}
             className="zoom-playback__markers"
@@ -838,16 +943,21 @@ export function AutoZoomPlayback({
           >
             {durationMs > 0
               ? timelineMarkers.map((marker) => {
+                  const activeViewport: TimelineViewport =
+                    viewport.endMs > viewport.startMs
+                      ? viewport
+                      : { startMs: 0, endMs: durationMs }
                   if (
                     (marker.kind === 'zoom' || marker.kind === 'camera') &&
                     marker.startMs != null &&
                     marker.endMs != null
                   ) {
-                    const spanLeft = markerPercent(marker.startMs, durationMs)
-                    const spanWidth = Math.max(
-                      0.4,
-                      markerPercent(marker.endMs, durationMs) - spanLeft,
+                    const span = viewportSpanPercent(
+                      marker.startMs,
+                      marker.endMs,
+                      activeViewport,
                     )
+                    if (!span) return null
                     const kindClass =
                       marker.kind === 'camera'
                         ? 'zoom-playback__marker--camera'
@@ -863,7 +973,7 @@ export function AutoZoomPlayback({
                           key={marker.id}
                           role="listitem"
                           className="zoom-playback__marker zoom-playback__marker--camera zoom-playback__marker--camera-editable"
-                          style={{ left: `${spanLeft}%`, width: `${spanWidth}%` }}
+                          style={{ left: `${span.left}%`, width: `${span.width}%` }}
                           title={`${marker.label} · drag edges to trim · ${formatTimeMs(marker.tMs)}`}
                         >
                           <button
@@ -911,7 +1021,7 @@ export function AutoZoomPlayback({
                         type="button"
                         role="listitem"
                         className={`zoom-playback__marker ${kindClass}`}
-                        style={{ left: `${spanLeft}%`, width: `${spanWidth}%` }}
+                        style={{ left: `${span.left}%`, width: `${span.width}%` }}
                         title={`${marker.label} · ${formatTimeMs(marker.tMs)}`}
                         aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}
                         disabled={Boolean(loadError)}
@@ -919,13 +1029,21 @@ export function AutoZoomPlayback({
                       />
                     )
                   }
+                  if (
+                    marker.tMs < activeViewport.startMs ||
+                    marker.tMs > activeViewport.endMs
+                  ) {
+                    return null
+                  }
                   return (
                     <button
                       key={marker.id}
                       type="button"
                       role="listitem"
                       className="zoom-playback__marker zoom-playback__marker--click"
-                      style={{ left: `${markerPercent(marker.tMs, durationMs)}%` }}
+                      style={{
+                        left: `${viewportPercent(marker.tMs, activeViewport)}%`,
+                      }}
                       title={`${marker.label} · ${formatTimeMs(marker.tMs)}`}
                       aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}
                       disabled={Boolean(loadError)}
@@ -939,11 +1057,16 @@ export function AutoZoomPlayback({
             normalizedKeepRanges &&
             normalizedKeepRanges.length > 0
               ? normalizedKeepRanges.map((range, index) => {
-                  const left = markerPercent(range.startMs, durationMs)
-                  const width = Math.max(
-                    0.4,
-                    markerPercent(range.endMs, durationMs) - left,
+                  const activeViewport: TimelineViewport =
+                    viewport.endMs > viewport.startMs
+                      ? viewport
+                      : { startMs: 0, endMs: durationMs }
+                  const span = viewportSpanPercent(
+                    range.startMs,
+                    range.endMs,
+                    activeViewport,
                   )
+                  if (!span) return null
                   const label =
                     normalizedKeepRanges.length > 1
                       ? `Keep ${index + 1}`
@@ -953,7 +1076,7 @@ export function AutoZoomPlayback({
                       key={`keep-${index}-${range.startMs}-${range.endMs}`}
                       role="listitem"
                       className="zoom-playback__marker zoom-playback__marker--keep zoom-playback__marker--keep-editable"
-                      style={{ left: `${left}%`, width: `${width}%` }}
+                      style={{ left: `${span.left}%`, width: `${span.width}%` }}
                       title={`${label} · drag edges to trim · ${formatTimeMs(range.startMs)}–${formatTimeMs(range.endMs)}`}
                     >
                       <button
@@ -998,16 +1121,21 @@ export function AutoZoomPlayback({
               : null}
             {durationMs > 0 && gapWindows.length > 0
               ? gapWindows.map((gap) => {
-                  const left = markerPercent(gap.startMs, durationMs)
-                  const width = Math.max(
-                    0.2,
-                    markerPercent(gap.endMs, durationMs) - left,
+                  const activeViewport: TimelineViewport =
+                    viewport.endMs > viewport.startMs
+                      ? viewport
+                      : { startMs: 0, endMs: durationMs }
+                  const span = viewportSpanPercent(
+                    gap.startMs,
+                    gap.endMs,
+                    activeViewport,
                   )
+                  if (!span) return null
                   return (
                     <span
                       key={`gap-${gap.startMs}-${gap.endMs}`}
                       className="zoom-playback__trim-shade zoom-playback__trim-shade--gap"
-                      style={{ left: `${left}%`, width: `${width}%` }}
+                      style={{ left: `${span.left}%`, width: `${span.width}%` }}
                       aria-hidden="true"
                       title="Skipped on export"
                     />
@@ -1015,32 +1143,115 @@ export function AutoZoomPlayback({
                 })
               : durationMs > 0 && (trimStartMs > 0 || effectiveEndMs < durationMs) ? (
               <>
-                <span
-                  className="zoom-playback__trim-shade zoom-playback__trim-shade--start"
-                  style={{ width: `${markerPercent(trimStartMs, durationMs)}%` }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="zoom-playback__trim-shade zoom-playback__trim-shade--end"
-                  style={{
-                    left: `${markerPercent(effectiveEndMs, durationMs)}%`,
-                    width: `${100 - markerPercent(effectiveEndMs, durationMs)}%`,
-                  }}
-                  aria-hidden="true"
-                />
+                {(() => {
+                  const activeViewport: TimelineViewport =
+                    viewport.endMs > viewport.startMs
+                      ? viewport
+                      : { startMs: 0, endMs: durationMs }
+                  const startShade = viewportSpanPercent(
+                    0,
+                    trimStartMs,
+                    activeViewport,
+                  )
+                  const endShade = viewportSpanPercent(
+                    effectiveEndMs,
+                    durationMs,
+                    activeViewport,
+                  )
+                  return (
+                    <>
+                      {startShade ? (
+                        <span
+                          className="zoom-playback__trim-shade zoom-playback__trim-shade--start"
+                          style={{
+                            left: `${startShade.left}%`,
+                            width: `${startShade.width}%`,
+                          }}
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                      {endShade ? (
+                        <span
+                          className="zoom-playback__trim-shade zoom-playback__trim-shade--end"
+                          style={{
+                            left: `${endShade.left}%`,
+                            width: `${endShade.width}%`,
+                          }}
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </>
+                  )
+                })()}
               </>
             ) : null}
           </div>
           <input
             type="range"
             className="zoom-playback__scrub"
-            min={trimStartMs}
-            max={Math.max(trimStartMs + 1, effectiveEndMs)}
-            value={Math.min(currentMs, effectiveEndMs)}
+            min={Math.max(
+              trimStartMs,
+              viewport.endMs > viewport.startMs ? viewport.startMs : trimStartMs,
+            )}
+            max={Math.max(
+              Math.max(
+                trimStartMs,
+                viewport.endMs > viewport.startMs ? viewport.startMs : trimStartMs,
+              ) + 1,
+              Math.min(
+                effectiveEndMs,
+                viewport.endMs > viewport.startMs ? viewport.endMs : effectiveEndMs,
+              ),
+            )}
+            value={Math.min(
+              Math.max(
+                currentMs,
+                Math.max(
+                  trimStartMs,
+                  viewport.endMs > viewport.startMs ? viewport.startMs : trimStartMs,
+                ),
+              ),
+              Math.min(
+                effectiveEndMs,
+                viewport.endMs > viewport.startMs ? viewport.endMs : effectiveEndMs,
+              ),
+            )}
             disabled={Boolean(loadError) || durationMs <= 0}
             onChange={(e) => onScrub(Number(e.target.value))}
             aria-label="Playback position"
           />
+        </div>
+        <div className="zoom-playback__zoom" role="group" aria-label="Timeline zoom">
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm zoom-playback__zoom-btn"
+            disabled={Boolean(loadError) || durationMs <= 0 || zoomLevel <= TIMELINE_ZOOM_MIN}
+            onClick={() => changeTimelineZoom(stepTimelineZoom(zoomLevel, -1))}
+            title="Zoom out (−)"
+            aria-label="Zoom timeline out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm zoom-playback__zoom-label"
+            disabled={Boolean(loadError) || durationMs <= 0}
+            onClick={() => changeTimelineZoom(TIMELINE_ZOOM_MIN)}
+            title="Fit timeline (0)"
+            aria-label={`Timeline zoom ${formatTimelineZoom(zoomLevel)}. Click to fit.`}
+          >
+            {formatTimelineZoom(zoomLevel)}
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost btn--sm zoom-playback__zoom-btn"
+            disabled={Boolean(loadError) || durationMs <= 0 || zoomLevel >= TIMELINE_ZOOM_MAX}
+            onClick={() => changeTimelineZoom(stepTimelineZoom(zoomLevel, 1))}
+            title="Zoom in (=)"
+            aria-label="Zoom timeline in"
+          >
+            +
+          </button>
         </div>
         <span className="zoom-playback__meta">
           {autoZoomEnabled

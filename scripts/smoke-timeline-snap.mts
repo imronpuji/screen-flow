@@ -162,12 +162,17 @@ function testPrefs(): void {
 
   const storage = memoryStorage()
   saveTimelinePrefs(
-    { rippleDeleteEnabled: true, magneticSnapEnabled: false },
+    {
+      rippleDeleteEnabled: true,
+      magneticSnapEnabled: false,
+      timelineZoom: 1,
+    },
     storage,
   )
   const loaded = loadTimelinePrefs(storage)
   assert(loaded.rippleDeleteEnabled === true, 'ripple persisted')
   assert(loaded.magneticSnapEnabled === false, 'magnetic off persisted')
+  assert(loaded.timelineZoom === 1, 'zoom default persisted')
   assert(
     storage.getItem(TIMELINE_PREFS_STORAGE_KEY)?.includes('magneticSnapEnabled'),
     'key written',
@@ -177,6 +182,7 @@ function testPrefs(): void {
   const fresh = loadTimelinePrefs(memoryStorage())
   assert(fresh.magneticSnapEnabled === true, 'fresh → on')
   assert(fresh.rippleDeleteEnabled === false, 'fresh ripple off')
+  assert(fresh.timelineZoom === 1, 'fresh zoom 1×')
   console.log('ok prefs')
 }
 

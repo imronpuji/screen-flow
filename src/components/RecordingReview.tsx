@@ -122,6 +122,13 @@ import {
 } from '../../shared/editorPanels'
 import { loadEditorPanelPrefs, saveEditorPanelPrefs } from '../../shared/editorPanelPrefs'
 import { loadTimelinePrefs, saveTimelinePrefs } from '../../shared/timelinePrefs'
+import {
+  formatTimelineZoom,
+  normalizeTimelineZoom,
+  stepTimelineZoom,
+  TIMELINE_ZOOM_MAX,
+  TIMELINE_ZOOM_MIN,
+} from '../../shared/timelineZoom'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import { CameraLayoutMap } from './CameraLayoutMap'
 import { EditorPanel } from './EditorPanel'
@@ -563,6 +570,27 @@ export function RecordingReview({
         deleteSegmentAtPlayhead()
         return
       }
+      if (
+        action === 'timeline-zoom-in' ||
+        action === 'timeline-zoom-out' ||
+        action === 'timeline-zoom-fit'
+      ) {
+        event.preventDefault()
+        setTimelinePrefs((prev) => {
+          const nextZoom =
+            action === 'timeline-zoom-fit'
+              ? TIMELINE_ZOOM_MIN
+              : stepTimelineZoom(
+                  prev.timelineZoom,
+                  action === 'timeline-zoom-in' ? 1 : -1,
+                )
+          if (nextZoom === prev.timelineZoom && action !== 'timeline-zoom-fit') {
+            return prev
+          }
+          return { ...prev, timelineZoom: normalizeTimelineZoom(nextZoom) }
+        })
+        return
+      }
       if (action === 'discard') {
         event.preventDefault()
         if (confirmDiscard) {
@@ -834,6 +862,13 @@ export function RecordingReview({
               setEdit((prev) => withKeepRanges(prev, ranges, durationMsRef.current))
             }}
             magneticSnapEnabled={timelinePrefs.magneticSnapEnabled}
+            timelineZoom={timelinePrefs.timelineZoom}
+            onTimelineZoomChange={(zoom) =>
+              setTimelinePrefs((prev) => ({
+                ...prev,
+                timelineZoom: normalizeTimelineZoom(zoom),
+              }))
+            }
             onDurationMs={onDurationMs}
             onTimeMs={setPlayheadMs}
           />
@@ -1973,6 +2008,61 @@ export function RecordingReview({
               {timelinePrefs.magneticSnapEnabled
                 ? 'Scrub & keep-clip edges stick to edit points (trim, zooms, clicks, camera).'
                 : 'Free scrub — playhead ignores nearby edit points.'}
+            </p>
+          </div>
+
+          <div className="review__field review__field--compact">
+            <Tooltip copy={TOOLTIPS['trim-timeline-zoom']}>
+              <span className="review__label" id="trim-zoom-label">
+                Timeline zoom · {formatTimelineZoom(timelinePrefs.timelineZoom)}
+              </span>
+            </Tooltip>
+            <div className="review__presets" role="group" aria-labelledby="trim-zoom-label">
+              <button
+                type="button"
+                className="review__preset"
+                disabled={exporting || timelinePrefs.timelineZoom <= TIMELINE_ZOOM_MIN}
+                onClick={() =>
+                  setTimelinePrefs((prev) => ({
+                    ...prev,
+                    timelineZoom: stepTimelineZoom(prev.timelineZoom, -1),
+                  }))
+                }
+                title="Zoom out (−)"
+              >
+                <span className="review__preset-label">−</span>
+              </button>
+              <button
+                type="button"
+                className="review__preset"
+                disabled={exporting || timelinePrefs.timelineZoom <= TIMELINE_ZOOM_MIN}
+                onClick={() =>
+                  setTimelinePrefs((prev) => ({
+                    ...prev,
+                    timelineZoom: normalizeTimelineZoom(TIMELINE_ZOOM_MIN),
+                  }))
+                }
+                title="Fit (0)"
+              >
+                <span className="review__preset-label">Fit</span>
+              </button>
+              <button
+                type="button"
+                className="review__preset"
+                disabled={exporting || timelinePrefs.timelineZoom >= TIMELINE_ZOOM_MAX}
+                onClick={() =>
+                  setTimelinePrefs((prev) => ({
+                    ...prev,
+                    timelineZoom: stepTimelineZoom(prev.timelineZoom, 1),
+                  }))
+                }
+                title="Zoom in (=)"
+              >
+                <span className="review__preset-label">+</span>
+              </button>
+            </div>
+            <p className="review__hint">
+              Magnify the scrubber for fine cuts. Ctrl/⌘+scroll zooms · Shift+scroll pans.
             </p>
           </div>
 

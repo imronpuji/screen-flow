@@ -1,6 +1,13 @@
 /**
- * Persist review timeline chrome (ripple delete + magnetic snap) across sessions.
+ * Persist review timeline chrome (ripple delete + magnetic snap + zoom)
+ * across sessions.
  */
+
+import {
+  normalizeTimelineZoom,
+  type TimelineZoomStep,
+  TIMELINE_ZOOM_MIN,
+} from './timelineZoom.js'
 
 export const TIMELINE_PREFS_STORAGE_KEY = 'screen-flow:timeline-prefs'
 
@@ -12,12 +19,18 @@ export interface TimelinePrefs {
    * (keep edges, trim, zoom/click/camera markers).
    */
   magneticSnapEnabled: boolean
+  /**
+   * Scrubber magnification (1× = full clip). Discrete steps 1…8.
+   * Higher zoom = shorter visible window around the playhead.
+   */
+  timelineZoom: TimelineZoomStep
 }
 
 export const DEFAULT_TIMELINE_PREFS: TimelinePrefs = {
   rippleDeleteEnabled: false,
   /** Default on — Screen Studio-like sticky scrub for orang awam. */
   magneticSnapEnabled: true,
+  timelineZoom: TIMELINE_ZOOM_MIN as TimelineZoomStep,
 }
 
 export function normalizeTimelinePrefs(
@@ -27,6 +40,9 @@ export function normalizeTimelinePrefs(
     rippleDeleteEnabled: partial?.rippleDeleteEnabled === true,
     // Legacy prefs without the key → on (match DEFAULT).
     magneticSnapEnabled: partial?.magneticSnapEnabled !== false,
+    timelineZoom: normalizeTimelineZoom(
+      partial?.timelineZoom ?? TIMELINE_ZOOM_MIN,
+    ),
   }
 }
 

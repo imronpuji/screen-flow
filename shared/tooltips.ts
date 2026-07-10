@@ -33,6 +33,7 @@ export type TooltipId =
   | 'trim-delete-segment'
   | 'trim-ripple-delete'
   | 'trim-magnetic-snap'
+  | 'trim-timeline-zoom'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -174,6 +175,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
     id: 'trim-magnetic-snap',
     title: 'Magnetic snap · Stick playhead & clip edges to edit points',
     body: 'When on, scrubbing and keep-clip edge drags snap to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing and free edge drag.',
+  },
+  'trim-timeline-zoom': {
+    id: 'trim-timeline-zoom',
+    title: 'Timeline zoom · Magnify the scrubber (= / −, Fit 0)',
+    body: 'Zoom in to edit fine cuts on long clips. Ctrl/⌘+scroll zooms; Shift+scroll pans. Click the zoom label to fit the full clip.',
   },
 }
 
