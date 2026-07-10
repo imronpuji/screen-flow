@@ -50,6 +50,8 @@ import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
+import type { CameraSyncMeta } from '../shared/cameraSync'
+import { cameraStartLagMs } from '../shared/cameraSync'
 import { isEditableTarget, matchShortcut } from '../shared/shortcuts'
 import {
   TOOLTIPS,
@@ -74,6 +76,7 @@ const idleRecording: RecordingStatus = {
   cursorEventsPath: null,
   cursorEventCount: 0,
   captureGeometryPath: null,
+  cameraSyncPath: null,
 }
 
 function formatBytes(bytes: number): string {
@@ -95,6 +98,8 @@ export default function App() {
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
   const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
   const [lastCameraPath, setLastCameraPath] = useState<string | null>(null)
+  const [lastCameraSyncPath, setLastCameraSyncPath] = useState<string | null>(null)
+  const [cameraSync, setCameraSync] = useState<CameraSyncMeta | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [playbackCameraUrl, setPlaybackCameraUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
@@ -247,6 +252,8 @@ export default function App() {
     setLastWebmPath(null)
     setLastCursorEventsPath(null)
     setLastCameraPath(null)
+    setLastCameraSyncPath(null)
+    setCameraSync(null)
     setPlaybackUrl(null)
     setPlaybackCameraUrl(null)
     setPlaybackCursorEvents([])
@@ -311,6 +318,8 @@ export default function App() {
         setLastWebmPath(result.outputPath)
         setLastCursorEventsPath(result.cursorEventsPath)
         setLastCameraPath(result.cameraOutputPath)
+        setLastCameraSyncPath(result.cameraSyncPath)
+        setCameraSync(result.cameraSync)
         setReviewDurationMs(result.durationMs)
         setReviewBytesWritten(result.bytesWritten)
         setReviewChunkCount(result.chunkCount)
@@ -346,6 +355,9 @@ export default function App() {
               `Ready to review · ${(result.durationMs / 1000).toFixed(1)}s`,
               result.cameraChunkCount > 0
                 ? `camera track ${formatBytes(result.cameraBytesWritten)}`
+                : null,
+              result.cameraSync && cameraStartLagMs(result.cameraSync) !== 0
+                ? `sync ${cameraStartLagMs(result.cameraSync) > 0 ? '+' : ''}${(cameraStartLagMs(result.cameraSync) / 1000).toFixed(2)}s`
                 : null,
             ]
               .filter(Boolean)
@@ -487,6 +499,7 @@ export default function App() {
         exportRequest.camera = {
           cameraPath: lastCameraPath,
           style: _edit.cameraOverlay,
+          syncPath: lastCameraSyncPath ?? undefined,
         }
       }
       const result = await exportWebmToMp4(exportRequest)
@@ -565,6 +578,7 @@ export default function App() {
             cursorEventsPath={lastCursorEventsPath}
             captureGeometry={captureGeometry}
             cameraMediaUrl={playbackCameraUrl}
+            cameraSync={cameraSync}
             initialCameraOverlay={cameraOverlay}
             durationMs={reviewDurationMs}
             bytesWritten={reviewBytesWritten}
