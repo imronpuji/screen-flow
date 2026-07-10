@@ -7,7 +7,7 @@ Entri terbaru di ATAS.
   - **Kamera:** Electron `setPermissionRequestHandler` + macOS `askForMediaAccess('camera')` IPC; `CameraBubble` play/pause sync di review + live play kick; waiting state; ideal 720p constraints; cek live video track.
   - **FOKUS 1:** `shared/cursorCoords.ts` (DIP→frame); session tulis `capture-geometry.json`; anti-jitter merge/retarget di `buildZoomSegments`; preview+export pakai geometry.
 - **Hasil:** `typecheck` + `build` + `lint` + smokes (autozoom/camera/cursor/export-*) hijau.
-- **Commit:** (pending this run)
+- **Commit:** `3e74e3e`
 - **Status:** done
 - **Next:** First-run onboarding / polish UX; one-click beautify; visual verify auto-zoom on Retina Mac.
 
