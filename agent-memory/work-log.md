@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 24:20] FaceTime layout map drag + scroll resize (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `CameraLayoutMap` — pointer-capture **drag-to-place** (magnetic snap via `placeCameraAtPoint`) + **scroll-wheel resize** (`nudgeCameraSize`, Shift = larger); chrome border/shadow mirror style.
+  - Setup + review hints; CSS grabbing cursor + `touch-action: none`.
+  - Smoke `place at point` covers drag path + wheel size steps.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `e9c550c`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional ScreenCaptureKit.
+
 ## [2026-07-10 24:00] Auto-highlight clicks (polish / item 6+11)
 
 - **Dikerjakan:**

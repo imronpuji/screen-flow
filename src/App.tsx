@@ -1345,7 +1345,7 @@ export default function App() {
             ) : null}
             {/*
               Layout map lives in chrome (not capture preview) so mid-recording
-              position/size edits stay visible without burning FaceTime into
+              drag/scroll layout edits stay visible without burning FaceTime into
               screen WebM. Same relative coords as preview/export.
             */}
             {cameraOverlay.enabled || cameraLive ? (

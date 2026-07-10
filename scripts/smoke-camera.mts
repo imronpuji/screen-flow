@@ -599,6 +599,25 @@ function testPlaceAtPoint(): void {
 
   const freeish = placeCameraAtPoint(base, 0.35, 0.4, CAMERA_DEFAULT_ASPECT, 0.01)
   assert(freeish.anchor === 'free', 'tiny threshold keeps free when far from snap')
+
+  // Drag path on layout map = successive placeCameraAtPoint calls (magnetic).
+  let dragged = base
+  for (const [px, py] of [
+    [0.2, 0.2],
+    [0.4, 0.3],
+    [0.9, 0.9],
+  ] as const) {
+    dragged = placeCameraAtPoint(dragged, px, py)
+  }
+  assert(matchCameraSnapTarget(dragged) === 'bottom-right', 'drag path ends at BR snap')
+
+  // Scroll-wheel resize on map uses the same nudgeCameraSize helper.
+  const beforeSize = dragged.sizePercent
+  const grown = nudgeCameraSize(dragged, 'grow')
+  assert(grown.sizePercent === beforeSize + 1, 'map wheel grow +1')
+  const shrunk = nudgeCameraSize(grown, 'shrink', { shift: true })
+  assert(shrunk.sizePercent === grown.sizePercent - 4, 'map wheel shift shrink -4')
+
   console.log('ok place at point')
 }
 
