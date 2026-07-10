@@ -9,6 +9,6 @@ Status flow keseluruhan. `[ ]` belum · `[~]` proses · `[x]` selesai (fungsiona
 - [~] 5. Auto-zoom — engine + preview + ffmpeg export bake; polish belum
 - [ ] 6. Cursor smoothing + efek klik
 - [ ] 7. Background estetik (gradient, padding, rounded, shadow)
-- [~] 8. Editor ringan — trim sliders + auto-zoom toggle (export trim belum)
+- [~] 8. Editor ringan — trim sliders + auto-zoom toggle; trim baked ke export MP4
 - [~] 9. Export MP4 — progress/cancel + Save As done; GIF/WebM belum
 - [ ] 10. Polish user-friendly & onboarding

@@ -15,6 +15,13 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { planAutoZoomExport } from '../../shared/ffmpegZoom.js'
+import {
+  applyTrimToCursorEvents,
+  msToFfmpegSec,
+  normalizeTrim,
+  trimDurationMs,
+  type TrimRange,
+} from '../../shared/edit.js'
 import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
 import { probeVideoFile } from './probe.js'
@@ -141,16 +148,24 @@ async function transcodeOnce(
   inputPath: string,
   outputPath: string,
   encoder: { codec: string; extraArgs: string[] },
-  videoFilter?: string,
+  options: {
+    videoFilter?: string
+    trim?: TrimRange
+    /** Expected output duration for progress % when trimming. */
+    expectedDurationSec?: number
+  } = {},
 ): Promise<{ code: number; stderr: string }> {
-  const args = [
-    '-y',
-    '-i',
-    inputPath,
-    '-an',
-  ]
-  if (videoFilter) {
-    args.push('-vf', videoFilter)
+  const args = ['-y']
+  if (options.trim && options.trim.startMs > 0) {
+    args.push('-ss', msToFfmpegSec(options.trim.startMs))
+  }
+  args.push('-i', inputPath)
+  if (options.trim) {
+    args.push('-to', msToFfmpegSec(options.trim.endMs))
+  }
+  args.push('-an')
+  if (options.videoFilter) {
+    args.push('-vf', options.videoFilter)
   }
   args.push(
     '-c:v',
@@ -167,11 +182,11 @@ async function transcodeOnce(
     outputPath,
   )
 
-  let durationSec: number | undefined
+  let durationSec: number | undefined = options.expectedDurationSec
 
   return runFfmpeg(args, (chunk) => {
     const maybeDuration = parseFfmpegDurationSec(chunk)
-    if (maybeDuration != null && maybeDuration > 0) {
+    if (maybeDuration != null && maybeDuration > 0 && durationSec == null) {
       durationSec = maybeDuration
     }
     const timeSec = parseFfmpegTimeSec(chunk)
@@ -233,18 +248,46 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
 
   emitProgress({ phase: 'starting', percent: 0, message: 'Starting ffmpeg…' })
 
+  const probe = await probeVideoFile(inputPath)
+  const fullDurationMs = probe.durationSec * 1000
+
+  let trimRange: TrimRange | undefined
+  let trimApplied = false
+  let expectedDurationSec: number | undefined
+
+  if (request.trim) {
+    trimRange = normalizeTrim(request.trim, fullDurationMs)
+    const trimmedMs = trimDurationMs(trimRange)
+    if (trimmedMs < 100) {
+      throw new Error('Trim range is too short (minimum 100ms)')
+    }
+    trimApplied =
+      trimRange.startMs > 0 || trimRange.endMs < fullDurationMs - 50
+    expectedDurationSec = trimmedMs / 1000
+    if (trimApplied) {
+      emitProgress({
+        phase: 'starting',
+        percent: 0,
+        message: `Trimming ${msToFfmpegSec(trimRange.startMs)}s–${msToFfmpegSec(trimRange.endMs)}s…`,
+      })
+    }
+  }
+
   let sendCmdPath: string | null = null
   let autoZoomApplied = false
   let videoFilter: string | undefined
 
   if (request.autoZoom?.cursorEventsPath) {
     const eventsPath = assertUnderScreenFlowTemp(request.autoZoom.cursorEventsPath)
-    const events = readCursorEventsFile(eventsPath)
-    const probe = await probeVideoFile(inputPath)
+    let events = readCursorEventsFile(eventsPath)
+    if (trimRange) {
+      events = applyTrimToCursorEvents(events, trimRange)
+    }
+    const exportDurationMs = trimRange ? trimDurationMs(trimRange) : fullDurationMs
     const plan = planAutoZoomExport(
       events,
       { width: probe.width, height: probe.height },
-      probe.durationSec * 1000,
+      exportDurationMs,
       request.autoZoom.options,
     )
     if (plan.hasZoom) {
@@ -265,7 +308,8 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
 
   try {
     let encoder = pickVideoEncoder()
-    let result = await transcodeOnce(inputPath, outputPath, encoder, videoFilter)
+    const transcodeOptions = { videoFilter, trim: trimRange, expectedDurationSec }
+    let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 
     // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
     // fall back to software x264 once.
@@ -279,7 +323,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         percent: 0,
         message: 'Retrying with libx264…',
       })
-      result = await transcodeOnce(inputPath, outputPath, encoder, videoFilter)
+      result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
     }
 
     if (result.code !== 0) {
@@ -318,6 +362,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       bytesWritten,
       codec: encoder.codec,
       autoZoomApplied,
+      trimApplied,
     }
   } catch (err) {
     if (err instanceof ExportCancelledError) {

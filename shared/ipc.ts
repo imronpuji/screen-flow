@@ -5,6 +5,7 @@
 
 import type { AutoZoomOptions } from './autozoom.js'
 import type { CursorEvent } from './cursor.js'
+import type { TrimRange } from './edit.js'
 
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:get-info',
@@ -131,6 +132,9 @@ export interface ExportAutoZoomRequest {
   options?: AutoZoomOptions
 }
 
+/** Trim window baked into export (matches review sliders). */
+export type ExportTrimRequest = TrimRange
+
 /** Transcode a finished temp WebM (under screen-flow temp) to H.264 MP4 via ffmpeg. */
 export interface ExportMp4Request {
   /** Absolute path to capture.webm from StopRecordingResult.outputPath. */
@@ -141,6 +145,8 @@ export interface ExportMp4Request {
   cleanupTemp?: boolean
   /** When set, ffmpeg crops/scales per click zoom keyframes before encode. */
   autoZoom?: ExportAutoZoomRequest
+  /** When set, ffmpeg -ss/-to trims before encode (auto-zoom events re-based to trim start). */
+  trim?: ExportTrimRequest
 }
 
 export interface ExportMp4Result {
@@ -151,6 +157,8 @@ export interface ExportMp4Result {
   codec: string
   /** True when auto-zoom sendcmd filter was applied. */
   autoZoomApplied?: boolean
+  /** True when trim range was applied during encode. */
+  trimApplied?: boolean
 }
 
 /** Live encode status pushed from main while ffmpeg runs. */
