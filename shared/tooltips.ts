@@ -22,6 +22,10 @@ export type TooltipId =
   | 'discard-review'
   | 'edit-undo'
   | 'edit-redo'
+  | 'trim-mark-in'
+  | 'trim-mark-out'
+  | 'trim-cut-after'
+  | 'trim-cut-before'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -113,6 +117,22 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'edit-redo': {
     id: 'edit-redo',
     title: '⌘⇧Z / Ctrl+Shift+Z · Redo',
+  },
+  'trim-mark-in': {
+    id: 'trim-mark-in',
+    title: '[ · Mark In — start export here',
+  },
+  'trim-mark-out': {
+    id: 'trim-mark-out',
+    title: '] · Mark Out — end export here',
+  },
+  'trim-cut-after': {
+    id: 'trim-cut-after',
+    title: 'S · Cut after playhead (keep before)',
+  },
+  'trim-cut-before': {
+    id: 'trim-cut-before',
+    title: '⇧S · Cut before playhead (keep after)',
   },
 }
 

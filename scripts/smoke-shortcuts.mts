@@ -45,8 +45,18 @@ function testMatchReview(): void {
   assert(shortcutsForContext('review').some((s) => s.id === 'add-zoom'), 'catalog has add-zoom')
   assert(shortcutsForContext('review').some((s) => s.id === 'undo'), 'catalog has undo')
   assert(shortcutsForContext('review').some((s) => s.id === 'redo'), 'catalog has redo')
-  assert(matchShortcut({ key: 'z' }, 'setup') === null, 'z ignored in setup')
+    assert(matchShortcut({ key: 'z' }, 'setup') === null, 'z ignored in setup')
   assert(matchShortcut({ key: 'ArrowRight' }, 'review') === 'scrub-forward', 'right scrub')
+  assert(matchShortcut({ key: '[' }, 'review') === 'mark-in', '[ mark in')
+  assert(matchShortcut({ key: ']' }, 'review') === 'mark-out', '] mark out')
+  assert(matchShortcut({ key: 's' }, 'review') === 'cut-after', 's cut after')
+  assert(matchShortcut({ key: 'S' }, 'review') === 'cut-after', 'S cut after')
+  assert(
+    matchShortcut({ key: 's', shiftKey: true }, 'review') === 'cut-before',
+    'shift+s cut before',
+  )
+  assert(shortcutsForContext('review').some((s) => s.id === 'mark-in'), 'catalog has mark-in')
+  assert(shortcutsForContext('review').some((s) => s.id === 'cut-after'), 'catalog has cut-after')
   assert(matchShortcut({ key: 'Escape' }, 'review') === 'discard', 'esc discard')
   assert(matchShortcut({ key: 'Escape' }, 'exporting') === 'cancel-export', 'esc cancel export')
   assert(matchShortcut({ key: 'e' }, 'exporting') === null, 'e ignored while exporting')

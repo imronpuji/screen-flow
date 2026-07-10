@@ -70,6 +70,12 @@ import {
   matchShortcut,
   shortcutsForContext,
 } from '../../shared/shortcuts'
+import {
+  cutAfterPlayhead,
+  cutBeforePlayhead,
+  markInAtPlayhead,
+  markOutAtPlayhead,
+} from '../../shared/timelineCut'
 import { buildZoomSegments } from '../../shared/autozoom'
 import {
   buildCursorKeyframes,
@@ -189,6 +195,7 @@ export function RecordingReview({
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
   const playheadMsRef = useRef(0)
+  const durationMsRef = useRef(durationMs)
   const onCameraOverlayChangeRef = useRef(onCameraOverlayChange)
 
   useEffect(() => {
@@ -232,6 +239,10 @@ export function RecordingReview({
   useEffect(() => {
     playheadMsRef.current = playheadMs
   }, [playheadMs])
+
+  useEffect(() => {
+    durationMsRef.current = durationMs
+  }, [durationMs])
 
   useEffect(() => {
     onCameraOverlayChangeRef.current = onCameraOverlayChange
@@ -371,6 +382,32 @@ export function RecordingReview({
       if (action === 'add-zoom') {
         event.preventDefault()
         addZoomAtPlayheadRef.current()
+        return
+      }
+      if (
+        action === 'mark-in' ||
+        action === 'mark-out' ||
+        action === 'cut-after' ||
+        action === 'cut-before'
+      ) {
+        event.preventDefault()
+        const ph = playheadMsRef.current
+        const full = durationMsRef.current
+        setEdit((prev) => {
+          const trim = { startMs: prev.trimStartMs, endMs: prev.trimEndMs }
+          const next =
+            action === 'mark-in'
+              ? markInAtPlayhead(trim, ph, full)
+              : action === 'mark-out'
+                ? markOutAtPlayhead(trim, ph, full)
+                : action === 'cut-after'
+                  ? cutAfterPlayhead(trim, ph, full)
+                  : cutBeforePlayhead(trim, ph, full)
+          if (next.startMs === prev.trimStartMs && next.endMs === prev.trimEndMs) {
+            return prev
+          }
+          return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+        })
         return
       }
       if (action === 'discard') {
@@ -1560,6 +1597,90 @@ export function RecordingReview({
                 }))
               }}
             />
+          </div>
+
+          <div className="review__field review__field--compact">
+            <span className="review__label" id="trim-cut-label">
+              Cut at playhead · {formatTimeMs(playheadMs)}
+            </span>
+            <div className="review__presets" role="group" aria-labelledby="trim-cut-label">
+              <Tooltip copy={TOOLTIPS['trim-mark-in']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = markInAtPlayhead(
+                        { startMs: prev.trimStartMs, endMs: prev.trimEndMs },
+                        playheadMs,
+                        durationMs,
+                      )
+                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                    })
+                  }
+                >
+                  <span className="review__preset-label">In [</span>
+                </button>
+              </Tooltip>
+              <Tooltip copy={TOOLTIPS['trim-mark-out']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = markOutAtPlayhead(
+                        { startMs: prev.trimStartMs, endMs: prev.trimEndMs },
+                        playheadMs,
+                        durationMs,
+                      )
+                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                    })
+                  }
+                >
+                  <span className="review__preset-label">Out ]</span>
+                </button>
+              </Tooltip>
+              <Tooltip copy={TOOLTIPS['trim-cut-after']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = cutAfterPlayhead(
+                        { startMs: prev.trimStartMs, endMs: prev.trimEndMs },
+                        playheadMs,
+                        durationMs,
+                      )
+                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                    })
+                  }
+                >
+                  <span className="review__preset-label">Keep before · S</span>
+                </button>
+              </Tooltip>
+              <Tooltip copy={TOOLTIPS['trim-cut-before']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = cutBeforePlayhead(
+                        { startMs: prev.trimStartMs, endMs: prev.trimEndMs },
+                        playheadMs,
+                        durationMs,
+                      )
+                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                    })
+                  }
+                >
+                  <span className="review__preset-label">Keep after · ⇧S</span>
+                </button>
+              </Tooltip>
+            </div>
           </div>
 
           <p className="review__hint">

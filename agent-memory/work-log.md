@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:20] Review timeline cut at playhead (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/timelineCut.ts` — Mark In/Out + cut before/after + split helpers (min 100ms); single contiguous trim (export `-ss`/`-t`).
+  - Shortcuts `[` / `]` / `S` / `⇧S` + review buttons; tooltips; undo via edit history.
+  - Smoke `smoke:timeline-cut` + shortcuts/tooltips.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke timeline-cut/shortcuts/tooltips/edit-history/beautify hijau.
+- **Commit:** `a21931a`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Multi-segment keep-ranges + ffmpeg concat; atau collapsible editor panels; visual verify on Mac.
+
 ## [2026-07-10 13:10] Review edit undo/redo (FOKUS 5)
 
 - **Dikerjakan:**

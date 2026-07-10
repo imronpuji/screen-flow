@@ -17,6 +17,10 @@ export type ShortcutAction =
   | 'discard'
   | 'undo'
   | 'redo'
+  | 'mark-in'
+  | 'mark-out'
+  | 'cut-after'
+  | 'cut-before'
 
 export interface ShortcutBinding {
   id: ShortcutAction
@@ -92,6 +96,30 @@ export const SHORTCUTS: readonly ShortcutBinding[] = [
     keys: '⌘⇧Z / Ctrl+Shift+Z',
     contexts: ['review'],
     description: 'Redo last edit',
+  },
+  {
+    id: 'mark-in',
+    keys: '[',
+    contexts: ['review'],
+    description: 'Mark In — trim start at playhead',
+  },
+  {
+    id: 'mark-out',
+    keys: ']',
+    contexts: ['review'],
+    description: 'Mark Out — trim end at playhead',
+  },
+  {
+    id: 'cut-after',
+    keys: 'S',
+    contexts: ['review'],
+    description: 'Cut after playhead (keep before)',
+  },
+  {
+    id: 'cut-before',
+    keys: '⇧S',
+    contexts: ['review'],
+    description: 'Cut before playhead (keep after)',
   },
 ] as const
 
@@ -181,6 +209,10 @@ export function matchShortcut(
   if (lower === 'z') return 'add-zoom'
   if (key === 'ArrowLeft') return 'scrub-back'
   if (key === 'ArrowRight') return 'scrub-forward'
+  if (key === '[') return 'mark-in'
+  if (key === ']') return 'mark-out'
+  // S = cut after (keep before); Shift+S = cut before (keep after).
+  if (lower === 's') return event.shiftKey ? 'cut-before' : 'cut-after'
   if (key === 'Escape') return 'discard'
   return null
 }
