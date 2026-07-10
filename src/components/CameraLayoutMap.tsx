@@ -12,7 +12,9 @@ import {
   CAMERA_DEFAULT_ASPECT,
   cameraBubbleChromeStyle,
   cameraBubblePosition,
+  cameraBubbleSizeNorm,
   cameraSnapPresetLabel,
+  cameraSnapTargets,
   cycleCameraShape,
   cycleCameraSnapPreset,
   matchCameraSnapTarget,
@@ -41,7 +43,7 @@ export interface CameraLayoutMapProps {
  *
  * Interaction (FOKUS 3B) — full keyboard parity with live bubble because the
  * bubble is hidden on the capture preview while recording:
- * - Click or drag to place (magnetic snap)
+ * - Click or drag to place (magnetic snap) + snap guide dots while dragging
  * - Scroll wheel to resize (Shift = larger steps)
  * - Arrows nudge · +/- resize · [ ] snap cycle · C shape · 0 / double-click reset
  * - Numpad-style 7/9/1/3/5 for quick corners + center
@@ -65,6 +67,16 @@ export function CameraLayoutMap({
   useEffect(() => {
     styleRef.current = style
   }, [style])
+
+  // Same 8 magnetic targets as live CameraBubble (corners + edge mids).
+  const { w: guideW, h: guideH } = cameraBubbleSizeNorm(
+    style.sizePercent,
+    frameAspect,
+    style.heightPercent,
+  )
+  const guideTargets = dragging
+    ? cameraSnapTargets(style.sizePercent, frameAspect, style.heightPercent)
+    : []
 
   const placeFromClient = useCallback(
     (clientX: number, clientY: number, target: HTMLElement) => {
@@ -220,7 +232,7 @@ export function CameraLayoutMap({
         tabIndex={interactive ? 0 : undefined}
         title={
           interactive
-            ? 'Drag to place · scroll or +/- resize · arrows nudge · [ ] snap · C shape · 0 / double-click reset'
+            ? 'Drag to place (snap guides) · scroll or +/- resize · arrows nudge · [ ] snap · C shape · 0 / double-click reset'
             : undefined
         }
         onPointerDown={onPointerDown}
@@ -231,6 +243,22 @@ export function CameraLayoutMap({
         onWheel={onWheel}
         onDoubleClick={onDoubleClick}
       >
+        {dragging ? (
+          <div className="camera-layout-map__guides" aria-hidden="true">
+            {guideTargets.map((t) => (
+              <span
+                key={t.id}
+                className={`camera-layout-map__guide${
+                  snap === t.id ? ' camera-layout-map__guide--active' : ''
+                }`}
+                style={{
+                  left: `${(t.x + guideW / 2) * 100}%`,
+                  top: `${(t.y + guideH / 2) * 100}%`,
+                }}
+              />
+            ))}
+          </div>
+        ) : null}
         <div
           className="camera-layout-map__bubble"
           style={{
@@ -245,13 +273,15 @@ export function CameraLayoutMap({
             boxShadow: style.shadowEnabled
               ? chrome.boxShadow
               : '0 4px 12px rgba(0, 0, 0, 0.35)',
+            // Snap jumps feel sticky without CSS easing fighting the drag.
+            transition: dragging ? 'none' : undefined,
           }}
           aria-hidden
         />
       </div>
       <span className="camera-layout-map__label" role="status">
         Layout · {label}
-        {interactive ? ' · drag / keys / scroll' : ''}
+        {interactive ? ' · drag · snap guides · keys / scroll' : ''}
       </span>
     </div>
   )
