@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - `RecordingReview` — wire edge resize; peak-drag preserves timing fields; hint + tooltip `trim-zoom-edge`.
   - Markers/autosave normalize timing; smoke edge-resize cases.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/tooltips/project-autosave/timeline-snap/timeline-zoom hijau.
-- **Commit:** (pending)
+- **Commit:** `19f8720`
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; FaceTime polish after editor solid; optional hold-edge resize / keyboard overlay.
 
