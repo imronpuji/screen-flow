@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Export size estimate (FOKUS 4)
+
+- **Keputusan:** Estimasi ukuran file di panel Export lewat `shared/exportSizeEstimate.ts` (bukan probe ffmpeg). MP4 memakai target bitrate VideoToolbox (4M/8M/16M); WebM memakai bitrate VP9 empiris; GIF memakai fps×area×bpp dari `gifOptionsForQuality`. Durasi = `totalKeepDurationMs`. Mic AAC 128k ditambah bila camera track + `micEnabled` (diabaikan untuk GIF). Tampilkan rentang `~low–high` (±20–55% per format) + hint tenang; panel summary ikut label.
+- **Alasan:** FOKUS 4 item 11e — dialog export perlu estimasi ukuran sebelum Save As supaya orang awam bisa pilih Draft/Good/High / MP4/WebM/GIF tanpa tebak-tebakan.
+- **Status:** aktif
+
 ## [2026-07-10] Export toast + Show in folder (FOKUS 4)
 
 - **Keputusan:** Feedback export non-blocking via single-slot `ToastHost` (`shared/toast.ts` + `src/components/Toast.tsx`). Success/cancel/fail memakai tone success/info/error; error di-humanize (tanpa stack). Setelah Save As sukses, toast punya CTA **Show in folder** → IPC `export:reveal` → `shell.showItemInFolder` (path absolut + file harus ada). Footer `lastSummary` tetap sebagai jejak sekunder.

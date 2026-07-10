@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:55] Export dialog size estimate (FOKUS 4)
+
+- **Dikerjakan:**
+  - `shared/exportSizeEstimate.ts` — bitrate/heuristic estimate dari format × quality × kept duration (+ AAC 128k bila mic).
+  - Review Export panel: **Estimated size** `~low–high` + meta length/mic; panel summary ikut label.
+  - Tooltip `export-size`; smoke `smoke:export-size`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:export-size` + tooltips/export-quality/format/prefs/toast hijau.
+- **Commit:** `f5beb7b`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Beautify toast; visual verify on Mac.
+
 ## [2026-07-10 13:55] Export toast + Show in folder (FOKUS 4)
 
 - **Dikerjakan:**

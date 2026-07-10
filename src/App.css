@@ -820,6 +820,22 @@
   color: var(--ink-muted);
 }
 
+.review__export-size {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.review__export-size-meta {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  letter-spacing: 0;
+}
+
 .review__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);

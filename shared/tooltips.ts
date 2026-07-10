@@ -19,6 +19,7 @@ export type TooltipId =
   | 'camera-review-empty'
   | 'zoom-empty'
   | 'export-ready'
+  | 'export-size'
   | 'beautify'
   | 'discard-review'
   | 'discard-confirm'
@@ -112,6 +113,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'export-ready': {
     id: 'export-ready',
     title: 'E · Export polished MP4',
+  },
+  'export-size': {
+    id: 'export-size',
+    title: 'Estimated file size',
+    body: 'Rough range from format, quality, and kept length. Actual size depends on motion.',
   },
   beautify: {
     id: 'beautify',
