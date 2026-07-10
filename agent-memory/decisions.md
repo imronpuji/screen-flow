@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Export toast + Show in folder (FOKUS 4)
+
+- **Keputusan:** Feedback export non-blocking via single-slot `ToastHost` (`shared/toast.ts` + `src/components/Toast.tsx`). Success/cancel/fail memakai tone success/info/error; error di-humanize (tanpa stack). Setelah Save As sukses, toast punya CTA **Show in folder** → IPC `export:reveal` → `shell.showItemInFolder` (path absolut + file harus ada). Footer `lastSummary` tetap sebagai jejak sekunder.
+- **Alasan:** FOKUS 4 — tiap aksi butuh feedback tenang; banner error sticky kurang ramah; “buka folder” setelah export adalah item 11e yang masih open.
+- **Status:** aktif
+
 ## [2026-07-10] Empty-state CTAs + discard confirm (FOKUS 4)
 
 - **Keputusan:** `EmptyHint` boleh membawa **action CTA** (button) di samping title/body. Setup sources-empty → CTA Refresh; Zoom panel kosong → CTA Add at playhead (`zoom-empty`). Aksi destruktif **New recording** / shortcut Esc membuka dialog konfirmasi (`discard-confirm`); Esc kedua / Keep editing membatalkan. Copy tetap di `shared/tooltips.ts`.
