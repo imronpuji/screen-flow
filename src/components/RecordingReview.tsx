@@ -18,6 +18,7 @@ import {
   applyBackgroundFrameLayout,
   matchBackgroundFrameLayout,
 } from '../../shared/background'
+import { loadBackgroundPrefs, saveBackgroundPrefs } from '../../shared/backgroundPrefs'
 import {
   EXPORT_QUALITY_PRESETS,
   getExportQualityPreset,
@@ -130,17 +131,26 @@ export function RecordingReview({
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
   const [edit, setEdit] = useState<ReviewEditState>(() =>
-    defaultReviewEdit(recordedDurationMs, {
-      ...initialCameraOverlay,
-      // Only enable in review when a camera track exists.
-      enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
-    }),
+    defaultReviewEdit(
+      recordedDurationMs,
+      {
+        ...initialCameraOverlay,
+        // Only enable in review when a camera track exists.
+        enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
+      },
+      undefined,
+      loadBackgroundPrefs(),
+    ),
   )
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
   const playheadMsRef = useRef(0)
   const onCameraOverlayChangeRef = useRef(onCameraOverlayChange)
+
+  useEffect(() => {
+    saveBackgroundPrefs(edit.background)
+  }, [edit.background])
 
   const zoomSegments = useMemo(
     () =>

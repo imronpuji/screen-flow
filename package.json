@@ -23,6 +23,7 @@
     "smoke:cursor-smoothing": "node --experimental-strip-types scripts/smoke-cursor-smoothing.mts",
     "smoke:cursor-appearance": "node --experimental-strip-types scripts/smoke-cursor-appearance.mts",
     "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts",
+    "smoke:background-prefs": "node --experimental-strip-types scripts/smoke-background-prefs.mts",
     "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts",
     "smoke:camera": "node --experimental-strip-types scripts/smoke-camera.mts",
     "smoke:camera-devices": "node --experimental-strip-types scripts/smoke-camera-devices.mts",
