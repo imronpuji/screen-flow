@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:10] Review edit undo/redo (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/editHistory.ts` — past/present/future + coalesce 400ms + limit 50; smoke `smoke:edit-history`.
+  - `RecordingReview` — semua edit lewat history; header Undo/Redo; ⌘/Ctrl+Z & redo shortcuts.
+  - `shared/shortcuts.ts` + tooltips `edit-undo` / `edit-redo`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke edit-history/shortcuts/tooltips/beautify/zoom-points hijau.
+- **Commit:** `811153b`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Timeline split/cut di playhead; atau collapsible editor panels; visual verify on Mac.
+
 ## [2026-07-10 26:10] FaceTime layout map clickable snap guides (FOKUS 3B)
 
 - **Dikerjakan:**

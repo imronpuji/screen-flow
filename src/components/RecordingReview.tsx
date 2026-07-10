@@ -8,6 +8,16 @@ import {
 } from '../../shared/cursorAppearance'
 import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
 import {
+  EDIT_HISTORY_COALESCE_MS,
+  canRedo,
+  canUndo,
+  createEditHistory,
+  pushEdit,
+  redoEdit,
+  undoEdit,
+  type EditHistory,
+} from '../../shared/editHistory'
+import {
   BEAUTIFY_PRESETS,
   applyBeautifyPreset,
   type BeautifyPresetId,
@@ -137,21 +147,44 @@ export function RecordingReview({
 }: RecordingReviewProps) {
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
-  const [edit, setEdit] = useState<ReviewEditState>(() => {
+  const [editHistory, setEditHistory] = useState<EditHistory<ReviewEditState>>(() => {
     const exportPrefs = loadExportPrefs()
-    return defaultReviewEdit(
-      recordedDurationMs,
-      {
-        ...initialCameraOverlay,
-        // Only enable in review when a camera track exists.
-        enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
-      },
-      exportPrefs.quality,
-      loadBackgroundPrefs(),
-      loadCursorPrefs(),
-      exportPrefs.format,
+    return createEditHistory(
+      defaultReviewEdit(
+        recordedDurationMs,
+        {
+          ...initialCameraOverlay,
+          // Only enable in review when a camera track exists.
+          enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
+        },
+        exportPrefs.quality,
+        loadBackgroundPrefs(),
+        loadCursorPrefs(),
+        exportPrefs.format,
+      ),
     )
   })
+  const edit = editHistory.present
+
+  function setEdit(
+    updater: ReviewEditState | ((prev: ReviewEditState) => ReviewEditState),
+  ) {
+    setEditHistory((history) => {
+      const next =
+        typeof updater === 'function' ? updater(history.present) : updater
+      return pushEdit(history, next, { coalesceMs: EDIT_HISTORY_COALESCE_MS })
+    })
+  }
+
+  function undoReviewEdit() {
+    if (exporting) return
+    setEditHistory((history) => undoEdit(history))
+  }
+
+  function redoReviewEdit() {
+    if (exporting) return
+    setEditHistory((history) => redoEdit(history))
+  }
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
@@ -325,6 +358,16 @@ export function RecordingReview({
         )
         return
       }
+      if (action === 'undo') {
+        event.preventDefault()
+        setEditHistory((history) => undoEdit(history))
+        return
+      }
+      if (action === 'redo') {
+        event.preventDefault()
+        setEditHistory((history) => redoEdit(history))
+        return
+      }
       if (action === 'add-zoom') {
         event.preventDefault()
         addZoomAtPlayheadRef.current()
@@ -442,6 +485,28 @@ export function RecordingReview({
           </p>
         </div>
         <div className="review__header-actions">
+          <Tooltip copy={TOOLTIPS['edit-undo']}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={exporting || !canUndo(editHistory)}
+              onClick={undoReviewEdit}
+              aria-label="Undo"
+            >
+              Undo
+            </button>
+          </Tooltip>
+          <Tooltip copy={TOOLTIPS['edit-redo']}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={exporting || !canRedo(editHistory)}
+              onClick={redoReviewEdit}
+              aria-label="Redo"
+            >
+              Redo
+            </button>
+          </Tooltip>
           <Tooltip copy={TOOLTIPS['discard-review']}>
             <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard}>
               New recording

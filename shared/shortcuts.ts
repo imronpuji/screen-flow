@@ -15,6 +15,8 @@ export type ShortcutAction =
   | 'scrub-back'
   | 'scrub-forward'
   | 'discard'
+  | 'undo'
+  | 'redo'
 
 export interface ShortcutBinding {
   id: ShortcutAction
@@ -79,6 +81,18 @@ export const SHORTCUTS: readonly ShortcutBinding[] = [
     contexts: ['review'],
     description: 'Back to new recording',
   },
+  {
+    id: 'undo',
+    keys: '⌘Z / Ctrl+Z',
+    contexts: ['review'],
+    description: 'Undo last edit',
+  },
+  {
+    id: 'redo',
+    keys: '⌘⇧Z / Ctrl+Shift+Z',
+    contexts: ['review'],
+    description: 'Redo last edit',
+  },
 ] as const
 
 export const SCRUB_STEP_MS = 1000
@@ -117,15 +131,33 @@ function hasModifier(event: KeyLike): boolean {
 /**
  * Map a keydown to a shortcut action for the current app context.
  * Returns null when no binding matches (or modifiers would conflict).
+ * Undo/redo are the only review actions that require ⌘/Ctrl.
  */
 export function matchShortcut(
   event: KeyLike,
   context: ShortcutContext,
 ): ShortcutAction | null {
-  if (hasModifier(event)) return null
-
   const key = event.key
   const lower = key.length === 1 ? key.toLowerCase() : key
+  const mod = Boolean(event.metaKey || event.ctrlKey)
+
+  // Undo / redo (review only) — allow primary modifier; reject Alt.
+  if (context === 'review' && mod && !event.altKey && lower === 'z') {
+    if (event.shiftKey) return 'redo'
+    return 'undo'
+  }
+  if (
+    context === 'review' &&
+    mod &&
+    !event.altKey &&
+    !event.shiftKey &&
+    lower === 'y'
+  ) {
+    // Ctrl+Y redo (Windows/Linux habit); Meta+Y ignored on macOS menus usually.
+    if (event.ctrlKey && !event.metaKey) return 'redo'
+  }
+
+  if (hasModifier(event)) return null
 
   if (context === 'exporting') {
     if (key === 'Escape') return 'cancel-export'
