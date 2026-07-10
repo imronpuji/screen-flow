@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Ripple-delete toggle (FOKUS 5)
+
+- **Keputusan:** Toggle **Ripple delete** di panel Timeline (`shared/timelinePrefs.ts` → `screen-flow:timeline-prefs`, default off). Saat on, `deleteKeepRangeWithRipple` menghapus keep-range di playhead lalu `mergeAdjacentKeepRanges` supaya segmen yang saling menempel (razor edit points) **merapat** jadi satu window. Saat off, perilaku lama (`deleteKeepRangeAtPlayhead` + normalize) — edit points tetap terpisah untuk fine cut. Playhead di-snap ke awal segmen berikutnya saat ripple on / saat playhead jatuh di gap.
+- **Alasan:** FOKUS 5 — setelah razor split + delete ujung/tengah, power user sering ingin timeline rapi otomatis; toggle opsional menjaga kontrol fine edit tanpa memaksa merge.
+- **Status:** aktif
+
 ## [2026-07-10] Preview gap-skip for keep-ranges (FOKUS 5)
 
 - **Keputusan:** Preview playback memakai `resolveKeepPlaybackMs` / `snapPlayheadIntoKeepRanges` (`shared/keepRanges.ts`) supaya playhead **melompati** jendela discarded (gap antar keep-ranges). `AutoZoomPlayback` menerima `keepRanges`; saat `timeupdate` di gap → seek ke start keep berikutnya; di akhir keep terakhir → pause. Scrub/seek yang mendarat di gap di-snap ke keep berikutnya (atau last end). Timeline menampilkan shade gap via `discardedKeepWindows` (preview ≡ export concat). Sumber media tetap utuh (non-destruktif).
