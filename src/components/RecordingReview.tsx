@@ -9,6 +9,10 @@ import {
 import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
 import { BACKGROUND_PRESETS } from '../../shared/background'
 import {
+  EXPORT_QUALITY_PRESETS,
+  getExportQualityPreset,
+} from '../../shared/exportQuality'
+import {
   CAMERA_CORNERS,
   DEFAULT_CAMERA_OVERLAY,
   normalizeCameraOverlay,
@@ -482,12 +486,45 @@ export function RecordingReview({
               : ''}
           </p>
 
+          <div className="review__field">
+            <span className="review__label" id="export-quality-label">
+              Export quality
+            </span>
+            <div
+              className="review__presets"
+              role="group"
+              aria-labelledby="export-quality-label"
+            >
+              {EXPORT_QUALITY_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className={`review__preset${
+                    edit.exportQuality === preset.id ? ' review__preset--active' : ''
+                  }`}
+                  disabled={exporting}
+                  onClick={() =>
+                    setEdit((prev) => ({
+                      ...prev,
+                      exportQuality: preset.id,
+                    }))
+                  }
+                >
+                  <span className="review__preset-label">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="review__hint">
+              {getExportQualityPreset(edit.exportQuality).hint}
+            </p>
+          </div>
+
           <div className="review__coming">
             <p className="review__coming-title">Coming next</p>
             <ul>
-              <li>Export quality presets</li>
               <li>Per-click zoom points</li>
               <li>One-click beautify preset</li>
+              <li>First-run onboarding</li>
             </ul>
           </div>
         </aside>

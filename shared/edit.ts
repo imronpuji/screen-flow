@@ -5,6 +5,8 @@ import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from './camera.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
+import type { ExportQualityId } from './exportQuality.js'
+import { DEFAULT_EXPORT_QUALITY, normalizeExportQuality } from './exportQuality.js'
 
 /** Lightweight edit state for post-record review (trim + effects). */
 
@@ -23,6 +25,8 @@ export interface ReviewEditState {
   background: BackgroundStyle
   /** FaceTime bubble layout for review preview + export bake. */
   cameraOverlay: CameraOverlayStyle
+  /** MP4 encode quality (draft | good | high). */
+  exportQuality: ExportQualityId
 }
 
 /** Clamp trim handles to a valid export window (≥100ms). */
@@ -51,6 +55,7 @@ export function msToFfmpegSec(ms: number): string {
 export function defaultReviewEdit(
   durationMs: number,
   cameraOverlay?: Partial<CameraOverlayStyle> | null,
+  exportQuality?: ExportQualityId | null,
 ): ReviewEditState {
   return {
     trimStartMs: 0,
@@ -60,6 +65,7 @@ export function defaultReviewEdit(
     cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
     background: { ...DEFAULT_BACKGROUND_STYLE },
     cameraOverlay: normalizeCameraOverlay(cameraOverlay ?? DEFAULT_CAMERA_OVERLAY),
+    exportQuality: normalizeExportQuality(exportQuality ?? DEFAULT_EXPORT_QUALITY),
   }
 }
 

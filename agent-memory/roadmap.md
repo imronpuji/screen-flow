@@ -11,5 +11,5 @@ Status flow keseluruhan. `[ ]` belum · `[~]` proses · `[x]` selesai (fungsiona
 - [~] 7. ⭐ Kamera FaceTime / webcam overlay — enumerate + live bubble + parallel camera.webm + review playback + ffmpeg export bake
 - [~] 8. Background estetik — gradient/padding/rounded/shadow preview + export bake (1-frame mask)
 - [~] 9. Editor ringan — trim sliders + auto-zoom/cursor/background/camera toggles; trim baked ke export MP4
-- [~] 10. Export MP4 — progress/cancel + Save As + effects bake; quality presets belum
+- [~] 10. Export MP4 — progress/cancel + Save As + effects bake + quality presets (Draft/Good/High)
 - [ ] 11. Polish user-friendly & onboarding

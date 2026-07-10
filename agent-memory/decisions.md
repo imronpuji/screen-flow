@@ -157,3 +157,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Appearance dipisah dari capture: `CursorAppearance` (`style: dot|crosshair|hidden`, `sizeScale` 0.5–3, `spotlightEnabled`) di review state + `ExportMp4Request.cursorSmoothing.appearance`. Preview CSS + export ffmpeg drawbox memakai helper yang sama (`appearanceToCursorDrawOptions`). Hidden → skip bake (`null` filter). Crosshair = dua drawbox orthogonal; spotlight = drawbox semi-transparan di bawah cursor.
 - **Alasan:** FOKUS 2 — cursor harus bisa dimodifikasi tanpa re-record; data JSONL tetap mentah; preview ↔ export konsisten lewat shared helpers.
 - **Status:** aktif (MVP); custom cursor image themes later
+
+## [2026-07-10] Export quality presets (Draft / Good / High)
+
+- **Keputusan:** Tiga preset di `shared/exportQuality.ts`: **Draft** (VT 4M / x264 CRF 28 ultrafast), **Good** default (VT 8M / CRF 20 veryfast), **High** (VT 16M / CRF 18 medium). IPC `ExportMp4Request.quality`; VideoToolbox fallback ke libx264 memakai CRF/preset yang sama. UI picker di review sebelum Export MP4.
+- **Alasan:** Roadmap #10 — orang awam pilih kualitas tanpa flag ffmpeg; Good = perilaku lama; Draft cepat cek; High untuk share final.
+- **Status:** aktif

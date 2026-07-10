@@ -10,6 +10,7 @@ import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
+import type { ExportQualityId } from './exportQuality.js'
 
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:get-info',
@@ -195,6 +196,8 @@ export interface ExportMp4Request {
   camera?: ExportCameraOverlayRequest
   /** When set, ffmpeg -ss/-to trims before encode (auto-zoom events re-based to trim start). */
   trim?: ExportTrimRequest
+  /** Encode quality preset (draft | good | high). Default good. */
+  quality?: ExportQualityId
 }
 
 export interface ExportMp4Result {
@@ -203,6 +206,8 @@ export interface ExportMp4Result {
   bytesWritten: number
   /** Encoder used: h264_videotoolbox | libx264 */
   codec: string
+  /** Quality preset applied during encode. */
+  quality?: ExportQualityId
   /** True when auto-zoom sendcmd filter was applied. */
   autoZoomApplied?: boolean
   /** True when background gradient frame was composited. */
