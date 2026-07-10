@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:45] Zoom-event drag on timeline (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — `peakMs` override + `shiftZoomSegmentToPeak` / `moveManualZoomPeak` / `resolveZoomPointPeakMs`; apply path shifts in/hold/out.
+  - `shared/timelineMarkers.ts` — `buildZoomEventMarkers` + `zoomIndex` / `manualZoomId` on markers for scrubber drag.
+  - `AutoZoomPlayback` — drag teal zoom spans (magnetic snap); click-without-move still seeks peak.
+  - `RecordingReview` — `onZoomPeakChange` → override / manual peak; hint + tooltip `trim-zoom-drag`.
+  - Autosave normalizes `peakMs`; smoke peak-drag cases.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/timeline-markers/tooltips/project-autosave/timeline-snap/timeline-zoom hijau.
+- **Commit:** `e0e2d34`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; FaceTime polish after editor solid; optional zoom span edge resize.
+
 ## [2026-07-10 14:33] Timeline zoom-in/out (FOKUS 5)
 
 - **Dikerjakan:**
