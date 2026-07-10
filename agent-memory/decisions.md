@@ -2,9 +2,15 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Review FaceTime layout map (FOKUS 3B)
+
+- **Keputusan:** `CameraLayoutMap` juga di **RecordingReview** (section Position), bukan hanya setup/recording chrome. Click-to-place memakai `placeCameraAtPoint` + `normalizeCameraOverlay` yang sama → preview bubble ≡ export. Disabled saat exporting.
+- **Alasan:** FOKUS 3B — orang awam sering rapikan posisi setelah rekaman; map di review menyamakan UX dengan setup tanpa mengandalkan drag di preview saja.
+- **Status:** aktif
+
 ## [2026-07-10] Chrome FaceTime layout map + click-to-mute (FOKUS 3B/A)
 
-- **Keputusan:** Saat kamera armed (setup atau recording), tampilkan `CameraLayoutMap` di panel **camera-controls** (app chrome) — schematic 16:9 dengan bubble marker dari koordinat relatif yang sama dengan preview/export (`cameraBubblePosition` / `placeCameraAtPoint`). Click pada map menempatkan pusat bubble lalu magnetic-snap (threshold 2× default). **Tidak** di `preview-frame` supaya tidak burn-in ke screen WebM. `CameraMonitor` boleh di-klik (atau Enter/Space) untuk memanggil `setCameraLiveDuringRecording` — komponen **tidak** memaksa `track.enabled`.
+- **Keputusan:** Saat kamera armed (setup atau recording), tampilkan `CameraLayoutMap` di panel **camera-controls** (app chrome) — schematic 16:9 dengan bubble marker dari koordinat relatif yang sama dengan preview/export (`cameraBubblePosition` / `placeCameraAtPoint`). Click pada map menempatkan pusat bubble lalu magnetic-snap (threshold 2× default). **Tidak** di `preview-frame` supaya tidak burn-in ke screen WebM. `CameraMonitor` boleh di-klik (atau Enter/Space) untuk memanggil `setCameraLiveDuringRecording` — komponen **tidak** memaksa `track.enabled`. Juga di review (lihat keputusan “Review FaceTime layout map”).
 - **Alasan:** FOKUS 3B — selama recording layout bubble disembunyikan di capture preview; orang awam butuh melihat/mengubah posisi export tanpa double FaceTime. Click-to-mute di monitor melengkapi toggle checkbox (FOKUS 3A).
 - **Status:** aktif
 
