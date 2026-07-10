@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:25] Collapsible review editor panels (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/editorPanels.ts` — panel ids Zoom/Cursor/Background/Camera/Timeline/Export + toggle/expand/collapse + normalize.
+  - `shared/editorPanelPrefs.ts` — persist open state + sidebarCollapsed (`screen-flow:editor-panels`).
+  - `EditorPanel` + `RecordingReview` accordion + Hide/Expand/Collapse chrome; CSS calm transitions.
+  - Smoke `smoke:editor-panels`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke editor-panels/edit-history/timeline-cut/beautify/shortcuts/tooltips hijau.
+- **Commit:** `5a253d9`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Multi-segment keep-ranges + ffmpeg concat; visual verify on Mac.
+
 ## [2026-07-10 13:20] Review timeline cut at playhead (FOKUS 5)
 
 - **Dikerjakan:**
