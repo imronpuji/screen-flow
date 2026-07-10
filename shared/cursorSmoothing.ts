@@ -4,6 +4,10 @@
  */
 
 import type { CursorEvent } from './cursor.js'
+import {
+  mapScreenToNormalized,
+  type CaptureGeometry,
+} from './cursorCoords.js'
 
 export interface VideoSize {
   width: number
@@ -39,11 +43,19 @@ export interface CursorSmoothingOptions {
   smoothingWindowMs?: number
   /** Click ring animation length (ms). */
   ringDurationMs?: number
+  /**
+   * Captured display geometry (DIP). When set, positions use screen→frame mapping.
+   * When omitted, assumes cursor x/y are already video pixels.
+   */
+  geometry?: CaptureGeometry
 }
 
-const DEFAULT_OPTIONS: Required<CursorSmoothingOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<CursorSmoothingOptions, 'geometry'>> & {
+  geometry?: CaptureGeometry
+} = {
   smoothingWindowMs: 48,
   ringDurationMs: 450,
+  geometry: undefined,
 }
 
 /** Cubic ease-in-out — mirrors shared/autozoom.ts for standalone smoke tests. */
@@ -56,7 +68,12 @@ function normalizePoint(
   x: number,
   y: number,
   videoSize: VideoSize,
+  geometry?: CaptureGeometry,
 ): NormalizedPoint {
+  if (geometry) {
+    const focus = mapScreenToNormalized(x, y, geometry)
+    return { x: focus.focusX, y: focus.focusY }
+  }
   const w = Math.max(1, videoSize.width)
   const h = Math.max(1, videoSize.height)
   return {
@@ -89,11 +106,13 @@ export function buildCursorKeyframes(events: CursorEvent[]): CursorKeyframe[] {
 export function buildClickRings(
   events: CursorEvent[],
   videoSize: VideoSize,
+  options: CursorSmoothingOptions = {},
 ): ClickRing[] {
+  const geometry = options.geometry
   return events
     .filter(isClickTrigger)
     .map((e) => {
-      const { x, y } = normalizePoint(e.x, e.y, videoSize)
+      const { x, y } = normalizePoint(e.x, e.y, videoSize, geometry)
       return { tMs: e.t, x, y }
     })
     .sort((a, b) => a.tMs - b.tMs)
@@ -164,7 +183,7 @@ export function getSmoothedCursorAtTime(
     y = raw.y
   }
 
-  return normalizePoint(x, y, videoSize)
+  return normalizePoint(x, y, videoSize, opts.geometry)
 }
 
 /** Active click rings at playback time (scale + fade). */

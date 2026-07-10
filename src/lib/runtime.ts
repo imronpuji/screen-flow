@@ -2,6 +2,7 @@ import type {
   AppendChunkRequest,
   AppendChunkResult,
   AppInfo,
+  CameraAccessResult,
   CancelExportResult,
   CaptureSource,
   ExportMp4Request,
@@ -46,6 +47,7 @@ const idleRecording: RecordingStatus = {
   cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
+  captureGeometryPath: null,
 }
 
 /** Prefer preload bridge; fall back so Vite preview still works without Electron. */
@@ -61,6 +63,17 @@ export async function fetchPermissionStatus(): Promise<PermissionStatus> {
     return window.screenFlow.getPermissionStatus()
   }
   return browserPermission
+}
+
+export async function requestCameraAccess(): Promise<CameraAccessResult> {
+  if (window.screenFlow?.requestCameraAccess) {
+    return window.screenFlow.requestCameraAccess()
+  }
+  return {
+    ok: true,
+    status: 'unsupported',
+    message: 'Browser preview — camera TCC is handled by getUserMedia.',
+  }
 }
 
 export async function fetchCaptureSources(

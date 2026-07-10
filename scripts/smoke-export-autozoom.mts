@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { CursorEvent } from '../shared/cursor.ts'
-import { buildZoomSegments } from '../shared/autozoom.ts'
+import { buildZoomSegments } from '../dist-electron/shared/autozoom.js'
 import {
   buildZoomSendCmd,
   computeCropRect,

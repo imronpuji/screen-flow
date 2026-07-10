@@ -3,6 +3,10 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
 import {
+  installMediaPermissionHandlers,
+  requestCameraAccess,
+} from './capture/cameraPermission.js'
+import {
   installScreenFlowMediaProtocol,
   registerScreenFlowMediaScheme,
 } from './protocol/mediaProtocol.js'
@@ -20,6 +24,7 @@ import {
   stopRecording,
 } from './recording/session.js'
 import { readCursorEventsFile } from './recording/readCursorEvents.js'
+import { readCaptureGeometryBeside } from './recording/readCaptureGeometry.js'
 import { getScreenFlowMediaUrl } from './recording/mediaUrl.js'
 import {
   IPC_CHANNELS,
@@ -77,6 +82,8 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.PERMISSION_GET_STATUS, () => getScreenPermissionStatus())
 
+  ipcMain.handle(IPC_CHANNELS.PERMISSION_REQUEST_CAMERA, () => requestCameraAccess())
+
   ipcMain.handle(IPC_CHANNELS.SOURCES_LIST, (_event, request?: ListSourcesRequest) =>
     listCaptureSources(request ?? {}),
   )
@@ -104,7 +111,8 @@ function registerIpc(): void {
       throw new Error('Invalid read cursor events payload: eventsPath required')
     }
     const events = readCursorEventsFile(request.eventsPath)
-    return { ok: true as const, events }
+    const geometry = readCaptureGeometryBeside(request.eventsPath)
+    return { ok: true as const, events, geometry }
   })
 
   ipcMain.handle(IPC_CHANNELS.RECORDING_GET_MEDIA_URL, (_event, request: GetMediaUrlRequest) => {
@@ -166,6 +174,7 @@ function broadcastExportProgress(): void {
 }
 
 app.whenReady().then(async () => {
+  installMediaPermissionHandlers()
   await installScreenFlowMediaProtocol()
   registerIpc()
   broadcastExportProgress()

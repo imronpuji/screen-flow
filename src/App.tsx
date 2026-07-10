@@ -37,6 +37,7 @@ import {
   isExportCancelledError,
   onExportProgress,
   readCursorEvents,
+  requestCameraAccess,
   saveExport,
   startRecording,
   stopRecording,
@@ -44,6 +45,7 @@ import {
 import { CameraBubble } from './components/CameraBubble'
 import { RecordingReview } from './components/RecordingReview'
 import type { CursorEvent } from '../shared/cursor'
+import type { CaptureGeometry } from '../shared/cursorCoords'
 import './App.css'
 
 type AppMode = 'setup' | 'recording' | 'review'
@@ -61,6 +63,7 @@ const idleRecording: RecordingStatus = {
   cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
+  captureGeometryPath: null,
 }
 
 function formatBytes(bytes: number): string {
@@ -85,6 +88,7 @@ export default function App() {
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [playbackCameraUrl, setPlaybackCameraUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
+  const [captureGeometry, setCaptureGeometry] = useState<CaptureGeometry | null>(null)
   const [reviewDurationMs, setReviewDurationMs] = useState(0)
   const [reviewBytesWritten, setReviewBytesWritten] = useState(0)
   const [reviewChunkCount, setReviewChunkCount] = useState(0)
@@ -190,7 +194,18 @@ export default function App() {
   async function enableCameraPreview(next: CameraOverlayStyle) {
     setCameraError(null)
     try {
+      const access = await requestCameraAccess()
+      if (!access.ok) {
+        throw new Error(access.message)
+      }
       const stream = await openCameraStream(next.deviceId)
+      const liveTracks = stream.getVideoTracks().filter((t) => t.readyState === 'live')
+      if (liveTracks.length === 0) {
+        stopMediaStream(stream)
+        throw new Error(
+          'Camera opened but no live video track. Check System Settings → Privacy & Security → Camera.',
+        )
+      }
       stopMediaStream(cameraStreamRef.current)
       cameraStreamRef.current = stream
       setCameraStream(stream)
@@ -223,6 +238,7 @@ export default function App() {
     setPlaybackUrl(null)
     setPlaybackCameraUrl(null)
     setPlaybackCursorEvents([])
+    setCaptureGeometry(null)
     setReviewDurationMs(0)
     setReviewBytesWritten(0)
     setReviewChunkCount(0)
@@ -299,7 +315,11 @@ export default function App() {
             getMediaUrl({ filePath: result.outputPath }),
             result.cursorEventsPath
               ? readCursorEvents({ eventsPath: result.cursorEventsPath })
-              : Promise.resolve({ ok: true as const, events: [] as CursorEvent[] }),
+              : Promise.resolve({
+                  ok: true as const,
+                  events: [] as CursorEvent[],
+                  geometry: null as CaptureGeometry | null,
+                }),
             result.cameraOutputPath
               ? getMediaUrl({ filePath: result.cameraOutputPath })
               : Promise.resolve(null),
@@ -307,6 +327,7 @@ export default function App() {
           setPlaybackUrl(media.url)
           setPlaybackCameraUrl(cameraMedia?.url ?? null)
           setPlaybackCursorEvents(cursor.events)
+          setCaptureGeometry(cursor.geometry ?? null)
           setMode('review')
           setLastSummary(
             [
@@ -499,6 +520,7 @@ export default function App() {
             webmPath={lastWebmPath}
             cursorEvents={playbackCursorEvents}
             cursorEventsPath={lastCursorEventsPath}
+            captureGeometry={captureGeometry}
             cameraMediaUrl={playbackCameraUrl}
             initialCameraOverlay={cameraOverlay}
             durationMs={reviewDurationMs}

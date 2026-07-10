@@ -10,7 +10,7 @@ import {
   applyTrimToCursorEvents,
   normalizeTrim,
   trimDurationMs,
-} from '../shared/edit.ts'
+} from '../dist-electron/shared/edit.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)

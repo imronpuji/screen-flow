@@ -3,6 +3,7 @@
  * Keep channel names and payloads in sync — preload only exposes these.
  */
 
+import type { CaptureGeometry } from './cursorCoords.js'
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
@@ -16,6 +17,8 @@ export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:get-info',
   APP_GET_PLATFORM: 'app:get-platform',
   PERMISSION_GET_STATUS: 'permission:get-status',
+  /** Ask macOS TCC for camera (FaceTime) before getUserMedia. */
+  PERMISSION_REQUEST_CAMERA: 'permission:request-camera',
   SOURCES_LIST: 'sources:list',
   RECORDING_START: 'recording:start',
   RECORDING_STOP: 'recording:stop',
@@ -60,6 +63,13 @@ export interface PermissionStatus {
   message: string
 }
 
+export interface CameraAccessResult {
+  ok: boolean
+  /** macOS TCC camera status after askForMediaAccess (or unsupported). */
+  status: PermissionState
+  message: string
+}
+
 export type CaptureSourceKind = 'screen' | 'window'
 
 export interface CaptureSource {
@@ -94,6 +104,8 @@ export interface RecordingStatus {
   /** JSONL cursor trail for auto-zoom (null when idle or sampler inactive). */
   cursorEventsPath: string | null
   cursorEventCount: number
+  /** capture-geometry.json for Retina/multi-monitor cursor→frame mapping. */
+  captureGeometryPath: string | null
 }
 
 export interface StartRecordingRequest {
@@ -122,6 +134,8 @@ export interface StopRecordingResult {
   /** Cursor JSONL path (null if no events captured). */
   cursorEventsPath: string | null
   cursorEventCount: number
+  /** Display DIP geometry written at session start (null if unavailable). */
+  captureGeometryPath: string | null
 }
 
 /** Which MediaRecorder stream a chunk belongs to. */
@@ -268,6 +282,8 @@ export interface ReadCursorEventsRequest {
 export interface ReadCursorEventsResult {
   ok: true
   events: CursorEvent[]
+  /** Display DIP geometry sibling of the JSONL (null if missing / legacy session). */
+  geometry?: CaptureGeometry | null
 }
 
 export interface GetMediaUrlRequest {
@@ -296,6 +312,8 @@ export interface ScreenFlowApi {
   getAppInfo: () => Promise<AppInfo>
   getPlatform: () => Promise<AppInfo['platform']>
   getPermissionStatus: () => Promise<PermissionStatus>
+  /** Prompt macOS Camera TCC (no-op / granted on other platforms). */
+  requestCameraAccess: () => Promise<CameraAccessResult>
   listSources: (request?: ListSourcesRequest) => Promise<CaptureSource[]>
   startRecording: (request: StartRecordingRequest) => Promise<StartRecordingResult>
   stopRecording: () => Promise<StopRecordingResult>

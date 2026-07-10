@@ -7,7 +7,7 @@ import {
   buildCursorKeyframes,
   getActiveClickRings,
   getSmoothedCursorAtTime,
-} from '../shared/cursorSmoothing.ts'
+} from '../dist-electron/shared/cursorSmoothing.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)

@@ -30,6 +30,7 @@ import {
 } from '../../shared/exportQuality.js'
 import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
+import { readCaptureGeometryBeside } from '../recording/readCaptureGeometry.js'
 import { probeVideoFile } from './probe.js'
 import {
   clampPercent,
@@ -306,6 +307,8 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     cursorEventsPath != null
       ? readCursorEventsFile(assertUnderScreenFlowTemp(cursorEventsPath))
       : []
+  const geometry =
+    cursorEventsPath != null ? readCaptureGeometryBeside(cursorEventsPath) : null
 
   if (trimRange && cursorEvents.length > 0) {
     cursorEvents = applyTrimToCursorEvents(cursorEvents, trimRange)
@@ -317,7 +320,10 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   if (request.autoZoom?.cursorEventsPath && cursorEvents.length > 0) {
     effects.autoZoom = {
       events: cursorEvents,
-      options: request.autoZoom.options,
+      options: {
+        ...request.autoZoom.options,
+        ...(geometry ? { geometry } : {}),
+      },
     }
   }
   if (request.background?.style) {
@@ -326,7 +332,10 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   if (request.cursorSmoothing?.cursorEventsPath && cursorEvents.length > 0) {
     effects.cursorSmoothing = {
       events: cursorEvents,
-      options: request.cursorSmoothing.options,
+      options: {
+        ...request.cursorSmoothing.options,
+        ...(geometry ? { geometry } : {}),
+      },
       appearance: request.cursorSmoothing.appearance,
     }
   }
