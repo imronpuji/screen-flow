@@ -11,6 +11,7 @@ export interface ReviewEditState {
   trimStartMs: number
   trimEndMs: number
   autoZoomEnabled: boolean
+  cursorSmoothingEnabled: boolean
 }
 
 /** Clamp trim handles to a valid export window (≥100ms). */
@@ -41,6 +42,7 @@ export function defaultReviewEdit(durationMs: number): ReviewEditState {
     trimStartMs: 0,
     trimEndMs: Math.max(0, durationMs),
     autoZoomEnabled: true,
+    cursorSmoothingEnabled: true,
   }
 }
 
