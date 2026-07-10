@@ -10,6 +10,7 @@ import { DEFAULT_BACKGROUND_STYLE } from '../shared/background.ts'
 import {
   computeBackgroundCardLayout,
   planBackgroundExport,
+  roundedRectAlphaExpr,
 } from '../dist-electron/shared/ffmpegBackground.js'
 import { buildCursorSendCmd, planCursorExport } from '../dist-electron/shared/ffmpegCursor.js'
 import {
@@ -28,6 +29,10 @@ function testBackgroundLayout(): void {
   })
   assert(layout.cardW < layout.frameW, 'card narrower than frame')
   assert(layout.padX > 0, 'horizontal padding')
+  const alpha = roundedRectAlphaExpr(14)
+  assert(alpha.includes('hypot'), 'rounded alpha uses corner circles')
+  assert(roundedRectAlphaExpr(0) === '255', 'zero radius is fully opaque')
+  assert(roundedRectAlphaExpr(0, 160) === '160', 'zero radius respects opaque arg')
   console.log('ok background layout')
 }
 
@@ -36,6 +41,23 @@ function testBackgroundPlan(): void {
   assert(plan.hasBackground, 'background enabled')
   assert(plan.filterComplex.includes('gradients='), 'uses gradients filter')
   assert(plan.filterComplex.includes('overlay='), 'composites card')
+  // Default style has radius + shadow → 1-frame mask path (not per-frame geq on video).
+  assert(plan.filterComplex.includes('alphamerge'), 'rounded via alphamerge')
+  assert(plan.filterComplex.includes('loop=loop=-1:size=1'), 'mask/shadow still is looped')
+  assert(plan.filterComplex.includes('boxblur='), 'soft shadow via still boxblur')
+  assert(
+    !plan.filterComplex.match(/\[vsrc\][^;]*geq=/),
+    'geq must not run on the video input',
+  )
+
+  const plain = planBackgroundExport(
+    { ...DEFAULT_BACKGROUND_STYLE, cornerRadiusPx: 0, shadowEnabled: false },
+    { width: 320, height: 180 },
+  )
+  assert(plain.hasBackground, 'plain background enabled')
+  assert(!plain.filterComplex.includes('alphamerge'), 'plain skips mask')
+  assert(!plain.filterComplex.includes('boxblur='), 'plain skips shadow')
+
   const off = planBackgroundExport(
     { ...DEFAULT_BACKGROUND_STYLE, enabled: false },
     { width: 320, height: 180 },

@@ -86,9 +86,15 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
 - **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
+## [2026-07-10] Background rounded/shadow via 1-frame alpha mask
+
+- **Keputusan:** Rounded corners + soft shadow di export memakai still 1-frame: `color=r=1:d=1` → `geq` alpha rounded-rect → `loop=loop=-1:size=1` → `alphamerge` ke card. Shadow = still hitam rounded + `boxblur` sekali lalu loop + overlay di bawah card. Plain path (radius 0, shadow off) tetap `gradients` + `scale` + `overlay` tanpa geq.
+- **Alasan:** geq/boxblur per-frame pada video penuh (~2560×1600) ~10× lebih lambat dan geq lum/cb/cr pada rgba sempat menghapus isi card. Mask sekali-render = cepat (~4× realtime @720p) dan alpha benar.
+- **Status:** aktif
+
 ## [2026-07-10] Background + cursor export bake (ffmpeg filter_complex)
 
-- **Keputusan:** Export MP4 memanggil `planExportFilters` → auto-zoom (`sendcmd+crop`) → background (`gradients` + `scale` + `overlay` + optional `geq` rounded + `boxblur` shadow) → cursor (`sendcmd` + `drawbox@cursor` + `drawbox@ring`). IPC `ExportMp4Request.background.style` + `cursorSmoothing.cursorEventsPath`. UI meneruskan review toggles saat export.
+- **Keputusan:** Export MP4 memanggil `planExportFilters` → auto-zoom (`sendcmd+crop`) → background (`gradients` + `scale` + `overlay` + optional rounded/shadow via 1-frame mask) → cursor (`sendcmd` + `drawbox@cursor` + `drawbox@ring`). IPC `ExportMp4Request.background.style` + `cursorSmoothing.cursorEventsPath`. UI meneruskan review toggles saat export.
 - **Alasan:** Hasil export match preview signature #2/#3; satu pass ffmpeg dengan progress/cancel; pure planners smoke-testable di CI (`smoke:export-effects`).
 - **Status:** aktif (MVP); refine gradient fidelity & multi-ring overlap later
 

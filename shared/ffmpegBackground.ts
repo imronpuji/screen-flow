@@ -1,6 +1,10 @@
 /**
  * Plan ffmpeg filter graph for baking aesthetic background into export.
  * Matches preview padding + gradient presets from shared/background.ts.
+ *
+ * Rounded corners + soft shadow use a ONE-FRAME alpha mask (color → geq → loop),
+ * never geq/boxblur on every video frame. That keeps export ~realtime while
+ * matching the CSS preview card look.
  */
 
 import {
@@ -73,13 +77,37 @@ export function computeBackgroundCardLayout(
 }
 
 /**
+ * Rounded-rect alpha expression for geq.
+ * Outside the corner circles → transparent; inside → `opaque` (0–255).
+ * Commas stay inside single quotes so filter_complex does not split them.
+ */
+export function roundedRectAlphaExpr(radiusPx: number, opaque = 255): string {
+  const r = Math.max(0, Math.round(radiusPx))
+  const a = Math.max(0, Math.min(255, Math.round(opaque)))
+  if (r <= 0) return String(a)
+  return (
+    `if(gt(abs(W/2-X),W/2-${r})*gt(abs(H/2-Y),H/2-${r}),` +
+    `if(lte(hypot(abs(W/2-X)-(W/2-${r}),abs(H/2-Y)-(H/2-${r})),${r}),${a},0),${a})`
+  )
+}
+
+/** Soft-shadow blur radius in px (applied once on a still, then looped). */
+const SHADOW_BLUR_PX = 12
+/** Extra canvas around the card so the blur has room to fall off. */
+const SHADOW_PAD_PX = 16
+/** Shadow alpha before blur (0–255). */
+const SHADOW_ALPHA = 160
+/** Visual offset so the shadow sits slightly below-right of the card. */
+const SHADOW_OFFSET_X = 0
+const SHADOW_OFFSET_Y = 4
+
+/**
  * Build filter_complex that composites [inputLabel] video onto a gradient frame.
  * Input is expected at full frame resolution (post auto-zoom scale).
  *
- * Fast path only: gradient background + scaled card + overlay. The previous
- * rounded-corner (geq) + shadow (boxblur) approach was ~10× slower AND broken —
- * geq with lum/cb/cr params on rgba wiped the card content, leaving only corner
- * artifacts. Rounded corners / shadow are a follow-up via a one-time alpha mask.
+ * Paths:
+ * - plain: gradient + scale + overlay (no radius/shadow)
+ * - rounded/shadow: 1-frame geq mask → loop → alphamerge; optional still boxblur shadow
  */
 export function planBackgroundExport(
   style: BackgroundStyle,
@@ -101,16 +129,76 @@ export function planBackgroundExport(
   const layout = computeBackgroundCardLayout(normalized, videoSize)
   const preset = getBackgroundPreset(normalized.presetId)
   const { c0, c1 } = gradientColors(preset.id)
-  const { frameW, frameH, cardW, cardH, padX, padY } = layout
+  const { frameW, frameH, cardW, cardH, padX, padY, cornerRadiusPx, shadowEnabled } =
+    layout
 
+  const needsMask = cornerRadiusPx > 0
+  const needsShadow = shadowEnabled
   const bgLabel = `${outputLabel}_grad`
   const cardLabel = `${outputLabel}_card`
 
   const lines: string[] = [
     `gradients=s=${frameW}x${frameH}:c0=${c0}:c1=${c1}:x0=0:y0=0:x1=${frameW}:y1=${frameH}[${bgLabel}]`,
-    `[${inputLabel}]scale=${cardW}:${cardH}[${cardLabel}]`,
-    `[${bgLabel}][${cardLabel}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
   ]
+
+  if (!needsMask && !needsShadow) {
+    lines.push(`[${inputLabel}]scale=${cardW}:${cardH}[${cardLabel}]`)
+    lines.push(`[${bgLabel}][${cardLabel}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`)
+    return {
+      hasBackground: true,
+      layout,
+      filterComplex: lines.join(';'),
+      inputLabel,
+      outputLabel,
+    }
+  }
+
+  // Scale card to rgba so alphamerge can attach a rounded alpha channel.
+  lines.push(`[${inputLabel}]scale=${cardW}:${cardH},format=rgba[${cardLabel}]`)
+
+  let cardForOverlay = cardLabel
+  if (needsMask) {
+    const maskSrc = `${outputLabel}_masksrc`
+    const maskLoop = `${outputLabel}_mask`
+    const cardRounded = `${outputLabel}_round`
+    const alpha = roundedRectAlphaExpr(cornerRadiusPx)
+    // r=1:d=1 → one frame; geq runs once; loop repeats the still for the encode.
+    lines.push(
+      `color=c=white:s=${cardW}x${cardH}:r=1:d=1,format=rgba,` +
+        `geq=r=255:g=255:b=255:a='${alpha}'[${maskSrc}]`,
+    )
+    lines.push(`[${maskSrc}]loop=loop=-1:size=1[${maskLoop}]`)
+    lines.push(`[${cardLabel}][${maskLoop}]alphamerge[${cardRounded}]`)
+    cardForOverlay = cardRounded
+  }
+
+  let baseForCard = bgLabel
+  if (needsShadow) {
+    const shadowW = evenDimension(cardW + SHADOW_PAD_PX * 2)
+    const shadowH = evenDimension(cardH + SHADOW_PAD_PX * 2)
+    const shadowRadius = needsMask ? cornerRadiusPx : 0
+    const shadowA = roundedRectAlphaExpr(shadowRadius, SHADOW_ALPHA)
+    const shadowSrc = `${outputLabel}_shsrc`
+    const shadowLoop = `${outputLabel}_shadow`
+    const withShadow = `${outputLabel}_bgs`
+    const shadowX = padX - SHADOW_PAD_PX + SHADOW_OFFSET_X
+    const shadowY = padY - SHADOW_PAD_PX + SHADOW_OFFSET_Y
+
+    lines.push(
+      `color=c=black:s=${shadowW}x${shadowH}:r=1:d=1,format=rgba,` +
+        `geq=r=0:g=0:b=0:a='${shadowA}',` +
+        `boxblur=${SHADOW_BLUR_PX}:${Math.max(1, Math.floor(SHADOW_BLUR_PX / 2))}[${shadowSrc}]`,
+    )
+    lines.push(`[${shadowSrc}]loop=loop=-1:size=1[${shadowLoop}]`)
+    lines.push(
+      `[${bgLabel}][${shadowLoop}]overlay=${shadowX}:${shadowY}:format=auto[${withShadow}]`,
+    )
+    baseForCard = withShadow
+  }
+
+  lines.push(
+    `[${baseForCard}][${cardForOverlay}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
+  )
 
   return {
     hasBackground: true,
