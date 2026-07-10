@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 21:30] Persist export format + quality prefs
+
+- **Dikerjakan:**
+  - `shared/exportPrefs.ts` — load/save/clear `{ format, quality }` via `localStorage` key `screen-flow:export-prefs` (normalize on read/write).
+  - `RecordingReview` — hydrate via `defaultReviewEdit(..., quality, …, format)`; persist on every `exportFormat` / `exportQuality` change (Beautify ikut).
+  - Smoke `smoke:export-prefs`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke export-prefs/export-format/beautify/cursor-prefs/background-prefs/camera*/export-camera/camera-sync/export-effects hijau.
+- **Commit:** `9747743`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; auto-highlight klik; optional ScreenCaptureKit.
+
 ## [2026-07-10 21:00] Export format picker — MP4 / WebM / GIF
 
 - **Dikerjakan:**
