@@ -61,3 +61,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Satu active ffmpeg child di main; progress di-parse dari stderr (`Duration:` + `out_time_ms` via `-progress pipe:2`) lalu di-broadcast `export:progress` ke semua window. Cancel = `export:cancel` → SIGTERM; invoke `export:webm-to-mp4` melempar `EXPORT_CANCELLED` (dengan `cause`). Parser murni di `electron/ffmpeg/progress.ts` untuk smoke tanpa Electron.
 - **Alasan:** UI tetap responsif; % best-effort cukup untuk MVP; cancel mencegah encode panjang tanpa kill orphan process.
 - **Status:** aktif
+
+## [2026-07-10] Save As setelah export
+
+- **Keputusan:** Setelah ffmpeg sukses, renderer memanggil `export:save`. Main menampilkan `dialog.showSaveDialog` dengan default `app.getPath('documents')/Screen Flow/ScreenFlow-YYYYMMDD-HHMMSS.mp4`, lalu `copyFile` dari temp MP4. Source temp tetap di-guard `assertUnderScreenFlowTemp`; destinasi user boleh di luar temp (hanya validasi absolut + `.mp4`). `destinationPath` opsional untuk smoke/automation tanpa GUI. Cancel dialog = temp MP4 tetap (summary memberitahu path temp).
+- **Alasan:** User mendapat file permanen di Documents tanpa path traversal ke temp via IPC; dialog di main (bukan renderer); CI tetap bisa uji naming/copy tanpa Electron dialog.
+- **Status:** aktif

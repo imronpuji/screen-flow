@@ -16,6 +16,8 @@ export const IPC_CHANNELS = {
   /** Main → renderer push while ffmpeg encodes. */
   EXPORT_PROGRESS: 'export:progress',
   EXPORT_CANCEL: 'export:cancel',
+  /** Copy finished temp MP4 to a user path (Save As → Documents/Screen Flow). */
+  EXPORT_SAVE: 'export:save',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -151,6 +153,33 @@ export interface CancelExportResult {
   cancelled: boolean
 }
 
+/** Move/copy a finished temp MP4 to a permanent location (Save As). */
+export interface SaveExportRequest {
+  /** Absolute path to temp export.mp4 under screen-flow temp. */
+  sourcePath: string
+  /**
+   * Optional absolute destination. When omitted, main shows a Save dialog
+   * defaulting to Documents/Screen Flow/ScreenFlow-….mp4.
+   */
+  destinationPath?: string
+  /** Suggested file name for the dialog (basename only). */
+  defaultFileName?: string
+  /** Delete the temp MP4 (and empty session dir) after a successful copy. Default true. */
+  cleanupSource?: boolean
+}
+
+export type SaveExportResult =
+  | {
+      ok: true
+      cancelled: false
+      outputPath: string
+      bytesWritten: number
+    }
+  | {
+      ok: true
+      cancelled: true
+    }
+
 export interface ScreenFlowApi {
   getAppInfo: () => Promise<AppInfo>
   getPlatform: () => Promise<AppInfo['platform']>
@@ -164,6 +193,7 @@ export interface ScreenFlowApi {
   /** Subscribe to encode progress; returns unsubscribe. */
   onExportProgress: (listener: (event: ExportProgressEvent) => void) => () => void
   cancelExport: () => Promise<CancelExportResult>
+  saveExport: (request: SaveExportRequest) => Promise<SaveExportResult>
 }
 
 declare global {
