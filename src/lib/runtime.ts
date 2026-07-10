@@ -10,6 +10,8 @@ import type {
   ListSourcesRequest,
   PermissionStatus,
   RecordingStatus,
+  SaveExportRequest,
+  SaveExportResult,
   StartRecordingRequest,
   StartRecordingResult,
   StopRecordingResult,
@@ -114,6 +116,13 @@ export async function cancelExport(): Promise<CancelExportResult> {
     throw new Error('Export cancel requires the Electron app')
   }
   return window.screenFlow.cancelExport()
+}
+
+export async function saveExport(request: SaveExportRequest): Promise<SaveExportResult> {
+  if (!window.screenFlow?.saveExport) {
+    throw new Error('Save export requires the Electron app')
+  }
+  return window.screenFlow.saveExport(request)
 }
 
 export function isElectronBridgeAvailable(): boolean {

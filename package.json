@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b && tsc -p electron/tsconfig.json --noEmit",
-    "smoke:export-progress": "node --experimental-strip-types scripts/smoke-export-progress.mts"
+    "smoke:export-progress": "node --experimental-strip-types scripts/smoke-export-progress.mts",
+    "smoke:export-save": "node --experimental-strip-types scripts/smoke-export-save.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

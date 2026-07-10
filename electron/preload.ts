@@ -12,6 +12,8 @@ import {
   type ListSourcesRequest,
   type PermissionStatus,
   type RecordingStatus,
+  type SaveExportRequest,
+  type SaveExportResult,
   type ScreenFlowApi,
   type StartRecordingRequest,
   type StartRecordingResult,
@@ -50,6 +52,8 @@ const api: ScreenFlowApi = {
   },
   cancelExport: () =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_CANCEL) as Promise<CancelExportResult>,
+  saveExport: (request: SaveExportRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_SAVE, request) as Promise<SaveExportResult>,
 }
 
 contextBridge.exposeInMainWorld('screenFlow', api)

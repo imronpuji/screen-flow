@@ -18,6 +18,7 @@ import {
   isElectronBridgeAvailable,
   isExportCancelledError,
   onExportProgress,
+  saveExport,
   startRecording,
   stopRecording,
 } from './lib/runtime'
@@ -221,9 +222,22 @@ export default function App() {
         cleanupTemp: true,
       })
       setLastWebmPath(null)
-      setLastSummary(
-        `Exported MP4 (${result.codec}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath}`,
-      )
+      setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
+
+      // Offer Save As → Documents/Screen Flow (user can cancel and keep temp path).
+      const saved = await saveExport({
+        sourcePath: result.outputPath,
+        cleanupSource: true,
+      })
+      if (saved.cancelled) {
+        setLastSummary(
+          `Exported MP4 (${result.codec}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath} (not saved to Documents)`,
+        )
+      } else {
+        setLastSummary(
+          `Saved MP4 (${result.codec}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+        )
+      }
       setExportProgress({ phase: 'done', percent: 100 })
     } catch (err) {
       if (isExportCancelledError(err)) {

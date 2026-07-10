@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 05:00] Save As → Documents after export
+
+- **Dikerjakan:** IPC `export:save` + `dialog.showSaveDialog` default `Documents/Screen Flow/ScreenFlow-….mp4`; copy temp MP4 keluar + cleanup session; path helpers murni + smoke `npm run smoke:export-save`; UI panggil Save As setelah encode sukses.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke save/progress hijau.
+- **Status:** done
+- **Next:** Cursor event capture (posisi + klik) untuk fondasi auto-zoom; atau background padding/rounded preview.
+
 ## [2026-07-10 04:55] Export progress IPC + cancel ffmpeg
 
 - **Dikerjakan:** Parse ffmpeg `-progress` / Duration → `export:progress` push ke renderer; IPC `export:cancel` (SIGTERM child); UI Cancel + % status; smoke `npm run smoke:export-progress`.

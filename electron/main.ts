@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
+import { saveExportedMp4 } from './ffmpeg/saveExport.js'
 import {
   cancelExport,
   exportWebmToMp4,
@@ -20,6 +21,7 @@ import {
   type AppInfo,
   type ExportMp4Request,
   type ListSourcesRequest,
+  type SaveExportRequest,
   type StartRecordingRequest,
 } from '../shared/ipc.js'
 
@@ -109,6 +111,22 @@ function registerIpc(): void {
   })
 
   ipcMain.handle(IPC_CHANNELS.EXPORT_CANCEL, () => cancelExport())
+
+  ipcMain.handle(IPC_CHANNELS.EXPORT_SAVE, async (_event, request: SaveExportRequest) => {
+    if (!request || typeof request.sourcePath !== 'string' || !request.sourcePath.trim()) {
+      throw new Error('Invalid save payload: sourcePath required')
+    }
+    if (request.destinationPath != null && typeof request.destinationPath !== 'string') {
+      throw new Error('Invalid save payload: destinationPath must be a string')
+    }
+    if (request.defaultFileName != null && typeof request.defaultFileName !== 'string') {
+      throw new Error('Invalid save payload: defaultFileName must be a string')
+    }
+    if (request.cleanupSource != null && typeof request.cleanupSource !== 'boolean') {
+      throw new Error('Invalid save payload: cleanupSource must be a boolean')
+    }
+    return saveExportedMp4(request)
+  })
 }
 
 function broadcastExportProgress(): void {
