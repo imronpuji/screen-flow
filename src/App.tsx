@@ -43,7 +43,9 @@ import {
   stopRecording,
 } from './lib/runtime'
 import { CameraBubble } from './components/CameraBubble'
+import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
+import { hasCompletedOnboarding } from './lib/onboarding'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
 import './App.css'
@@ -99,6 +101,7 @@ export default function App() {
   const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([])
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding())
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraCaptureRef = useRef<LiveCaptureHandle | null>(null)
@@ -546,6 +549,9 @@ export default function App() {
   return (
     <div className="shell">
       <div className="shell__atmosphere" aria-hidden="true" />
+      {showOnboarding && mode === 'setup' && !isRecording ? (
+        <OnboardingOverlay onDone={() => setShowOnboarding(false)} />
+      ) : null}
       <header className="shell__top">
         <p className="shell__brand">Screen Flow</p>
         <p className="shell__meta">

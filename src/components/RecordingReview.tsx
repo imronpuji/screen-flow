@@ -7,6 +7,11 @@ import {
   type CursorStyleId,
 } from '../../shared/cursorAppearance'
 import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
+import {
+  BEAUTIFY_PRESETS,
+  applyBeautifyPreset,
+  type BeautifyPresetId,
+} from '../../shared/beautify'
 import { BACKGROUND_PRESETS } from '../../shared/background'
 import {
   EXPORT_QUALITY_PRESETS,
@@ -111,6 +116,19 @@ export function RecordingReview({
         <div className="review__header-actions">
           <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard}>
             New recording
+          </button>
+          <button
+            type="button"
+            className="btn btn--accent"
+            disabled={exporting}
+            title="Apply Tutorial look: zoom, spotlight cursor, Aurora frame"
+            onClick={() =>
+              setEdit((prev) =>
+                applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
+              )
+            }
+          >
+            Beautify
           </button>
           <button
             type="button"
@@ -492,6 +510,35 @@ export function RecordingReview({
           </p>
 
           <div className="review__field">
+            <span className="review__label" id="beautify-label">
+              One-click beautify
+            </span>
+            <div className="review__presets" role="group" aria-labelledby="beautify-label">
+              {BEAUTIFY_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting}
+                  title={preset.hint}
+                  onClick={() =>
+                    setEdit((prev) =>
+                      applyBeautifyPreset(prev, preset.id as BeautifyPresetId, {
+                        hasCameraTrack,
+                      }),
+                    )
+                  }
+                >
+                  <span className="review__preset-label">{preset.label}</span>
+                </button>
+              ))}
+            </div>
+            <p className="review__hint">
+              Instant polished look — zoom, cursor, background, and quality in one tap.
+            </p>
+          </div>
+
+          <div className="review__field">
             <span className="review__label" id="export-quality-label">
               Export quality
             </span>
@@ -528,8 +575,8 @@ export function RecordingReview({
             <p className="review__coming-title">Coming next</p>
             <ul>
               <li>Per-click zoom points</li>
-              <li>One-click beautify preset</li>
-              <li>First-run onboarding</li>
+              <li>Keyboard shortcuts</li>
+              <li>Timeline clip markers</li>
             </ul>
           </div>
         </aside>

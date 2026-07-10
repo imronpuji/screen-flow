@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 08:05] First-run onboarding + one-click Beautify
+
+- **Dikerjakan:**
+  - `shared/beautify.ts` — preset Tutorial / Product demo / Social (zoom+cursor+bg+quality+camera layout); `applyBeautifyPreset` preserve trim.
+  - Review: tombol **Beautify** + picker 3 preset; Coming-next list di-update.
+  - `OnboardingOverlay` 3 langkah (record → polish → export) + `localStorage` flag `screen-flow:onboarding-done`.
+  - Smoke `smoke:beautify` + `smoke:onboarding`.
+- **Hasil:** `typecheck` + `build` + `lint` + smokes hijau.
+- **Commit:** (pending this push)
+- **Status:** done (polish slice 1)
+- **Next:** Keyboard shortcuts; empty-state tooltips; timeline clip markers; visual verify Retina zoom on Mac.
+
 ## [2026-07-10 07:55] Fix FaceTime camera video + auto-zoom Retina/anti-jitter
 
 - **Dikerjakan:**

@@ -26,7 +26,9 @@
     "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts",
     "smoke:camera": "node --experimental-strip-types scripts/smoke-camera.mts",
     "smoke:export-camera": "node --experimental-strip-types scripts/smoke-export-camera.mts",
-    "smoke:export-quality": "node --experimental-strip-types scripts/smoke-export-quality.mts"
+    "smoke:export-quality": "node --experimental-strip-types scripts/smoke-export-quality.mts",
+    "smoke:beautify": "node --experimental-strip-types scripts/smoke-beautify.mts",
+    "smoke:onboarding": "node --experimental-strip-types scripts/smoke-onboarding.mts"
   },
   "dependencies": {
     "react": "^19.2.6",
