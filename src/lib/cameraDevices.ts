@@ -194,3 +194,34 @@ export function streamHasLiveMic(stream: MediaStream | null | undefined): boolea
   if (!stream) return false
   return stream.getAudioTracks().some((t) => t.readyState === 'live')
 }
+
+/**
+ * Keep the preferred camera when still plugged in; otherwise fall back to the
+ * first listed device (or null when none). Pure — used by hot-plug refresh.
+ */
+export function pickCameraDeviceId(
+  devices: readonly CameraDevice[],
+  preferredId: string | null | undefined,
+): string | null {
+  const preferred = preferredId?.trim() || null
+  if (preferred && devices.some((d) => d.deviceId === preferred)) {
+    return preferred
+  }
+  return devices[0]?.deviceId ?? null
+}
+
+/** True when the selected deviceId is still in the enumerated list. */
+export function isCameraDevicePresent(
+  devices: readonly CameraDevice[],
+  deviceId: string | null | undefined,
+): boolean {
+  const id = deviceId?.trim() || null
+  if (!id) return false
+  return devices.some((d) => d.deviceId === id)
+}
+
+/**
+ * Soft status when FaceTime video ends unexpectedly (unplug / Continuity drop).
+ * Prefer this over a technical MediaStream error string.
+ */
+export const CAMERA_INACTIVE_STATUS = 'Camera inactive — device disconnected.'

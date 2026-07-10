@@ -27,8 +27,11 @@ import {
   type LiveCaptureHandle,
 } from './lib/captureStream'
 import {
+  CAMERA_INACTIVE_STATUS,
+  isCameraDevicePresent,
   listCameraDevices,
   openCameraStream,
+  pickCameraDeviceId,
   stopMediaStream,
   type CameraDevice,
 } from './lib/cameraDevices'
@@ -138,17 +141,27 @@ export default function App() {
   const captureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraCaptureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const cameraOverlayRef = useRef(cameraOverlay)
+  const isRecordingRef = useRef(false)
+  const cameraIntentionalStopRef = useRef(false)
   const cameraActiveRangesRef = useRef<CameraActiveRange[]>([])
   const recordingStartedAtRef = useRef<number | null>(null)
   const toggleRecordingRef = useRef<() => void>(() => undefined)
   const enableCameraPreviewRef = useRef<(next: CameraOverlayStyle) => Promise<void>>(
     async () => undefined,
   )
+  const refreshCameraDevicesRef = useRef<
+    (options?: { reopenIfLost?: boolean }) => Promise<void>
+  >(async () => undefined)
+  const handleCameraTrackEndedRef = useRef<() => void>(() => undefined)
 
   const inElectron = isElectronBridgeAvailable()
   const isRecording = mode === 'recording' || recording.state === 'recording'
   const canRecord =
     inElectron && !busy && mode !== 'review' && Boolean(selectedSourceId) && permission?.screen !== 'denied'
+
+  cameraOverlayRef.current = cameraOverlay
+  isRecordingRef.current = isRecording
 
   useEffect(() => {
     return onExportProgress((event) => {
@@ -216,25 +229,85 @@ export default function App() {
       captureRef.current = null
       void cameraCaptureRef.current?.stop()
       cameraCaptureRef.current = null
+      cameraIntentionalStopRef.current = true
       stopMediaStream(cameraStreamRef.current)
       cameraStreamRef.current = null
     }
   }, [])
 
-  async function refreshCameraDevices() {
+  async function refreshCameraDevices(options?: { reopenIfLost?: boolean }) {
     try {
       const devices = await listCameraDevices()
       setCameraDevices(devices)
-      setCameraOverlay((prev) => {
-        if (prev.deviceId && devices.some((d) => d.deviceId === prev.deviceId)) return prev
-        return normalizeCameraOverlay({
-          ...prev,
-          deviceId: devices[0]?.deviceId ?? null,
-        })
-      })
+      const prev = cameraOverlayRef.current
+      const nextId = pickCameraDeviceId(devices, prev.deviceId)
+      const lost =
+        Boolean(prev.deviceId) && !isCameraDevicePresent(devices, prev.deviceId)
+      if (nextId !== prev.deviceId) {
+        setCameraOverlay((cur) =>
+          normalizeCameraOverlay({
+            ...cur,
+            deviceId: nextId,
+          }),
+        )
+      }
+      // Hot-plug: if the armed camera vanished, reopen on the fallback (setup only).
+      if (
+        options?.reopenIfLost &&
+        lost &&
+        prev.enabled &&
+        !isRecordingRef.current &&
+        nextId
+      ) {
+        void enableCameraPreviewRef.current(
+          normalizeCameraOverlay({ ...prev, deviceId: nextId, enabled: true }),
+        )
+      } else if (options?.reopenIfLost && lost && prev.enabled && !nextId) {
+        cameraIntentionalStopRef.current = true
+        stopMediaStream(cameraStreamRef.current)
+        cameraStreamRef.current = null
+        setCameraStream(null)
+        setMicLive(false)
+        setMicNote(null)
+        setCameraOverlay((cur) => normalizeCameraOverlay({ ...cur, enabled: false }))
+        setCameraError(CAMERA_INACTIVE_STATUS)
+      }
     } catch (err) {
       setCameraError(err instanceof Error ? err.message : 'Failed to list cameras')
     }
+  }
+
+  /** Soft-fail when the live FaceTime track ends (unplug / Continuity drop). */
+  function handleCameraTrackEnded() {
+    if (cameraIntentionalStopRef.current) return
+    const stream = cameraStreamRef.current
+    const stillLive = stream
+      ?.getVideoTracks()
+      .some((t) => t.readyState === 'live')
+    if (stillLive) return
+
+    if (isRecordingRef.current) {
+      setCameraTracksEnabled(false)
+      const ranges = closeOpenCameraActiveRanges(
+        cameraActiveRangesRef.current,
+        wallOffsetMs(),
+      )
+      void syncCameraActiveRanges(ranges)
+      setCameraLive(false)
+      setMicLive(false)
+      setCameraError(CAMERA_INACTIVE_STATUS)
+      return
+    }
+
+    cameraIntentionalStopRef.current = true
+    stopMediaStream(cameraStreamRef.current)
+    cameraStreamRef.current = null
+    setCameraStream(null)
+    setMicLive(false)
+    setMicNote(null)
+    setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: false }))
+    setCameraError(CAMERA_INACTIVE_STATUS)
+    void refreshCameraDevices()
   }
 
   async function enableCameraPreview(next: CameraOverlayStyle) {
@@ -258,11 +331,14 @@ export default function App() {
           'Camera opened but no live video track. Check System Settings → Privacy & Security → Camera.',
         )
       }
+      cameraIntentionalStopRef.current = true
       stopMediaStream(cameraStreamRef.current)
       cameraStreamRef.current = opened.stream
+      cameraIntentionalStopRef.current = false
       setCameraStream(opened.stream)
       setMicLive(opened.micActive)
       setMicNote(opened.micNote)
+      setCameraError(null)
       await refreshCameraDevices()
       setCameraOverlay(
         normalizeCameraOverlay({
@@ -272,6 +348,7 @@ export default function App() {
         }),
       )
     } catch (err) {
+      cameraIntentionalStopRef.current = true
       stopMediaStream(cameraStreamRef.current)
       cameraStreamRef.current = null
       setCameraStream(null)
@@ -286,6 +363,14 @@ export default function App() {
     enableCameraPreviewRef.current = enableCameraPreview
   })
 
+  useEffect(() => {
+    refreshCameraDevicesRef.current = refreshCameraDevices
+  })
+
+  useEffect(() => {
+    handleCameraTrackEndedRef.current = handleCameraTrackEnded
+  })
+
   // Returning users who left the camera armed: reopen preview after prefs load.
   useEffect(() => {
     const prefs = loadCameraPrefs()
@@ -296,6 +381,7 @@ export default function App() {
   function disableCameraPreview() {
     void cameraCaptureRef.current?.stop()
     cameraCaptureRef.current = null
+    cameraIntentionalStopRef.current = true
     stopMediaStream(cameraStreamRef.current)
     cameraStreamRef.current = null
     setCameraStream(null)
@@ -592,6 +678,36 @@ export default function App() {
       void onToggleRecording()
     }
   })
+
+  // Hot-plug Continuity / USB cameras — refresh labels + fall back if selected device vanishes.
+  useEffect(() => {
+    const media = navigator.mediaDevices
+    if (!media?.addEventListener) return
+    const onDeviceChange = () => {
+      void refreshCameraDevicesRef.current({ reopenIfLost: true })
+    }
+    media.addEventListener('devicechange', onDeviceChange)
+    return () => {
+      media.removeEventListener('devicechange', onDeviceChange)
+    }
+  }, [])
+
+  // Soft-fail when FaceTime video track ends (unplug mid-preview or mid-recording).
+  useEffect(() => {
+    if (!cameraStream) return
+    const tracks = cameraStream.getVideoTracks()
+    const onEnded = () => {
+      handleCameraTrackEndedRef.current()
+    }
+    for (const track of tracks) {
+      track.addEventListener('ended', onEnded)
+    }
+    return () => {
+      for (const track of tracks) {
+        track.removeEventListener('ended', onEnded)
+      }
+    }
+  }, [cameraStream])
 
   // Setup / recording shortcuts (review has its own handlers).
   useEffect(() => {
