@@ -100,7 +100,7 @@ export function buildCursorSendCmd(
   const duration = Math.max(sampleMs, durationMs)
 
   const keyframes = buildCursorKeyframes(events)
-  const rings = buildClickRings(events, videoSize)
+  const rings = buildClickRings(events, videoSize, options)
   if (keyframes.length === 0 && rings.length === 0) return ''
 
   const { width: frameW, height: frameH } = videoSize

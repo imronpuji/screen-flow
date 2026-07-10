@@ -21,12 +21,15 @@ import {
   type CameraShape,
 } from '../../shared/camera'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
+import type { CaptureGeometry } from '../../shared/cursorCoords'
 
 export interface RecordingReviewProps {
   mediaUrl: string
   webmPath: string
   cursorEvents: CursorEvent[]
   cursorEventsPath: string | null
+  /** Display DIP geometry for precise auto-zoom / cursor overlay. */
+  captureGeometry?: CaptureGeometry | null
   /** Recorded camera.webm playback URL (null if no camera track). */
   cameraMediaUrl?: string | null
   /** Layout captured at record time; editable in review before export. */
@@ -51,6 +54,7 @@ function formatBytes(bytes: number): string {
 export function RecordingReview({
   mediaUrl,
   cursorEvents,
+  captureGeometry = null,
   cameraMediaUrl = null,
   initialCameraOverlay = DEFAULT_CAMERA_OVERLAY,
   durationMs: recordedDurationMs,
@@ -137,6 +141,7 @@ export function RecordingReview({
           <AutoZoomPlayback
             mediaUrl={mediaUrl}
             cursorEvents={cursorEvents}
+            captureGeometry={captureGeometry}
             autoZoomEnabled={edit.autoZoomEnabled}
             cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
             cursorAppearance={edit.cursorAppearance}

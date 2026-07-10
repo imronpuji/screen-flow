@@ -15,7 +15,7 @@
 ## Signature (Screen Studio-like)
 
 - [x] Cursor event capture (posisi + klik) — JSONL per session via uIOhook + poll fallback
-- [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake
+- [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight — preview + export bake
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask)
 - [ ] Timeline editor
@@ -24,7 +24,7 @@
 
 - [ ] Preset background
 - [ ] Export GIF / WebM
-- [x] Webcam overlay — enumerate + live bubble + parallel camera.webm + review playback + ffmpeg export bake
+- [x] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake
 - [ ] Auto-highlight klik
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

@@ -886,6 +886,20 @@
   transform: none;
 }
 
+.camera-bubble__waiting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.65rem;
+  letter-spacing: 0.02em;
+  color: rgba(232, 238, 244, 0.72);
+  background: rgba(10, 14, 18, 0.55);
+  pointer-events: none;
+}
+
 @keyframes camera-pop {
   from {
     opacity: 0;

@@ -10,6 +10,11 @@
 import { app } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import { resolveCaptureGeometry } from '../capture/geometry.js'
+import {
+  CAPTURE_GEOMETRY_FILENAME,
+  type CaptureGeometry,
+} from '../../shared/cursorCoords.js'
 import type {
   AppendChunkRequest,
   AppendChunkResult,
@@ -34,6 +39,7 @@ const idleStatus = (): RecordingStatus => ({
   cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
+  captureGeometryPath: null,
 })
 
 let status: RecordingStatus = idleStatus()
@@ -42,6 +48,12 @@ let cameraWriteStream: fs.WriteStream | null = null
 /** Serialize chunk writes so IPC handlers don't interleave on the same stream. */
 let writeQueue: Promise<void> = Promise.resolve()
 let cameraWriteQueue: Promise<void> = Promise.resolve()
+
+function writeCaptureGeometry(sessionDir: string, geometry: CaptureGeometry): string {
+  const geometryPath = path.join(sessionDir, CAPTURE_GEOMETRY_FILENAME)
+  fs.writeFileSync(geometryPath, JSON.stringify(geometry, null, 2), 'utf8')
+  return geometryPath
+}
 
 function assertRecording(): void {
   if (status.state !== 'recording' || !status.outputPath || !writeStream) {
@@ -83,7 +95,9 @@ export function getRecordingStatus(): RecordingStatus {
   return { ...status }
 }
 
-export function startRecording(request: StartRecordingRequest): StartRecordingResult {
+export async function startRecording(
+  request: StartRecordingRequest,
+): Promise<StartRecordingResult> {
   const sourceId = request.sourceId?.trim()
   if (!sourceId) {
     throw new Error('sourceId is required to start recording')
@@ -111,6 +125,10 @@ export function startRecording(request: StartRecordingRequest): StartRecordingRe
     cameraWriteQueue = Promise.resolve()
   }
 
+  // Persist display DIP bounds + scaleFactor so auto-zoom/cursor map Retina correctly.
+  const geometry = await resolveCaptureGeometry(sourceId)
+  const captureGeometryPath = writeCaptureGeometry(sessionDir, geometry)
+
   const startedAt = Date.now()
   const cursorSampler = startCursorSampler({ sessionDir, startedAt })
 
@@ -127,6 +145,7 @@ export function startRecording(request: StartRecordingRequest): StartRecordingRe
     cameraChunkCount: 0,
     cursorEventsPath: cursorSampler.eventsPath,
     cursorEventCount: 0,
+    captureGeometryPath,
   }
 
   return { ok: true, status: getRecordingStatus() }
@@ -212,6 +231,7 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   const cameraOutputPath = status.cameraOutputPath
   const cameraBytesWritten = status.cameraBytesWritten
   const cameraChunkCount = status.cameraChunkCount
+  const captureGeometryPath = status.captureGeometryPath
 
   const cursorStats = await stopCursorSampler()
 
@@ -240,6 +260,7 @@ export async function stopRecording(): Promise<StopRecordingResult> {
     cameraChunkCount,
     cursorEventsPath: cursorStats.eventsPath,
     cursorEventCount: cursorStats.eventCount,
+    captureGeometryPath,
   }
 }
 

@@ -24,11 +24,14 @@ import {
   DEFAULT_CAMERA_OVERLAY,
   type CameraOverlayStyle,
 } from '../../shared/camera'
+import type { CaptureGeometry } from '../../shared/cursorCoords'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
   mediaUrl: string
   cursorEvents: CursorEvent[]
+  /** Display DIP geometry for Retina/multi-monitor cursor→frame mapping. */
+  captureGeometry?: CaptureGeometry | null
   autoZoomEnabled?: boolean
   cursorSmoothingEnabled?: boolean
   cursorAppearance?: CursorAppearance
@@ -45,6 +48,7 @@ export interface AutoZoomPlaybackProps {
 export function AutoZoomPlayback({
   mediaUrl,
   cursorEvents,
+  captureGeometry = null,
   autoZoomEnabled = true,
   cursorSmoothingEnabled = true,
   cursorAppearance = DEFAULT_CURSOR_APPEARANCE,
@@ -75,8 +79,13 @@ export function AutoZoomPlayback({
   const showCursor = cursorSmoothingEnabled && cursorDraw.visible
 
   const segments = useMemo(
-    () => (autoZoomEnabled ? buildZoomSegments(cursorEvents, videoSize) : []),
-    [autoZoomEnabled, cursorEvents, videoSize],
+    () =>
+      autoZoomEnabled
+        ? buildZoomSegments(cursorEvents, videoSize, {
+            ...(captureGeometry ? { geometry: captureGeometry } : {}),
+          })
+        : [],
+    [autoZoomEnabled, captureGeometry, cursorEvents, videoSize],
   )
 
   const cursorKeyframes = useMemo(
@@ -84,9 +93,14 @@ export function AutoZoomPlayback({
     [cursorEvents],
   )
 
+  const cursorGeoOpts = useMemo(
+    () => (captureGeometry ? { geometry: captureGeometry } : {}),
+    [captureGeometry],
+  )
+
   const clickRingTriggers = useMemo(
-    () => buildClickRings(cursorEvents, videoSize),
-    [cursorEvents, videoSize],
+    () => buildClickRings(cursorEvents, videoSize, cursorGeoOpts),
+    [cursorEvents, cursorGeoOpts, videoSize],
   )
 
   const clickCount = cursorEvents.filter((e) => e.kind === 'click' || e.kind === 'down').length
@@ -98,10 +112,10 @@ export function AutoZoomPlayback({
         setClickRings([])
         return
       }
-      setCursorPos(getSmoothedCursorAtTime(tMs, cursorKeyframes, videoSize))
+      setCursorPos(getSmoothedCursorAtTime(tMs, cursorKeyframes, videoSize, cursorGeoOpts))
       setClickRings(getActiveClickRings(tMs, clickRingTriggers))
     },
-    [clickRingTriggers, cursorKeyframes, showCursor, videoSize],
+    [clickRingTriggers, cursorGeoOpts, cursorKeyframes, showCursor, videoSize],
   )
 
   useEffect(() => {
@@ -220,6 +234,7 @@ export function AutoZoomPlayback({
     <CameraBubble
       mediaUrl={cameraMediaUrl}
       currentTimeSec={currentMs / 1000}
+      playing={playing}
       mirrored={false}
       style={cameraOverlay}
       label="Camera overlay"

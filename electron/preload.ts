@@ -22,6 +22,7 @@ import {
   type StartRecordingRequest,
   type StartRecordingResult,
   type StopRecordingResult,
+  type CameraAccessResult,
 } from '../shared/ipc.js'
 
 const api: ScreenFlowApi = {
@@ -30,6 +31,8 @@ const api: ScreenFlowApi = {
     ipcRenderer.invoke(IPC_CHANNELS.APP_GET_PLATFORM) as Promise<AppInfo['platform']>,
   getPermissionStatus: () =>
     ipcRenderer.invoke(IPC_CHANNELS.PERMISSION_GET_STATUS) as Promise<PermissionStatus>,
+  requestCameraAccess: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.PERMISSION_REQUEST_CAMERA) as Promise<CameraAccessResult>,
   listSources: (request?: ListSourcesRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.SOURCES_LIST, request) as Promise<CaptureSource[]>,
   startRecording: (request: StartRecordingRequest) =>

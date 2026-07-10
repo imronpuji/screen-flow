@@ -4,6 +4,10 @@
  */
 
 import type { CursorEvent } from './cursor.js'
+import {
+  mapScreenToNormalized,
+  type CaptureGeometry,
+} from './cursorCoords.js'
 
 export interface VideoSize {
   width: number
@@ -16,6 +20,22 @@ export interface AutoZoomOptions {
   zoomInMs?: number
   holdMs?: number
   zoomOutMs?: number
+  /**
+   * Clicks closer than this (ms) merge into one segment (latest focus wins).
+   * Prevents jittery zoom-hopping from double-clicks / rapid UI taps.
+   */
+  mergeWindowMs?: number
+  /**
+   * When true, a click during zoom-in/hold retargets that segment's focus
+   * instead of queueing another zoom after it ends.
+   */
+  retargetActive?: boolean
+  /**
+   * Captured display geometry (DIP). When set, focus uses screen→frame mapping
+   * (Retina / multi-monitor). When omitted, assumes cursor x/y are already
+   * video pixels (legacy / remapped events).
+   */
+  geometry?: CaptureGeometry
 }
 
 export interface ZoomSegment {
@@ -35,11 +55,16 @@ export interface ZoomTransform {
   focusY: number
 }
 
-const DEFAULT_OPTIONS: Required<AutoZoomOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<AutoZoomOptions, 'geometry'>> & {
+  geometry?: CaptureGeometry
+} = {
   peakScale: 1.6,
   zoomInMs: 400,
   holdMs: 800,
   zoomOutMs: 500,
+  mergeWindowMs: 320,
+  retargetActive: true,
+  geometry: undefined,
 }
 
 export function parseCursorJsonl(text: string): CursorEvent[] {
@@ -71,7 +96,11 @@ function normalizeFocus(
   x: number,
   y: number,
   videoSize: VideoSize,
+  geometry?: CaptureGeometry,
 ): { focusX: number; focusY: number } {
+  if (geometry) {
+    return mapScreenToNormalized(x, y, geometry)
+  }
   const w = Math.max(1, videoSize.width)
   const h = Math.max(1, videoSize.height)
   return {
@@ -89,9 +118,29 @@ function isZoomTrigger(event: CursorEvent): boolean {
   return false
 }
 
+function makeSegment(
+  startMs: number,
+  focusX: number,
+  focusY: number,
+  opts: Required<Omit<AutoZoomOptions, 'geometry'>>,
+): ZoomSegment {
+  const peakMs = startMs + opts.zoomInMs
+  const holdEndMs = peakMs + opts.holdMs
+  const endMs = holdEndMs + opts.zoomOutMs
+  return {
+    startMs,
+    peakMs,
+    holdEndMs,
+    endMs,
+    focusX,
+    focusY,
+    peakScale: opts.peakScale,
+  }
+}
+
 /**
  * Build non-overlapping zoom segments from click/down events.
- * Segments that would overlap are shifted to start after the previous ends.
+ * Rapid clicks merge / retarget (anti-jitter). Overlapping leftovers shift after previous end.
  */
 export function buildZoomSegments(
   events: CursorEvent[],
@@ -101,25 +150,43 @@ export function buildZoomSegments(
   const opts = { ...DEFAULT_OPTIONS, ...options }
   const triggers = events.filter(isZoomTrigger).sort((a, b) => a.t - b.t)
   const segments: ZoomSegment[] = []
-  let cursorEnd = 0
+  let lastTriggerT = -Infinity
 
   for (const event of triggers) {
-    const startMs = Math.max(event.t, cursorEnd)
-    const peakMs = startMs + opts.zoomInMs
-    const holdEndMs = peakMs + opts.holdMs
-    const endMs = holdEndMs + opts.zoomOutMs
-    const { focusX, focusY } = normalizeFocus(event.x, event.y, videoSize)
+    const { focusX, focusY } = normalizeFocus(
+      event.x,
+      event.y,
+      videoSize,
+      opts.geometry,
+    )
 
-    segments.push({
-      startMs,
-      peakMs,
-      holdEndMs,
-      endMs,
-      focusX,
-      focusY,
-      peakScale: opts.peakScale,
-    })
-    cursorEnd = endMs
+    // Anti-jitter: merge into previous segment when clicks are too close in time.
+    if (segments.length > 0 && event.t - lastTriggerT < opts.mergeWindowMs) {
+      const prev = segments[segments.length - 1]!
+      prev.focusX = focusX
+      prev.focusY = focusY
+      lastTriggerT = event.t
+      continue
+    }
+
+    // Retarget active zoom-in/hold instead of queueing a delayed hop.
+    if (opts.retargetActive && segments.length > 0) {
+      const active = segments[segments.length - 1]!
+      if (event.t >= active.startMs && event.t < active.holdEndMs) {
+        active.focusX = focusX
+        active.focusY = focusY
+        lastTriggerT = event.t
+        continue
+      }
+    }
+
+    const startMs =
+      segments.length > 0
+        ? Math.max(event.t, segments[segments.length - 1]!.endMs)
+        : event.t
+
+    segments.push(makeSegment(startMs, focusX, focusY, opts))
+    lastTriggerT = event.t
   }
 
   return segments

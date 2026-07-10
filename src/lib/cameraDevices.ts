@@ -71,9 +71,16 @@ export async function openCameraStream(deviceId: string | null): Promise<MediaSt
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Camera is not supported in this environment')
   }
+
+  // Ideal constraints help FaceTime HD pick a real camera resolution (not 0×0).
+  const baseVideo: MediaTrackConstraints = {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 30 },
+  }
   const video: MediaTrackConstraints = deviceId
-    ? { deviceId: { exact: deviceId } }
-    : { facingMode: 'user' }
+    ? { ...baseVideo, deviceId: { exact: deviceId } }
+    : { ...baseVideo, facingMode: 'user' }
 
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: false, video })
@@ -83,7 +90,7 @@ export async function openCameraStream(deviceId: string | null): Promise<MediaSt
       try {
         return await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { facingMode: 'user' },
+          video: { ...baseVideo, facingMode: 'user' },
         })
       } catch (retryErr) {
         const message =

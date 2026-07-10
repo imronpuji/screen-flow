@@ -158,6 +158,28 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** FOKUS 2 — cursor harus bisa dimodifikasi tanpa re-record; data JSONL tetap mentah; preview ↔ export konsisten lewat shared helpers.
 - **Status:** aktif (MVP); custom cursor image themes later
 
+## [2026-07-10] Cursor screen→frame mapping (Retina / multi-monitor)
+
+- **Keputusan:** Cursor JSONL tetap menyimpan koordinat **screen DIP** (uIOhook / `getCursorScreenPoint`). Per session, main menulis `capture-geometry.json` (`originX/Y`, `widthDip/heightDip`, `scaleFactor`) dari Electron `Display` yang match source. Focus dinormalisasi:
+  - `focusX = clamp((screenX - originX) / widthDip)`
+  - `focusY = clamp((screenY - originY) / heightDip)`
+  - pixel frame = `focus * videoSize` (bukan `screenX / videoWidth` yang meleset ×scaleFactor di Retina).
+  Geometry di-pass ke auto-zoom + cursor smoothing (preview & export). Legacy session tanpa geometry = asumsi x/y sudah video pixels.
+- **Alasan:** FOKUS 1 — zoom/cursor harus tepat di titik klik; bug klasik Retina = bagi DIP dengan lebar fisik.
+- **Status:** aktif
+
+## [2026-07-10] Auto-zoom anti-jitter (merge + retarget)
+
+- **Keputusan:** `buildZoomSegments` default `mergeWindowMs=320` (klik berdekatan → satu segment, focus terakhir menang) dan `retargetActive=true` (klik saat zoom-in/hold menggeser focus segment aktif, bukan mengantri zoom baru). Easing tetap cubic-in-out tanpa overshoot (clamp 0–1).
+- **Alasan:** Klik cepat / double-click bikin zoom loncat-loncat; merge+retarget lebih Screen Studio–like.
+- **Status:** aktif
+
+## [2026-07-10] Camera media permission (Electron + macOS TCC)
+
+- **Keputusan:** Saat app ready, `session.setPermissionRequestHandler` / `setPermissionCheckHandler` mengizinkan `media` + `display-capture`. Sebelum getUserMedia, renderer memanggil IPC `permission:request-camera` → `systemPreferences.askForMediaAccess('camera')`. `CameraBubble` recorded ikut `playing` play/pause (WebM MediaRecorder seek buruk); live memastikan track enabled + play setelah metadata.
+- **Alasan:** Bubble hitam tanpa feed — Chromium menolak media tanpa handler; macOS butuh TCC Camera terpisah dari Screen Recording; review bubble tanpa play() = frame kosong.
+- **Status:** aktif
+
 ## [2026-07-10] Export quality presets (Draft / Good / High)
 
 - **Keputusan:** Tiga preset di `shared/exportQuality.ts`: **Draft** (VT 4M / x264 CRF 28 ultrafast), **Good** default (VT 8M / CRF 20 veryfast), **High** (VT 16M / CRF 18 medium). IPC `ExportMp4Request.quality`; VideoToolbox fallback ke libx264 memakai CRF/preset yang sama. UI picker di review sebelum Export MP4.

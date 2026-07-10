@@ -1,6 +1,16 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 07:55] Fix FaceTime camera video + auto-zoom Retina/anti-jitter
+
+- **Dikerjakan:**
+  - **Kamera:** Electron `setPermissionRequestHandler` + macOS `askForMediaAccess('camera')` IPC; `CameraBubble` play/pause sync di review + live play kick; waiting state; ideal 720p constraints; cek live video track.
+  - **FOKUS 1:** `shared/cursorCoords.ts` (DIP→frame); session tulis `capture-geometry.json`; anti-jitter merge/retarget di `buildZoomSegments`; preview+export pakai geometry.
+- **Hasil:** `typecheck` + `build` + `lint` + smokes (autozoom/camera/cursor/export-*) hijau.
+- **Commit:** (pending this run)
+- **Status:** done
+- **Next:** First-run onboarding / polish UX; one-click beautify; visual verify auto-zoom on Retina Mac.
+
 ## [2026-07-10 07:50] Export quality presets (Draft / Good / High)
 
 - **Dikerjakan:** `shared/exportQuality.ts` (draft|good|high → VideoToolbox bitrate 4M/8M/16M + libx264 CRF/preset); IPC `ExportMp4Request.quality` + result; `transcode.pickVideoEncoder` + VT→x264 fallback ikut quality; `ReviewEditState.exportQuality` + picker di review; smoke `smoke:export-quality`.
