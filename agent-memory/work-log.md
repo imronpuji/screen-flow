@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 10:05] Persist FaceTime camera overlay prefs (FOKUS 3A/B)
+
+- **Dikerjakan:**
+  - `shared/cameraPrefs.ts` — load/save/clear `CameraOverlayStyle` via `localStorage` key `screen-flow:camera-overlay` (normalize on read/write).
+  - App: hydrate from prefs; persist on change; reopen live preview when saved `enabled`.
+  - Review: `onCameraOverlayChange` syncs layout edits back to setup (keeps setup `enabled` if clip has no camera track).
+  - Smoke `smoke:camera-prefs`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-prefs/camera/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** `d01adea` (feature) / `68d9aa4` (shared path + memory)
+- **Status:** done (FOKUS 3 — prefs survive relaunch; review polish carries to next record)
+- **Next:** Visual verify on Mac; optional free aspect unlock for rectangle/rounded; multi-segment only if MediaRecorder restart required.
+
 ## [2026-07-10 10:00] Camera mic on same A/V track (FOKUS 3A)
 
 - **Dikerjakan:**

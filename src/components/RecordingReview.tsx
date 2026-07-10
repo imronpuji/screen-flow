@@ -60,6 +60,8 @@ export interface RecordingReviewProps {
   cameraSync?: CameraSyncMeta | null
   /** Layout captured at record time; editable in review before export. */
   initialCameraOverlay?: CameraOverlayStyle
+  /** Sync layout edits back to setup so the next recording keeps the polish. */
+  onCameraOverlayChange?: (style: CameraOverlayStyle) => void
   durationMs: number
   bytesWritten: number
   chunkCount: number
@@ -84,6 +86,7 @@ export function RecordingReview({
   cameraMediaUrl = null,
   cameraSync = null,
   initialCameraOverlay = DEFAULT_CAMERA_OVERLAY,
+  onCameraOverlayChange,
   durationMs: recordedDurationMs,
   bytesWritten,
   chunkCount,
@@ -105,6 +108,7 @@ export function RecordingReview({
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
+  const onCameraOverlayChangeRef = useRef(onCameraOverlayChange)
 
   const zoomSegments = useMemo(
     () =>
@@ -126,6 +130,19 @@ export function RecordingReview({
   useEffect(() => {
     editRef.current = edit
   }, [edit])
+
+  useEffect(() => {
+    onCameraOverlayChangeRef.current = onCameraOverlayChange
+  }, [onCameraOverlayChange])
+
+  // Keep setup FaceTime prefs in sync with review layout (preview ≡ next record).
+  // If this clip has no camera track, preserve the setup "enabled" flag from record time.
+  useEffect(() => {
+    const forSetup = hasCameraTrack
+      ? edit.cameraOverlay
+      : { ...edit.cameraOverlay, enabled: initialCameraOverlay.enabled }
+    onCameraOverlayChangeRef.current?.(normalizeCameraOverlay(forSetup))
+  }, [edit.cameraOverlay, hasCameraTrack, initialCameraOverlay.enabled])
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

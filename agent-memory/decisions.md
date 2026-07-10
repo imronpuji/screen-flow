@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Persist FaceTime camera overlay prefs
+
+- **Keputusan:** Seluruh `CameraOverlayStyle` (device, layout x/y/size/anchor/shape, chrome, mirror, opacity, mic, enabled) disimpan di renderer `localStorage` (`screen-flow:camera-overlay`) lewat `shared/cameraPrefs.ts` + `normalizeCameraOverlay`. App hydrate on launch; save on every change; bila `enabled` tersimpan, reopen live preview sekali. Review memanggil `onCameraOverlayChange` supaya edit layout ikut ke setup berikutnya; kalau clip tanpa camera track, flag `enabled` setup **tidak** ditimpa `false`.
+- **Alasan:** FOKUS 3 — orang awam tidak mau set ulang FaceTime tiap buka app; polish di review harus jadi default rekaman berikutnya (preview ≡ next record).
+- **Status:** aktif
+
 ## [2026-07-10] Camera mic on same MediaRecorder track (FOKUS 3A)
 
 - **Keputusan:** Microphone direkam **bersama** FaceTime video dalam satu `camera.webm` (satu MediaRecorder, codecs `vp8/vp9,opus` bila ada audio). `CameraOverlayStyle.micEnabled` (default **true**); getUserMedia `{ audio, video }` dengan fallback video-only jika mic ditolak. Preview bubble tetap `muted` (anti feedback). Mid-recording mute: `track.enabled=false` pada **semua** track (A+V). Export: `probeHasAudioStream(camera.webm)` → `-map` AAC; start lag memakai `cameraMicAudioFilter` (`adelay` / `atrim`) sama dengan offset video — **tanpa** atempo (voice tetap natural meski video di-setpts stretch).
