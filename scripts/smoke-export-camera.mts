@@ -72,7 +72,13 @@ function testCameraPlan(): void {
     1,
   )
   assert(faded.opacityApplied === true, 'opacity applied')
-  assert(faded.filterComplex.includes('a=153') || faded.filterComplex.includes("a='"), 'faded alpha')
+  // Opacity bakes into the mask: masked shapes carry it as the luma value
+  // (geq=lum='…,153,0'); rectangle uses colorchannelmixer aa=. alphamerge reads
+  // the mask LUMA, so the mask must be grayscale (not rgba alpha).
+  assert(
+    faded.filterComplex.includes('153') || faded.filterComplex.includes('aa='),
+    'faded alpha',
+  )
 
   const off = planCameraExport(
     { ...style, enabled: false },

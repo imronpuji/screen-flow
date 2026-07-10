@@ -657,7 +657,10 @@
 .shell--review {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  /* Pin to the viewport so the inner flex/grid chain is height-bounded — otherwise
+     a tall editor panel grows the page downward instead of scrolling internally. */
+  height: 100vh;
+  overflow: hidden;
 }
 
 .shell__review-stage {

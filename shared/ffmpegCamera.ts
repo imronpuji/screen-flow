@@ -239,9 +239,11 @@ export function planCameraExport(
       lines.push(
         `color=c=${borderColor}:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba[${plateRaw}]`,
       )
+      // alphamerge reads the mask's LUMA (not its alpha channel), so the mask
+      // must be a grayscale still: white (255) inside the shape, black outside.
       lines.push(
-        `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
-          `geq=r=0:g=0:b=0:a='${plateAlpha}'[${maskStill}]`,
+        `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=gray,` +
+          `geq=lum='${plateAlpha}'[${maskStill}]`,
       )
       lines.push(`[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`)
       lines.push(`[${plateRaw}][${maskLoop}]alphamerge[${plateMasked}]`)
@@ -280,9 +282,13 @@ export function planCameraExport(
         : roundedBubbleAlphaExpr(innerW, plateOpaque)
 
     lines.push(`${camScaled},format=rgba[${camRaw}]`)
+    // alphamerge reads the mask's LUMA (not its alpha channel), so the mask must
+    // be a grayscale still: white (255) inside the shape, black (0) outside.
+    // Building it as color=black + geq alpha left luma at 0 → camera fully
+    // transparent (the bubble showed empty/black in exports).
     lines.push(
-      `color=c=black:s=${innerW}x${innerH}:r=1:d=1,format=rgba,` +
-        `geq=r=0:g=0:b=0:a='${alphaExpr}'[${maskStill}]`,
+      `color=c=black:s=${innerW}x${innerH}:r=1:d=1,format=gray,` +
+        `geq=lum='${alphaExpr}'[${maskStill}]`,
     )
     lines.push(`[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`)
     lines.push(`[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`)
