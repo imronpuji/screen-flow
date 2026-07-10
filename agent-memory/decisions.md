@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Background frame layout presets
+
+- **Keputusan:** Framing kartu video punya preset cepat terpisah dari warna gradient: `BACKGROUND_FRAME_LAYOUTS` = **Compact** (pad 6% / r 10 / shadow), **Standard** (10 / 14 / shadow — default), **Wide** (16 / 20 / shadow), **Flat** (8 / 0 / no shadow). `applyBackgroundFrameLayout` hanya mengubah padding/radius/shadow; `presetId` warna tetap. `matchBackgroundFrameLayout` exact-match untuk highlight tombol. Review menambah slider corner radius (0–28 UI; clamp normalize 0–32). Preview CSS + ffmpeg `planBackgroundExport` tetap satu sumber `BackgroundStyle`.
+- **Alasan:** Color swatches saja terasa setengah jadi; orang awam butuh framing Screen Studio tanpa geser dua slider; Flat = opsi “tanpa kartu mengambang”.
+- **Status:** aktif
+
 ## [2026-07-10] Zoom focus nudge (preview ≡ export)
 
 - **Keputusan:** User bisa menggeser fokus zoom lewat pad ↑←→↓ di tiap zoom point (click override + manual). Step default **2%** frame (`ZOOM_FOCUS_NUDGE_STEP`); Shift = **8%** (`ZOOM_FOCUS_NUDGE_STEP_SHIFT`). Click zooms menyimpan fokus di `ZoomPointOverride.focusX/Y` (opsional; omit = fokus-derived). Manual zooms mengedit `ManualZoomPoint.focusX/Y` langsung. `applyZoomPointOverrides` + `planAutoZoomExport` memakai fokus yang sama → preview≡export.

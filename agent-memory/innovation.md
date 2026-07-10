@@ -17,12 +17,12 @@
 - [x] Cursor event capture (posisi + klik) — JSONL per session via uIOhook + poll fallback
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight — preview + export bake
-- [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask)
-- [~] Timeline editor — clip markers (zoom spans + click ticks + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge**; background presets still open
+- [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask) + **frame layout presets (Compact/Standard/Wide/Flat)**
+- [~] Timeline editor — clip markers (zoom spans + click ticks + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge**; background frame layouts done
 
 ## Nanti
 
-- [ ] Preset background
+- [x] Preset background — color swatches + **frame layout presets** (Compact/Standard/Wide/Flat) + corner radius slider
 - [ ] Export GIF / WebM
 - [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + free drag/snap + **mid-edge magnetic snap + 8 position presets** + corner resize + circle/rounded/rectangle shapes + border/shadow bake + outline color picker + mirror + opacity + A/V drift compensation + mid-recording mute/unmute (activeRanges) + **mic on same camera MediaRecorder (export AAC)** + **persist prefs + review→setup sync** + **free aspect unlock (rectangle/rounded)** + **arrow-key nudge** + **size nudge (+/-) + S/M/L + keys 1/2/3 + layout reset (0/dblclick)** + **`[`/`]` snap cycle + `C` shape cycle**; visual verify on Mac still open
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
