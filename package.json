@@ -33,6 +33,7 @@
     "smoke:export-camera": "node --experimental-strip-types scripts/smoke-export-camera.mts",
     "smoke:export-quality": "node --experimental-strip-types scripts/smoke-export-quality.mts",
     "smoke:export-format": "node --experimental-strip-types scripts/smoke-export-format.mts",
+    "smoke:export-prefs": "node --experimental-strip-types scripts/smoke-export-prefs.mts",
     "smoke:beautify": "node --experimental-strip-types scripts/smoke-beautify.mts",
     "smoke:onboarding": "node --experimental-strip-types scripts/smoke-onboarding.mts",
     "smoke:shortcuts": "node --experimental-strip-types scripts/smoke-shortcuts.mts",

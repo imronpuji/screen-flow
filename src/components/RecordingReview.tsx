@@ -20,6 +20,7 @@ import {
 } from '../../shared/background'
 import { loadBackgroundPrefs, saveBackgroundPrefs } from '../../shared/backgroundPrefs'
 import { loadCursorPrefs, saveCursorPrefs } from '../../shared/cursorPrefs'
+import { loadExportPrefs, saveExportPrefs } from '../../shared/exportPrefs'
 import {
   EXPORT_QUALITY_PRESETS,
   getExportQualityPreset,
@@ -135,19 +136,21 @@ export function RecordingReview({
 }: RecordingReviewProps) {
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
-  const [edit, setEdit] = useState<ReviewEditState>(() =>
-    defaultReviewEdit(
+  const [edit, setEdit] = useState<ReviewEditState>(() => {
+    const exportPrefs = loadExportPrefs()
+    return defaultReviewEdit(
       recordedDurationMs,
       {
         ...initialCameraOverlay,
         // Only enable in review when a camera track exists.
         enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
       },
-      undefined,
+      exportPrefs.quality,
       loadBackgroundPrefs(),
       loadCursorPrefs(),
-    ),
-  )
+      exportPrefs.format,
+    )
+  })
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
@@ -161,6 +164,13 @@ export function RecordingReview({
   useEffect(() => {
     saveCursorPrefs(edit.cursorAppearance)
   }, [edit.cursorAppearance])
+
+  useEffect(() => {
+    saveExportPrefs({
+      format: edit.exportFormat,
+      quality: edit.exportQuality,
+    })
+  }, [edit.exportFormat, edit.exportQuality])
 
   const zoomSegments = useMemo(
     () =>
