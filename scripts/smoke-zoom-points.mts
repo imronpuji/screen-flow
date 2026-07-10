@@ -16,15 +16,22 @@ import {
   isZoomPointEnabled,
   manualZoomToSegment,
   mergeZoomSegments,
+  moveManualZoomPeak,
   nudgeZoomFocus,
   removeManualZoomPoint,
   resolveZoomPointFocus,
+  resolveZoomPointPeakMs,
   resolveZoomPointPeakScale,
+  shiftZoomSegmentToPeak,
   upsertManualZoomPoint,
   upsertZoomPointOverride,
   ZOOM_FOCUS_NUDGE_STEP,
   ZOOM_FOCUS_NUDGE_STEP_SHIFT,
 } from '../dist-electron/shared/zoomPoints.js'
+import {
+  buildTimelineMarkers,
+  buildZoomEventMarkers,
+} from '../dist-electron/shared/timelineMarkers.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)
@@ -270,6 +277,90 @@ function testFocusNudge(): void {
   console.log('ok focus nudge')
 }
 
+function testPeakDrag(): void {
+  const segments = buildZoomSegments(sampleEvents(), videoSize)
+  const first = segments[0]!
+  const zoomIn = first.peakMs - first.startMs
+  const hold = first.holdEndMs - first.peakMs
+  const zoomOut = first.endMs - first.holdEndMs
+
+  const shifted = shiftZoomSegmentToPeak(first, first.peakMs + 500, 8000)
+  assert(shifted.peakMs === first.peakMs + 500, 'peak moved')
+  assert(shifted.peakMs - shifted.startMs === zoomIn, 'zoom-in kept')
+  assert(shifted.holdEndMs - shifted.peakMs === hold, 'hold kept')
+  assert(shifted.endMs - shifted.holdEndMs === zoomOut, 'zoom-out kept')
+
+  const clamped = shiftZoomSegmentToPeak(first, -100, 8000)
+  assert(clamped.peakMs === 0, 'clamp low')
+  const clampedHi = shiftZoomSegmentToPeak(first, 99999, 5000)
+  assert(clampedHi.peakMs === 5000, 'clamp high')
+
+  const withPeak = applyZoomPointOverrides(segments, [
+    { index: 0, enabled: true, peakMs: first.peakMs + 300 },
+  ])
+  assert(withPeak[0]!.peakMs === first.peakMs + 300, 'override peak')
+  assert(
+    resolveZoomPointPeakMs(first, 0, [
+      { index: 0, enabled: true, peakMs: 1234 },
+    ]) === 1234,
+    'resolve peak',
+  )
+
+  const manual = createManualZoomPoint({
+    peakMs: 2000,
+    id: 'mz-drag',
+    focusX: 0.4,
+    focusY: 0.6,
+  })
+  const moved = moveManualZoomPeak([manual], 'mz-drag', 3500, 8000)
+  assert(moved[0]!.peakMs === 3500, 'manual peak moved')
+  const seg = manualZoomToSegment(moved[0]!)
+  assert(seg != null && seg.peakMs === 3500, 'manual segment follows')
+
+  const markers = buildZoomEventMarkers(segments, [
+    { index: 1, enabled: false },
+    { index: 0, enabled: true, peakMs: first.peakMs + 200 },
+  ], [moved[0]!])
+  assert(markers.every((m) => m.kind === 'zoom'), 'zoom markers')
+  assert(
+    markers.some((m) => m.zoomIndex === 0 && m.tMs === first.peakMs + 200),
+    'auto marker tagged + peak',
+  )
+  assert(
+    !markers.some((m) => m.zoomIndex === 1),
+    'disabled auto omitted',
+  )
+  assert(
+    markers.some((m) => m.manualZoomId === 'mz-drag' && m.tMs === 3500),
+    'manual marker tagged',
+  )
+
+  const timeline = buildTimelineMarkers(segments, sampleEvents(), {
+    autoZoomSegments: segments,
+    zoomPointOverrides: [{ index: 0, enabled: true, peakMs: 900 }],
+    manualZoomPoints: [moved[0]!],
+    includeClicks: false,
+  })
+  assert(
+    timeline.some((m) => m.kind === 'zoom' && m.zoomIndex === 0 && m.tMs === 900),
+    'timeline markers use sources',
+  )
+
+  const exportPlan = planAutoZoomExport(
+    sampleEvents(),
+    videoSize,
+    8000,
+    {},
+    {},
+    [{ index: 0, enabled: true, peakMs: first.peakMs + 400 }],
+  )
+  assert(
+    exportPlan.segments[0]!.peakMs === first.peakMs + 400,
+    'export bakes peakMs',
+  )
+  console.log('ok peak drag')
+}
+
 testClamp()
 testApplyOverrides()
 testUpsertAndResolve()
@@ -277,4 +368,5 @@ testExportPlan()
 testEditDefaults()
 testManualZoomAtPlayhead()
 testFocusNudge()
+testPeakDrag()
 console.log('smoke-zoom-points: all ok')

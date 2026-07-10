@@ -619,6 +619,23 @@
   background: color-mix(in srgb, var(--accent) 78%, transparent);
 }
 
+.zoom-playback__marker--zoom-editable {
+  z-index: 2;
+  cursor: grab;
+}
+
+.zoom-playback__marker--zoom-editable:active {
+  cursor: grabbing;
+}
+
+.zoom-playback__marker-body--zoom-drag {
+  cursor: grab;
+}
+
+.zoom-playback__marker-body--zoom-drag:active {
+  cursor: grabbing;
+}
+
 .zoom-playback__marker--camera {
   border-radius: 3px;
   background: color-mix(in srgb, #f0a05a 48%, transparent);

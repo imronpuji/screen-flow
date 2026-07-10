@@ -70,6 +70,9 @@ function normalizeZoomPointOverrides(raw: unknown): ZoomPointOverride[] {
     }
     if (o.focusX != null) cleaned.focusX = clamp01(Number(o.focusX))
     if (o.focusY != null) cleaned.focusY = clamp01(Number(o.focusY))
+    if (o.peakMs != null && Number.isFinite(Number(o.peakMs))) {
+      cleaned.peakMs = Math.max(0, Number(o.peakMs))
+    }
     out.push(cleaned)
   }
   return out

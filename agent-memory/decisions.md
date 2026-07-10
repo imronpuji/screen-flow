@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Zoom-event drag on timeline (FOKUS 5)
+
+- **Keputusan:** Zoom spans di scrubber bisa di-drag untuk memindah **peak time**. Auto-click zooms menyimpan `peakMs` di `ZoomPointOverride` (non-destruktif; in/hold/out digeser utuh via `shiftZoomSegmentToPeak`). Manual (Add at playhead) mengupdate `ManualZoomPoint.peakMs`. Marker scrubber memakai `zoomIndex` / `manualZoomId` (`buildZoomEventMarkers`) supaya drag tidak kehilangan identitas setelah merge. Magnetic snap memakai target yang sama dengan playhead/keep-edge (exclude self id). Preview ≡ export lewat `applyZoomPointOverrides`.
+- **Alasan:** FOKUS 5 — “geser zoom event” masih open setelah timeline zoom-in/out; orang awam sering ingin geser fokus waktu tanpa hapus+tambah ulang.
+- **Status:** aktif
+
 ## [2026-07-10] Timeline zoom-in/out (FOKUS 5)
 
 - **Keputusan:** Scrubber review punya magnifikasi diskrit **1×–8×** (`shared/timelineZoom.ts`, steps `1,1.5,2,3,4,6,8`). Viewport = `duration/zoom` berpusat di playhead (`viewAnchorMs`); marker/keep/gap/trim shade di-remap lewat `viewportPercent` / `viewportSpanPercent`; edge-drag + magnetic snap memakai `clientXToTimelineMs` + threshold dari **visible** duration. Persist `timelineZoom` di `screen-flow:timeline-prefs`. UI: tombol − / label Fit / + di scrubber + panel Timeline; shortcut `=`/`+` zoom in, `-` zoom out, `0` fit; Ctrl/⌘+scroll zoom, Shift+scroll pan.
