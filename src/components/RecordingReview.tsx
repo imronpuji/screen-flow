@@ -40,6 +40,15 @@ import {
 } from '../../shared/camera'
 import type { CameraSyncMeta } from '../../shared/cameraSync'
 import {
+  isCameraActiveAtMs,
+  isCameraActiveRangesNever,
+  materializeCameraActiveRanges,
+  removeCameraActiveRangeAt,
+  screenTimelineMsToWallMs,
+  toggleCameraActiveAtWallMs,
+} from '../../shared/cameraSync'
+import { wallMsToScreenTimelineMs } from '../../shared/timelineMarkers'
+import {
   isEditableTarget,
   matchShortcut,
   shortcutsForContext,
@@ -306,6 +315,78 @@ export function RecordingReview({
     }))
   }
 
+  const cameraWallDurationMs = Math.max(
+    cameraSync?.wallDurationMs ?? 0,
+    durationMs + Math.max(0, cameraSync?.screenFirstChunkMs ?? 0),
+  )
+
+  const resolvedCameraRanges =
+    edit.cameraActiveRangesOverride !== null
+      ? edit.cameraActiveRangesOverride
+      : (cameraSync?.activeRanges ?? [])
+
+  const cameraActiveAtPlayhead = isCameraActiveAtMs(
+    resolvedCameraRanges,
+    screenTimelineMsToWallMs(playheadMs, cameraSync?.screenFirstChunkMs),
+    cameraWallDurationMs,
+  )
+
+  const cameraRangeWindows =
+    resolvedCameraRanges.length === 0 || isCameraActiveRangesNever(resolvedCameraRanges)
+      ? []
+      : materializeCameraActiveRanges(resolvedCameraRanges, cameraWallDurationMs).filter(
+          (r) => (r.endMs ?? 0) - r.startMs >= 20,
+        )
+
+  function toggleCameraAtPlayhead() {
+    if (exporting || !hasCameraTrack) return
+    const wallMs = screenTimelineMsToWallMs(
+      playheadMsRef.current,
+      cameraSync?.screenFirstChunkMs,
+    )
+    setEdit((prev) => {
+      const base =
+        prev.cameraActiveRangesOverride !== null
+          ? prev.cameraActiveRangesOverride
+          : (cameraSync?.activeRanges ?? [])
+      return {
+        ...prev,
+        cameraActiveRangesOverride: toggleCameraActiveAtWallMs(
+          base,
+          wallMs,
+          cameraWallDurationMs,
+        ),
+      }
+    })
+  }
+
+  function removeCameraRange(index: number) {
+    if (exporting) return
+    setEdit((prev) => {
+      const base =
+        prev.cameraActiveRangesOverride !== null
+          ? prev.cameraActiveRangesOverride
+          : materializeCameraActiveRanges(
+              cameraSync?.activeRanges,
+              cameraWallDurationMs,
+            )
+      return {
+        ...prev,
+        cameraActiveRangesOverride: removeCameraActiveRangeAt(base, index),
+      }
+    })
+  }
+
+  function resetCameraRanges() {
+    if (exporting) return
+    setEdit((prev) => ({ ...prev, cameraActiveRangesOverride: null }))
+  }
+
+  function setCameraRangesAlwaysOn() {
+    if (exporting) return
+    setEdit((prev) => ({ ...prev, cameraActiveRangesOverride: [] }))
+  }
+
   function onDurationMs(ms: number) {
     if (ms > 0) {
       setDurationMs(ms)
@@ -389,6 +470,7 @@ export function RecordingReview({
             background={edit.background}
             cameraMediaUrl={cameraMediaUrl}
             cameraSync={cameraSync}
+            cameraActiveRangesOverride={edit.cameraActiveRangesOverride}
             cameraOverlay={edit.cameraOverlay}
             onCameraLayoutChange={(next) =>
               setEdit((prev) => ({
@@ -894,6 +976,91 @@ export function RecordingReview({
 
               {edit.cameraOverlay.enabled ? (
                 <>
+                  <div className="review__field review__camera-ranges" aria-label="Camera active windows">
+                    <span className="review__label">
+                      Camera windows
+                      {edit.cameraActiveRangesOverride !== null ? ' · edited' : ''}
+                    </span>
+                    <div className="review__zoom-actions">
+                      <button
+                        type="button"
+                        className="btn btn--ghost review__zoom-add"
+                        disabled={exporting}
+                        title={
+                          cameraActiveAtPlayhead
+                            ? `Hide camera from ${formatTimeMs(playheadMs)}`
+                            : `Show camera from ${formatTimeMs(playheadMs)}`
+                        }
+                        onClick={toggleCameraAtPlayhead}
+                      >
+                        {cameraActiveAtPlayhead ? 'Hide' : 'Show'} from playhead ·{' '}
+                        {formatTimeMs(playheadMs)}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost review__zoom-add"
+                        disabled={exporting || edit.cameraActiveRangesOverride === null}
+                        title="Restore windows from the recording"
+                        onClick={resetCameraRanges}
+                      >
+                        Reset
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost review__zoom-add"
+                        disabled={exporting}
+                        title="Show camera for the whole clip"
+                        onClick={setCameraRangesAlwaysOn}
+                      >
+                        Always on
+                      </button>
+                    </div>
+                    {isCameraActiveRangesNever(resolvedCameraRanges) ? (
+                      <p className="review__hint">
+                        Camera hidden for the whole clip — Show from playhead to bring it back.
+                      </p>
+                    ) : resolvedCameraRanges.length === 0 ? (
+                      <p className="review__hint">
+                        Always on (no mute windows). Hide from playhead to trim visibility.
+                      </p>
+                    ) : (
+                      <ul className="review__zoom-list">
+                        {cameraRangeWindows.map((range, index) => {
+                          const startScreen = wallMsToScreenTimelineMs(
+                            range.startMs,
+                            cameraSync?.screenFirstChunkMs,
+                          )
+                          const endScreen = wallMsToScreenTimelineMs(
+                            range.endMs ?? cameraWallDurationMs,
+                            cameraSync?.screenFirstChunkMs,
+                          )
+                          return (
+                            <li
+                              key={`camera-range-${index}-${range.startMs}`}
+                              className="review__zoom-item"
+                            >
+                              <span className="review__zoom-meta">
+                                Camera {index + 1} · {formatTimeMs(startScreen)}–
+                                {formatTimeMs(endScreen)}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn--ghost review__zoom-remove"
+                                disabled={exporting}
+                                onClick={() => removeCameraRange(index)}
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                    <p className="review__hint">
+                      Amber timeline spans match these windows · preview = export.
+                    </p>
+                  </div>
+
                   <div className="review__field">
                     <span className="review__label">Position</span>
                     <div className="review__presets" role="group" aria-label="Camera position presets">

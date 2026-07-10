@@ -770,6 +770,10 @@ export default function App() {
           cameraPath: lastCameraPath,
           style: _edit.cameraOverlay,
           syncPath: lastCameraSyncPath ?? undefined,
+          activeRangesOverride:
+            _edit.cameraActiveRangesOverride !== null
+              ? _edit.cameraActiveRangesOverride
+              : undefined,
         }
       }
       const result = await exportWebmToMp4(exportRequest)

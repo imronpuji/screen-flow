@@ -911,6 +911,15 @@
   opacity: 0.55;
 }
 
+.review__zoom-meta {
+  font-size: 0.82rem;
+  color: var(--muted, #9aa3ad);
+}
+
+.review__camera-ranges {
+  margin-bottom: 0.25rem;
+}
+
 .review__focus-nudge {
   display: flex;
   flex-direction: column;

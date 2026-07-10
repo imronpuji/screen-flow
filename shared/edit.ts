@@ -2,6 +2,7 @@ import type { BackgroundStyle } from './background.js'
 import { DEFAULT_BACKGROUND_STYLE } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
 import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from './camera.js'
+import type { CameraActiveRange } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
@@ -36,6 +37,12 @@ export interface ReviewEditState {
   background: BackgroundStyle
   /** FaceTime bubble layout for review preview + export bake. */
   cameraOverlay: CameraOverlayStyle
+  /**
+   * Review override for FaceTime active windows (wall ms from session start).
+   * `null` = inherit recording `camera-sync.json` ranges (no edits yet).
+   * Non-null = explicit windows for preview + export (`[]` = always-on).
+   */
+  cameraActiveRangesOverride: CameraActiveRange[] | null
   /** MP4 encode quality (draft | good | high). */
   exportQuality: ExportQualityId
 }
@@ -78,6 +85,7 @@ export function defaultReviewEdit(
     cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
     background: { ...DEFAULT_BACKGROUND_STYLE },
     cameraOverlay: normalizeCameraOverlay(cameraOverlay ?? DEFAULT_CAMERA_OVERLAY),
+    cameraActiveRangesOverride: null,
     exportQuality: normalizeExportQuality(exportQuality ?? DEFAULT_EXPORT_QUALITY),
   }
 }

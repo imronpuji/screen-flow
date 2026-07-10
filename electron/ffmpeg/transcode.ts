@@ -468,14 +468,20 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     } catch {
       /* keep first-chunk offset only if camera probe fails */
     }
+    const activeRanges =
+      request.camera.activeRangesOverride !== undefined &&
+      request.camera.activeRangesOverride !== null
+        ? request.camera.activeRangesOverride
+        : syncMeta?.activeRanges
     effects.camera = {
       style: request.camera.style,
       inputIndex: 1,
       drift: cameraDrift,
       enableExpr: cameraOverlayEnableExpr(
-        syncMeta?.activeRanges,
+        activeRanges,
         syncMeta?.screenFirstChunkMs ?? null,
         syncMeta?.wallDurationMs ?? fullDurationMs,
+        { trimStartMs: trimRange?.startMs ?? 0 },
       ),
     }
     extraInputs = [cameraPath]

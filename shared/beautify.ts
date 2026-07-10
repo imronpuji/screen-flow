@@ -183,6 +183,8 @@ export function applyBeautifyPreset(
       },
       preset.camera.corner,
     ),
+    // Keep review-edited mute windows; beautify only restyles the bubble.
+    cameraActiveRangesOverride: edit.cameraActiveRangesOverride,
     exportQuality: normalizeExportQuality(preset.exportQuality),
   }
 }

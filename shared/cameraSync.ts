@@ -112,6 +112,7 @@ export function openCameraActiveRange(
 /**
  * True when playhead (ms from session/screen start ≈ wall offset) is inside an
  * active range. Empty ranges → always active (legacy recordings).
+ * Fully-muted sentinel (`CAMERA_ACTIVE_RANGES_NEVER`) → never active.
  */
 export function isCameraActiveAtMs(
   ranges: CameraActiveRange[] | null | undefined,
@@ -119,48 +120,185 @@ export function isCameraActiveAtMs(
   wallDurationMs = Number.POSITIVE_INFINITY,
 ): boolean {
   if (!ranges || ranges.length === 0) return true
+  if (isCameraActiveRangesNever(ranges)) return false
   const t = Math.max(0, timeMs)
   for (const r of ranges) {
     const end = r.endMs == null ? wallDurationMs : r.endMs
+    if (end - r.startMs < 20) continue
     if (t >= r.startMs && t <= end) return true
   }
   return false
 }
 
 /**
+ * Map screen timeline ms (t=0 ≈ first screen chunk) back to wall ms from
+ * session `startedAt`. Inverse of `wallMsToScreenTimelineMs` in timelineMarkers.
+ */
+export function screenTimelineMsToWallMs(
+  screenMs: number,
+  screenFirstChunkMs: number | null | undefined,
+): number {
+  const origin = Math.max(0, screenFirstChunkMs ?? 0)
+  return Math.max(0, screenMs + origin)
+}
+
+/** Sentinel: non-empty ranges that cover nothing → bubble never shown. */
+export const CAMERA_ACTIVE_RANGES_NEVER: CameraActiveRange[] = [{ startMs: 0, endMs: 0 }]
+
+/**
+ * Concrete closed intervals for review editing.
+ * Empty / omitted (legacy always-on) → one full `[0, wall]` window.
+ */
+export function materializeCameraActiveRanges(
+  ranges: CameraActiveRange[] | null | undefined,
+  wallDurationMs: number,
+): CameraActiveRange[] {
+  const wall = Math.max(0, wallDurationMs)
+  const normalized = normalizeCameraActiveRanges(ranges ?? [])
+  if (normalized.length === 0) {
+    return wall > 0 ? [{ startMs: 0, endMs: wall }] : []
+  }
+  return closeOpenCameraActiveRanges(normalized, wall > 0 ? wall : Number.MAX_SAFE_INTEGER)
+    .map((r) => ({
+      startMs: r.startMs,
+      endMs: r.endMs == null ? wall : r.endMs,
+    }))
+    .filter((r) => (r.endMs ?? 0) - r.startMs >= 0)
+}
+
+/** Merge overlapping/adjacent closed ranges (sorted). */
+export function mergeCameraActiveRanges(ranges: CameraActiveRange[]): CameraActiveRange[] {
+  const closed = ranges
+    .map((r) => ({
+      startMs: Math.max(0, r.startMs),
+      endMs: r.endMs == null ? null : Math.max(0, r.endMs),
+    }))
+    .filter((r) => r.endMs == null || r.endMs >= r.startMs)
+    .sort((a, b) => a.startMs - b.startMs || (a.endMs ?? 0) - (b.endMs ?? 0))
+
+  const out: CameraActiveRange[] = []
+  for (const r of closed) {
+    const prev = out[out.length - 1]
+    if (!prev || prev.endMs == null) {
+      out.push({ ...r })
+      continue
+    }
+    if (r.startMs <= prev.endMs + 20) {
+      const rEnd = r.endMs
+      prev.endMs =
+        rEnd == null ? null : Math.max(prev.endMs, rEnd)
+    } else {
+      out.push({ ...r })
+    }
+  }
+  return out
+}
+
+/**
+ * Toggle FaceTime visibility at a wall-clock time (review mute/unmute at playhead).
+ * - Active → mute from `wallMs` (end the containing window; drop the remainder).
+ * - Inactive → unmute from `wallMs` until the next window start or wall end.
+ * Empty input (always-on) is materialized first. Fully muted → `CAMERA_ACTIVE_RANGES_NEVER`.
+ */
+export function toggleCameraActiveAtWallMs(
+  ranges: CameraActiveRange[] | null | undefined,
+  wallMs: number,
+  wallDurationMs: number,
+): CameraActiveRange[] {
+  const wall = Math.max(0, wallDurationMs)
+  const t = Math.max(0, Math.min(wallMs, wall))
+  const list = materializeCameraActiveRanges(ranges, wall)
+  const active = isCameraActiveAtMs(list, t, wall)
+
+  if (active) {
+    const next: CameraActiveRange[] = []
+    for (const r of list) {
+      const end = r.endMs ?? wall
+      if (t < r.startMs || t > end) {
+        next.push({ startMs: r.startMs, endMs: end })
+        continue
+      }
+      // t inside [start, end] → keep prefix only (mute from t onward in this window).
+      if (t - r.startMs >= 20) {
+        next.push({ startMs: r.startMs, endMs: t })
+      }
+    }
+    return next.length > 0 ? mergeCameraActiveRanges(next) : [...CAMERA_ACTIVE_RANGES_NEVER]
+  }
+
+  const nextStart =
+    list
+      .map((r) => r.startMs)
+      .filter((s) => s > t)
+      .sort((a, b) => a - b)[0] ?? wall
+  if (nextStart - t < 20) return list
+  return mergeCameraActiveRanges([...list, { startMs: t, endMs: nextStart }])
+}
+
+/** Remove one window by index; last removal → never-on sentinel (not always-on). */
+export function removeCameraActiveRangeAt(
+  ranges: CameraActiveRange[],
+  index: number,
+): CameraActiveRange[] {
+  const next = ranges.filter((_, i) => i !== index)
+  return next.length > 0 ? next : [...CAMERA_ACTIVE_RANGES_NEVER]
+}
+
+/** True when ranges mean "never show" (edited fully muted), not legacy always-on. */
+export function isCameraActiveRangesNever(
+  ranges: CameraActiveRange[] | null | undefined,
+): boolean {
+  const normalized = normalizeCameraActiveRanges(ranges ?? [])
+  if (normalized.length === 0) return false
+  return normalized.every((r) => {
+    const end = r.endMs ?? 0
+    return end - r.startMs < 20
+  })
+}
+
+/**
  * ffmpeg overlay `enable=` expression on the **main** (screen) timeline.
  * Returns null when the bubble should stay visible for the whole encode
  * (no ranges, or a single range covering ~the full wall duration).
+ * Returns `'0'` when ranges exist but cover nothing (fully muted in review).
+ *
+ * `trimStartMs` (screen timeline) rebases enable times after input `-ss` seek
+ * so mid-recording / review-edited windows stay aligned with trimmed output.
  */
 export function cameraOverlayEnableExpr(
   ranges: CameraActiveRange[] | null | undefined,
   screenFirstChunkMs: number | null | undefined,
   wallDurationMs: number,
+  options?: { trimStartMs?: number },
 ): string | null {
   const normalized = normalizeCameraActiveRanges(ranges ?? [])
   if (normalized.length === 0) return null
 
   const screenOrigin = Math.max(0, screenFirstChunkMs ?? 0)
   const wall = Math.max(0, wallDurationMs)
+  const trimStartSec = Math.max(0, (options?.trimStartMs ?? 0) / 1000)
   const parts: string[] = []
 
   for (const r of closeOpenCameraActiveRanges(normalized, wall)) {
     const end = r.endMs ?? wall
-    // Map wall offsets → screen timeline (t=0 ≈ first screen chunk).
-    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000)
-    const endSec = Math.max(startSec, (end - screenOrigin) / 1000)
+    // Map wall offsets → screen timeline (t=0 ≈ first screen chunk), then trim.
+    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000 - trimStartSec)
+    const endSec = Math.max(startSec, (end - screenOrigin) / 1000 - trimStartSec)
     if (endSec - startSec < 0.02) continue
     parts.push(`between(t,${startSec.toFixed(3)},${endSec.toFixed(3)})`)
   }
 
-  if (parts.length === 0) return null
+  if (parts.length === 0) {
+    // Had ranges but none survived → never show (fully muted), not always-on.
+    return '0'
+  }
 
-  // Single range covering essentially the whole clip → no enable needed.
+  // Single range covering essentially the whole (post-trim) clip → no enable needed.
   if (parts.length === 1 && normalized.length === 1) {
     const r = closeOpenCameraActiveRanges(normalized, wall)[0]!
-    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000)
-    const endSec = Math.max(startSec, ((r.endMs ?? wall) - screenOrigin) / 1000)
-    const fullSec = Math.max(0, (wall - screenOrigin) / 1000)
+    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000 - trimStartSec)
+    const endSec = Math.max(startSec, ((r.endMs ?? wall) - screenOrigin) / 1000 - trimStartSec)
+    const fullSec = Math.max(0, (wall - screenOrigin) / 1000 - trimStartSec)
     if (startSec <= 0.05 && endSec >= fullSec - 0.05) return null
   }
 
