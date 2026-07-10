@@ -1,12 +1,20 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
+import { createPortal } from 'react-dom'
 import {
   cameraBubblePosition,
-  clampCameraLayout,
+  cameraBubbleSizeNorm,
+  cameraSnapTargets,
   normalizeCameraOverlay,
   resizeCameraFromHandle,
   snapCameraLayout,
   type CameraOverlayStyle,
   type CameraResizeHandle,
+  type CameraSnapTarget,
 } from '../../shared/camera'
 
 export interface CameraBubbleProps {
@@ -55,6 +63,8 @@ export function CameraBubble({
   const [readySourceKey, setReadySourceKey] = useState<string | null>(null)
   const [dragStyle, setDragStyle] = useState<CameraOverlayStyle | null>(null)
   const [resizeActive, setResizeActive] = useState(false)
+  const [snapTarget, setSnapTarget] = useState<CameraSnapTarget | null>(null)
+  const [guideParent, setGuideParent] = useState<HTMLElement | null>(null)
   const dragRef = useRef<{
     pointerId: number
     startClientX: number
@@ -81,6 +91,7 @@ export function CameraBubble({
   const sourceKey = useRecorded ? `rec:${mediaUrl ?? ''}` : `live:${stream?.id ?? ''}`
   const hasFrames = readySourceKey === sourceKey
   const interactive = Boolean(onLayoutChange)
+  const dragging = Boolean(dragStyle && !resizeActive)
 
   useEffect(() => {
     const el = videoRef.current
@@ -213,6 +224,8 @@ export function CameraBubble({
     e.currentTarget.setPointerCapture(e.pointerId)
     resizeRef.current = null
     setResizeActive(false)
+    setSnapTarget(null)
+    setGuideParent(rootRef.current?.offsetParent as HTMLElement | null)
     dragRef.current = {
       pointerId: e.pointerId,
       startClientX: e.clientX,
@@ -236,6 +249,8 @@ export function CameraBubble({
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = null
+    setSnapTarget(null)
+    setGuideParent(null)
     const base = normalizeCameraOverlay(style, metrics.aspect)
     resizeRef.current = {
       handle,
@@ -261,19 +276,22 @@ export function CameraBubble({
     if (!drag || drag.pointerId !== e.pointerId) return
     const dx = (e.clientX - drag.startClientX) / drag.parentW
     const dy = (e.clientY - drag.startClientY) / drag.parentH
-    const clamped = clampCameraLayout(
+    // Live magnetic snap: preview jumps to corner/edge when within threshold.
+    const snapped = snapCameraLayout(
       drag.originX + dx,
       drag.originY + dy,
       style.sizePercent,
       drag.aspect,
     )
+    setSnapTarget(snapped.snapped ? snapped.target : null)
     setDragStyle(
       normalizeCameraOverlay(
         {
           ...style,
-          anchor: 'free',
-          x: clamped.x,
-          y: clamped.y,
+          anchor: snapped.corner ?? 'free',
+          corner: snapped.corner ?? style.corner,
+          x: snapped.x,
+          y: snapped.y,
         },
         drag.aspect,
       ),
@@ -285,6 +303,8 @@ export function CameraBubble({
     if (resize && resize.pointerId === e.pointerId && onLayoutChange) {
       resizeRef.current = null
       setResizeActive(false)
+      setSnapTarget(null)
+      setGuideParent(null)
       try {
         e.currentTarget.releasePointerCapture(e.pointerId)
       } catch {
@@ -300,6 +320,8 @@ export function CameraBubble({
     const drag = dragRef.current
     if (!drag || drag.pointerId !== e.pointerId || !onLayoutChange) return
     dragRef.current = null
+    setSnapTarget(null)
+    setGuideParent(null)
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -331,68 +353,99 @@ export function CameraBubble({
 
   if (!active) return null
 
+  const guideAspect = dragRef.current?.aspect ?? frameAspect ?? 16 / 9
+  const guideTargets =
+    dragging && guideParent
+      ? cameraSnapTargets(displayStyle.sizePercent, guideAspect)
+      : []
+  const { w: guideW, h: guideH } = cameraBubbleSizeNorm(
+    displayStyle.sizePercent,
+    guideAspect,
+  )
+
   return (
-    <div
-      ref={rootRef}
-      className={`camera-bubble ${useRecorded ? 'camera-bubble--fixed' : ''} ${
-        interactive ? 'camera-bubble--interactive' : ''
-      } ${dragStyle && !resizeActive ? 'camera-bubble--dragging' : ''} ${
-        resizeActive ? 'camera-bubble--resizing' : ''
-      } ${className}`.trim()}
-      style={{
-        top: pos.top,
-        left: pos.left,
-        width: pos.width,
-        borderRadius: pos.borderRadius,
-        border: pos.border,
-        boxShadow: pos.boxShadow,
-      }}
-      aria-label={label}
-      title={
-        interactive
-          ? 'Drag to reposition — corner handles resize (aspect locked)'
-          : undefined
-      }
-      onPointerDown={interactive ? onMovePointerDown : undefined}
-      onPointerMove={interactive ? onPointerMove : undefined}
-      onPointerUp={interactive ? finishPointer : undefined}
-      onPointerCancel={interactive ? finishPointer : undefined}
-    >
-      <video
-        ref={videoRef}
-        className={
-          mirrored
-            ? 'camera-bubble__video'
-            : 'camera-bubble__video camera-bubble__video--natural'
+    <>
+      <div
+        ref={rootRef}
+        className={`camera-bubble ${useRecorded ? 'camera-bubble--fixed' : ''} ${
+          interactive ? 'camera-bubble--interactive' : ''
+        } ${dragging ? 'camera-bubble--dragging' : ''} ${
+          snapTarget ? 'camera-bubble--snapped' : ''
+        } ${resizeActive ? 'camera-bubble--resizing' : ''} ${className}`.trim()}
+        style={{
+          top: pos.top,
+          left: pos.left,
+          width: pos.width,
+          borderRadius: pos.borderRadius,
+          border: pos.border,
+          boxShadow: pos.boxShadow,
+        }}
+        aria-label={label}
+        title={
+          interactive
+            ? 'Drag to reposition — snaps to corners & edges · corner handles resize'
+            : undefined
         }
-        muted
-        playsInline
-        autoPlay={!useRecorded}
-        preload={useRecorded ? 'auto' : undefined}
-      />
-      {!hasFrames ? (
-        <span className="camera-bubble__waiting" aria-hidden="true">
-          Waiting for camera…
-        </span>
-      ) : null}
-      {interactive
-        ? RESIZE_HANDLES.map((handle) => (
-            <span
-              key={handle}
-              className={`camera-bubble__handle camera-bubble__handle--${handle}`}
-              data-resize-handle={handle}
-              role="slider"
-              aria-label={`Resize camera ${handle}`}
-              aria-valuemin={12}
-              aria-valuemax={40}
-              aria-valuenow={displayStyle.sizePercent}
-              onPointerDown={(e) => onResizePointerDown(e, handle)}
-              onPointerMove={onPointerMove}
-              onPointerUp={finishPointer}
-              onPointerCancel={finishPointer}
-            />
-          ))
+        onPointerDown={interactive ? onMovePointerDown : undefined}
+        onPointerMove={interactive ? onPointerMove : undefined}
+        onPointerUp={interactive ? finishPointer : undefined}
+        onPointerCancel={interactive ? finishPointer : undefined}
+      >
+        <video
+          ref={videoRef}
+          className={
+            mirrored
+              ? 'camera-bubble__video'
+              : 'camera-bubble__video camera-bubble__video--natural'
+          }
+          muted
+          playsInline
+          autoPlay={!useRecorded}
+          preload={useRecorded ? 'auto' : undefined}
+        />
+        {!hasFrames ? (
+          <span className="camera-bubble__waiting" aria-hidden="true">
+            Waiting for camera…
+          </span>
+        ) : null}
+        {interactive
+          ? RESIZE_HANDLES.map((handle) => (
+              <span
+                key={handle}
+                className={`camera-bubble__handle camera-bubble__handle--${handle}`}
+                data-resize-handle={handle}
+                role="slider"
+                aria-label={`Resize camera ${handle}`}
+                aria-valuemin={12}
+                aria-valuemax={40}
+                aria-valuenow={displayStyle.sizePercent}
+                onPointerDown={(e) => onResizePointerDown(e, handle)}
+                onPointerMove={onPointerMove}
+                onPointerUp={finishPointer}
+                onPointerCancel={finishPointer}
+              />
+            ))
+          : null}
+      </div>
+      {dragging && guideParent
+        ? createPortal(
+            <div className="camera-snap-guides" aria-hidden="true">
+              {guideTargets.map((t) => (
+                <span
+                  key={t.id}
+                  className={`camera-snap-guide${
+                    snapTarget === t.id ? ' camera-snap-guide--active' : ''
+                  }`}
+                  style={{
+                    left: `${(t.x + guideW / 2) * 100}%`,
+                    top: `${(t.y + guideH / 2) * 100}%`,
+                  }}
+                />
+              ))}
+            </div>,
+            guideParent,
+          )
         : null}
-    </div>
+    </>
   )
 }

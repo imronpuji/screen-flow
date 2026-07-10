@@ -9,9 +9,11 @@ import type {
 import type { ReviewEditState } from '../shared/edit'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
-  CAMERA_CORNERS,
+  CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
-  applyCameraCornerPreset,
+  applyCameraSnapPreset,
+  cameraSnapPresetLabel,
+  matchCameraSnapTarget,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
 } from '../shared/camera'
@@ -844,26 +846,27 @@ export default function App() {
                   </select>
                 </label>
                 <label className="camera-controls__field">
-                  <span>Corner</span>
+                  <span>Position</span>
                   <select
-                    value={
-                      cameraOverlay.anchor === 'free'
-                        ? cameraOverlay.corner
-                        : cameraOverlay.anchor
-                    }
+                    value={matchCameraSnapTarget(cameraOverlay) ?? 'custom'}
                     disabled={busy}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value === 'custom') return
                       setCameraOverlay((prev) =>
-                        applyCameraCornerPreset(
+                        applyCameraSnapPreset(
                           prev,
-                          e.target.value as CameraOverlayStyle['corner'],
+                          value as (typeof CAMERA_SNAP_PRESETS)[number],
                         ),
                       )
-                    }
+                    }}
                   >
-                    {CAMERA_CORNERS.map((c) => (
-                      <option key={c} value={c}>
-                        {c.replace('-', ' ')}
+                    {matchCameraSnapTarget(cameraOverlay) == null ? (
+                      <option value="custom">Custom</option>
+                    ) : null}
+                    {CAMERA_SNAP_PRESETS.map((t) => (
+                      <option key={t} value={t}>
+                        {cameraSnapPresetLabel(t)}
                       </option>
                     ))}
                   </select>

@@ -9,6 +9,7 @@
  * - Safe margin: 3% of each axis from the frame edge (snap + clamp).
  * - Size clamp: 12–40% of frame width (min readable face; max keeps screen readable).
  * - Resize: corner handles keep the opposite corner fixed; aspect always locked (square).
+ * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
  * - Shapes: circle (50% radius), rounded (~22%), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  */
@@ -217,6 +218,51 @@ export type CameraSnapTarget =
   | 'left-center'
   | 'right-center'
 
+/** Edge midpoints only (corners live in CAMERA_CORNERS). */
+export const CAMERA_EDGE_TARGETS: readonly Exclude<CameraSnapTarget, CameraCorner>[] = [
+  'top-center',
+  'bottom-center',
+  'left-center',
+  'right-center',
+] as const
+
+/** All quick-position presets: 4 corners + 4 edge mids. */
+export const CAMERA_SNAP_PRESETS: readonly CameraSnapTarget[] = [
+  ...CAMERA_CORNERS,
+  ...CAMERA_EDGE_TARGETS,
+] as const
+
+/** Short labels for preset buttons / selects. */
+export function cameraSnapPresetLabel(target: CameraSnapTarget): string {
+  switch (target) {
+    case 'top-left':
+      return 'Top left'
+    case 'top-center':
+      return 'Top'
+    case 'top-right':
+      return 'Top right'
+    case 'left-center':
+      return 'Left'
+    case 'right-center':
+      return 'Right'
+    case 'bottom-left':
+      return 'Bottom left'
+    case 'bottom-center':
+      return 'Bottom'
+    case 'bottom-right':
+      return 'Bottom right'
+    default:
+      return target
+  }
+}
+
+export function isCameraSnapTarget(value: unknown): value is CameraSnapTarget {
+  return (
+    typeof value === 'string' &&
+    (CAMERA_SNAP_PRESETS as readonly string[]).includes(value)
+  )
+}
+
 /** Snap targets: 4 corners + 4 edge midpoints (Loom / Screen Studio–style). */
 export function cameraSnapTargets(
   sizePercent: number,
@@ -337,20 +383,88 @@ export function applyCameraCornerPreset(
   corner: CameraCorner,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
 ): CameraOverlayStyle {
+  return applyCameraSnapPreset(style, corner, frameAspect)
+}
+
+/**
+ * Apply any snap preset (corner or edge mid).
+ * Corners set `anchor` to that corner; edge mids use `anchor: 'free'` with snapped x/y
+ * and keep `corner` as a nearby corner for fallback UI that only lists corners.
+ */
+export function applyCameraSnapPreset(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  target: CameraSnapTarget,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
   const sizePercent = clamp(
     style.sizePercent ?? DEFAULT_CAMERA_OVERLAY.sizePercent,
     CAMERA_MIN_SIZE_PERCENT,
     CAMERA_MAX_SIZE_PERCENT,
   )
-  const layout = layoutFromCorner(corner, sizePercent, frameAspect)
-  return normalizeCameraOverlay({
-    ...style,
-    corner,
-    anchor: corner,
-    x: layout.x,
-    y: layout.y,
-    sizePercent,
-  }, frameAspect)
+  const targets = cameraSnapTargets(sizePercent, frameAspect)
+  const hit = targets.find((t) => t.id === target)
+  if (!hit) {
+    return normalizeCameraOverlay(style, frameAspect)
+  }
+
+  if (isCameraCorner(target)) {
+    return normalizeCameraOverlay(
+      {
+        ...style,
+        corner: target,
+        anchor: target,
+        x: hit.x,
+        y: hit.y,
+        sizePercent,
+      },
+      frameAspect,
+    )
+  }
+
+  const cornerGuess: CameraCorner =
+    target === 'top-center' || target === 'left-center'
+      ? 'top-left'
+      : target === 'right-center'
+        ? 'top-right'
+        : 'bottom-right'
+
+  return normalizeCameraOverlay(
+    {
+      ...style,
+      corner: cornerGuess,
+      anchor: 'free',
+      x: hit.x,
+      y: hit.y,
+      sizePercent,
+    },
+    frameAspect,
+  )
+}
+
+/**
+ * Which snap preset (if any) matches the current layout within epsilon.
+ * Used to highlight active position buttons after drag/snap.
+ */
+export function matchCameraSnapTarget(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  epsilon: number = 0.012,
+): CameraSnapTarget | null {
+  const normalized = normalizeCameraOverlay(style, frameAspect)
+  if (isCameraCorner(normalized.anchor)) {
+    return normalized.anchor
+  }
+  const targets = cameraSnapTargets(normalized.sizePercent, frameAspect)
+  let best: CameraSnapTarget | null = null
+  let bestDist = Infinity
+  for (const t of targets) {
+    const d = Math.hypot(normalized.x - t.x, normalized.y - t.y)
+    if (d < bestDist) {
+      bestDist = d
+      best = t.id
+    }
+  }
+  return bestDist <= epsilon ? best : null
 }
 
 /** Clamp overlay style to safe UI/export ranges; fill x/y from corner when needed. */

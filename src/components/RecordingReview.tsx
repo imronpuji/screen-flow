@@ -19,9 +19,11 @@ import {
 } from '../../shared/exportQuality'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
-  CAMERA_CORNERS,
+  CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
-  applyCameraCornerPreset,
+  applyCameraSnapPreset,
+  cameraSnapPresetLabel,
+  matchCameraSnapTarget,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
   type CameraShape,
@@ -573,37 +575,41 @@ export function RecordingReview({
                 <>
                   <div className="review__field">
                     <span className="review__label">Position</span>
-                    <div className="review__presets" role="group" aria-label="Camera corner presets">
-                      {CAMERA_CORNERS.map((corner) => (
-                        <button
-                          key={corner}
-                          type="button"
-                          className={`review__preset${
-                            edit.cameraOverlay.anchor === corner
-                              ? ' review__preset--active'
-                              : ''
-                          }`}
-                          disabled={exporting}
-                          onClick={() =>
-                            setEdit((prev) => ({
-                              ...prev,
-                              cameraOverlay: applyCameraCornerPreset(
-                                prev.cameraOverlay,
-                                corner,
-                              ),
-                            }))
-                          }
-                        >
-                          <span className="review__preset-label">
-                            {corner.replace('-', ' ')}
-                          </span>
-                        </button>
-                      ))}
+                    <div className="review__presets" role="group" aria-label="Camera position presets">
+                      {CAMERA_SNAP_PRESETS.map((target) => {
+                        const active = matchCameraSnapTarget(edit.cameraOverlay) === target
+                        return (
+                          <button
+                            key={target}
+                            type="button"
+                            className={`review__preset${
+                              active ? ' review__preset--active' : ''
+                            }`}
+                            disabled={exporting}
+                            onClick={() =>
+                              setEdit((prev) => ({
+                                ...prev,
+                                cameraOverlay: applyCameraSnapPreset(
+                                  prev.cameraOverlay,
+                                  target,
+                                ),
+                              }))
+                            }
+                          >
+                            <span className="review__preset-label">
+                              {cameraSnapPresetLabel(target)}
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
                     <p className="review__hint">
-                      Drag to move (snaps to corners &amp; edges) · corner handles resize
-                      with aspect lock
-                      {edit.cameraOverlay.anchor === 'free' ? ' (custom)' : ''}.
+                      Drag to move (magnetic snap to corners &amp; edges) · corner handles
+                      resize with aspect lock
+                      {matchCameraSnapTarget(edit.cameraOverlay) == null
+                        ? ' (custom)'
+                        : ''}
+                      .
                     </p>
                   </div>
 

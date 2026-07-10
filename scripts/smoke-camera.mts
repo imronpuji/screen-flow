@@ -4,19 +4,25 @@
 import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_CORNERS,
+  CAMERA_EDGE_TARGETS,
   CAMERA_MAX_SIZE_PERCENT,
   CAMERA_MIN_SIZE_PERCENT,
   CAMERA_SAFE_MARGIN,
   CAMERA_SHAPES,
+  CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
+  applyCameraSnapPreset,
   cameraBubbleChromeStyle,
   cameraBubbleNormRect,
   cameraBubblePosition,
   cameraShapeBorderRadius,
   cameraBubbleSizeNorm,
+  cameraSnapPresetLabel,
+  cameraSnapTargets,
   clampCameraLayout,
   layoutFromCorner,
+  matchCameraSnapTarget,
   normalizeCameraBorderColor,
   normalizeCameraOverlay,
   resizeCameraFromHandle,
@@ -194,6 +200,18 @@ function testSnapAndPresets(): void {
   assert(mid.snapped === false, 'center stays free')
   assert(mid.corner === null, 'no corner when free')
 
+  const targets = cameraSnapTargets(20, 16 / 9)
+  assert(targets.length === 8, '8 snap targets')
+  assert(CAMERA_SNAP_PRESETS.length === 8, '8 snap presets')
+  assert(CAMERA_EDGE_TARGETS.length === 4, '4 edge mids')
+
+  const topCenter = targets.find((t) => t.id === 'top-center')!
+  const nearEdge = snapCameraLayout(topCenter.x + 0.01, topCenter.y + 0.005, 20, 16 / 9)
+  assert(nearEdge.snapped === true, 'near edge mid snaps')
+  assert(nearEdge.target === 'top-center', 'edge mid target id')
+  assert(nearEdge.corner === null, 'edge mid is not a corner anchor')
+  assert(nearly(nearEdge.x, topCenter.x) && nearly(nearEdge.y, topCenter.y), 'edge coords')
+
   const preset = applyCameraCornerPreset(
     { ...DEFAULT_CAMERA_OVERLAY, enabled: true, sizePercent: 24 },
     'top-left',
@@ -202,6 +220,20 @@ function testSnapAndPresets(): void {
   assert(preset.anchor === 'top-left', 'preset anchor')
   assert(nearly(preset.x, CAMERA_SAFE_MARGIN), 'preset x')
   assert(nearly(preset.y, CAMERA_SAFE_MARGIN), 'preset y')
+
+  const edgePreset = applyCameraSnapPreset(
+    { ...DEFAULT_CAMERA_OVERLAY, enabled: true, sizePercent: 20 },
+    'bottom-center',
+    16 / 9,
+  )
+  assert(edgePreset.anchor === 'free', 'edge preset → free anchor')
+  assert(matchCameraSnapTarget(edgePreset, 16 / 9) === 'bottom-center', 'match edge')
+  assert(cameraSnapPresetLabel('left-center') === 'Left', 'edge label')
+
+  for (const corner of CAMERA_CORNERS) {
+    const p = applyCameraSnapPreset(DEFAULT_CAMERA_OVERLAY, corner, 16 / 9)
+    assert(matchCameraSnapTarget(p, 16 / 9) === corner, `match ${corner}`)
+  }
 
   const overflow = clampCameraLayout(-0.5, 2, 30, 16 / 9)
   assert(overflow.x >= CAMERA_SAFE_MARGIN, 'clamp x min')
