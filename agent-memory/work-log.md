@@ -1,6 +1,14 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:20] Fix review preview stretching tall
+
+- **Dikerjakan:** Review grid blowout — editor sidebar content sized the row `auto`, stretching the preview pane sky-high. Fix: `grid-template-rows: minmax(0,1fr)`, overflow constraints, editor scrolls; video absolutely fills aspect-ratio stage so intrinsic WebM size cannot inflate layout.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-effects/beautify hijau.
+- **Commit:** `b5e37cd`
+- **Status:** done
+- **Next:** Rectangle shape; configurable border/shadow bake; A/V drift compensation.
+
 ## [2026-07-10 09:15] Camera layout: corner resize handles (FOKUS 3B)
 
 - **Dikerjakan:**
