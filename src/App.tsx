@@ -10,7 +10,6 @@ import type { ReviewEditState } from '../shared/edit'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_SNAP_PRESETS,
-  DEFAULT_CAMERA_OVERLAY,
   applyCameraSnapPreset,
   cameraSnapPresetLabel,
   matchCameraSnapTarget,
@@ -54,6 +53,7 @@ import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
 import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
+import { loadCameraPrefs, saveCameraPrefs } from './lib/cameraPrefs'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
 import type { CameraActiveRange, CameraSyncMeta } from '../shared/cameraSync'
@@ -120,7 +120,7 @@ export default function App() {
   const [reviewCursorEventCount, setReviewCursorEventCount] = useState(0)
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState<ExportProgressEvent | null>(null)
-  const [cameraOverlay, setCameraOverlay] = useState<CameraOverlayStyle>(DEFAULT_CAMERA_OVERLAY)
+  const [cameraOverlay, setCameraOverlay] = useState<CameraOverlayStyle>(() => loadCameraPrefs())
   const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([])
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -147,6 +147,11 @@ export default function App() {
       setExportProgress(event)
     })
   }, [])
+
+  // Persist FaceTime layout/device/chrome so the next launch matches last setup/review.
+  useEffect(() => {
+    saveCameraPrefs(cameraOverlay)
+  }, [cameraOverlay])
 
   useEffect(() => {
     let cancelled = false
@@ -183,6 +188,12 @@ export default function App() {
           if (!cancelled) setCameraDevices(devices)
         } catch {
           /* camera enumerate is best-effort before permission */
+        }
+
+        // Returning users who left the camera armed: reopen preview (layout already loaded).
+        const prefs = loadCameraPrefs()
+        if (!cancelled && prefs.enabled && nextRecording.state !== 'recording') {
+          await enableCameraPreview(prefs)
         }
       } catch (err) {
         if (!cancelled) {
@@ -706,6 +717,7 @@ export default function App() {
             cameraMediaUrl={playbackCameraUrl}
             cameraSync={cameraSync}
             initialCameraOverlay={cameraOverlay}
+            onCameraOverlayChange={(style) => setCameraOverlay(normalizeCameraOverlay(style))}
             durationMs={reviewDurationMs}
             bytesWritten={reviewBytesWritten}
             chunkCount={reviewChunkCount}

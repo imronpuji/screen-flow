@@ -25,6 +25,7 @@
     "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts",
     "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts",
     "smoke:camera": "node --experimental-strip-types scripts/smoke-camera.mts",
+    "smoke:camera-prefs": "node --experimental-strip-types scripts/smoke-camera-prefs.mts",
     "smoke:camera-sync": "node --experimental-strip-types scripts/smoke-camera-sync.mts",
     "smoke:export-camera": "node --experimental-strip-types scripts/smoke-export-camera.mts",
     "smoke:export-quality": "node --experimental-strip-types scripts/smoke-export-quality.mts",
