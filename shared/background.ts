@@ -62,8 +62,95 @@ export const DEFAULT_BACKGROUND_STYLE: BackgroundStyle = {
   shadowEnabled: true,
 }
 
+/**
+ * Frame layout presets — padding + corner radius + shadow in one tap.
+ * Color gradient stays independent (`presetId`) so users can mix look + framing.
+ */
+export type BackgroundFrameLayoutId = 'compact' | 'standard' | 'wide' | 'flat'
+
+export interface BackgroundFrameLayoutPreset {
+  id: BackgroundFrameLayoutId
+  label: string
+  /** Short hint for title / aria. */
+  hint: string
+  paddingPercent: number
+  cornerRadiusPx: number
+  shadowEnabled: boolean
+}
+
+export const BACKGROUND_FRAME_LAYOUTS: readonly BackgroundFrameLayoutPreset[] = [
+  {
+    id: 'compact',
+    label: 'Compact',
+    hint: 'Tight padding · soft corners',
+    paddingPercent: 6,
+    cornerRadiusPx: 10,
+    shadowEnabled: true,
+  },
+  {
+    id: 'standard',
+    label: 'Standard',
+    hint: 'Balanced Screen Studio frame',
+    paddingPercent: 10,
+    cornerRadiusPx: 14,
+    shadowEnabled: true,
+  },
+  {
+    id: 'wide',
+    label: 'Wide',
+    hint: 'Roomy padding · rounder card',
+    paddingPercent: 16,
+    cornerRadiusPx: 20,
+    shadowEnabled: true,
+  },
+  {
+    id: 'flat',
+    label: 'Flat',
+    hint: 'No shadow · square corners',
+    paddingPercent: 8,
+    cornerRadiusPx: 0,
+    shadowEnabled: false,
+  },
+] as const
+
 export function getBackgroundPreset(id: string): BackgroundPreset {
   return BACKGROUND_PRESETS.find((p) => p.id === id) ?? BACKGROUND_PRESETS[0]!
+}
+
+export function getBackgroundFrameLayout(
+  id: string,
+): BackgroundFrameLayoutPreset {
+  return (
+    BACKGROUND_FRAME_LAYOUTS.find((p) => p.id === id) ?? BACKGROUND_FRAME_LAYOUTS[1]!
+  )
+}
+
+/** Apply a frame layout preset; keeps enabled + color gradient. */
+export function applyBackgroundFrameLayout(
+  style: BackgroundStyle,
+  layoutId: BackgroundFrameLayoutId | string,
+): BackgroundStyle {
+  const layout = getBackgroundFrameLayout(layoutId)
+  return normalizeBackgroundStyle({
+    ...style,
+    paddingPercent: layout.paddingPercent,
+    cornerRadiusPx: layout.cornerRadiusPx,
+    shadowEnabled: layout.shadowEnabled,
+  })
+}
+
+/** Match current padding/radius/shadow to a layout preset (exact). */
+export function matchBackgroundFrameLayout(
+  style: BackgroundStyle,
+): BackgroundFrameLayoutId | null {
+  const normalized = normalizeBackgroundStyle(style)
+  const hit = BACKGROUND_FRAME_LAYOUTS.find(
+    (p) =>
+      p.paddingPercent === normalized.paddingPercent &&
+      p.cornerRadiusPx === normalized.cornerRadiusPx &&
+      p.shadowEnabled === normalized.shadowEnabled,
+  )
+  return hit?.id ?? null
 }
 
 /** Clamp user-facing background knobs to safe preview ranges. */

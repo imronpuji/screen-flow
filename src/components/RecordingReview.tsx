@@ -12,7 +12,12 @@ import {
   applyBeautifyPreset,
   type BeautifyPresetId,
 } from '../../shared/beautify'
-import { BACKGROUND_PRESETS } from '../../shared/background'
+import {
+  BACKGROUND_FRAME_LAYOUTS,
+  BACKGROUND_PRESETS,
+  applyBackgroundFrameLayout,
+  matchBackgroundFrameLayout,
+} from '../../shared/background'
 import {
   EXPORT_QUALITY_PRESETS,
   getExportQualityPreset,
@@ -767,6 +772,45 @@ export function RecordingReview({
               </div>
 
               <div className="review__field">
+                <span className="review__label">Frame layout</span>
+                <div
+                  className="review__presets review__presets--size"
+                  role="group"
+                  aria-label="Background frame layout"
+                >
+                  {BACKGROUND_FRAME_LAYOUTS.map((layout) => {
+                    const active =
+                      matchBackgroundFrameLayout(edit.background) === layout.id
+                    return (
+                      <button
+                        key={layout.id}
+                        type="button"
+                        className={`review__preset${
+                          active ? ' review__preset--active' : ''
+                        }`}
+                        disabled={exporting}
+                        title={layout.hint}
+                        onClick={() =>
+                          setEdit((prev) => ({
+                            ...prev,
+                            background: applyBackgroundFrameLayout(
+                              prev.background,
+                              layout.id,
+                            ),
+                          }))
+                        }
+                      >
+                        <span className="review__preset-label">{layout.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="review__hint">
+                  Compact / Standard / Wide set padding + corners; Flat drops shadow.
+                </p>
+              </div>
+
+              <div className="review__field">
                 <label className="review__label" htmlFor="bg-padding">
                   Padding {edit.background.paddingPercent}%
                 </label>
@@ -785,6 +829,31 @@ export function RecordingReview({
                       background: {
                         ...prev.background,
                         paddingPercent: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="review__field">
+                <label className="review__label" htmlFor="bg-radius">
+                  Corner radius {edit.background.cornerRadiusPx}px
+                </label>
+                <input
+                  id="bg-radius"
+                  className="review__range"
+                  type="range"
+                  min={0}
+                  max={28}
+                  step={1}
+                  value={edit.background.cornerRadiusPx}
+                  disabled={exporting}
+                  onChange={(e) =>
+                    setEdit((prev) => ({
+                      ...prev,
+                      background: {
+                        ...prev.background,
+                        cornerRadiusPx: Number(e.target.value),
                       },
                     }))
                   }
