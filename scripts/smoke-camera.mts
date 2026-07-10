@@ -4,6 +4,7 @@
 import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_CORNERS,
+  CAMERA_DEFAULT_ASPECT,
   CAMERA_EDGE_TARGETS,
   CAMERA_MAX_SIZE_PERCENT,
   CAMERA_MIN_SIZE_PERCENT,
@@ -41,6 +42,7 @@ import {
   CAMERA_SNAP_CYCLE_ORDER,
   cycleCameraShape,
   cycleCameraSnapPreset,
+  placeCameraAtPoint,
 } from '../shared/camera.ts'
 import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
 
@@ -569,6 +571,37 @@ function testCycleSnapAndShape(): void {
   console.log('ok cycle snap + shape')
 }
 
+function testPlaceAtPoint(): void {
+  const base = normalizeCameraOverlay({
+    enabled: true,
+    sizePercent: 22,
+    shape: 'circle',
+  })
+  const br = placeCameraAtPoint(base, 0.95, 0.95)
+  assert(matchCameraSnapTarget(br) === 'bottom-right', 'click BR snaps BR')
+  assert(br.anchor === 'bottom-right', 'BR anchor')
+
+  const tl = placeCameraAtPoint(base, 0.05, 0.05)
+  assert(matchCameraSnapTarget(tl) === 'top-left', 'click TL snaps TL')
+
+  const mid = placeCameraAtPoint(base, 0.5, 0.5)
+  assert(
+    matchCameraSnapTarget(mid) === 'top-center' ||
+      matchCameraSnapTarget(mid) === 'bottom-center' ||
+      matchCameraSnapTarget(mid) === null ||
+      ['left-center', 'right-center'].includes(matchCameraSnapTarget(mid) ?? ''),
+    'center click snaps edge mid or free',
+  )
+  // Center of frame with default size should hit an edge mid (top/bottom) or stay free.
+  const rect = cameraBubbleNormRect(mid, 1920, 1080)
+  assert(rect.w > 0 && rect.h > 0, 'placed bubble has size')
+  assert(rect.x >= 0 && rect.y >= 0, 'placed bubble in frame')
+
+  const freeish = placeCameraAtPoint(base, 0.35, 0.4, CAMERA_DEFAULT_ASPECT, 0.01)
+  assert(freeish.anchor === 'free', 'tiny threshold keeps free when far from snap')
+  console.log('ok place at point')
+}
+
 function testReviewEditCamera(): void {
   const plain = defaultReviewEdit(5000)
   assert(plain.cameraOverlay.enabled === false, 'default review camera off')
@@ -603,5 +636,6 @@ testResizeHandles()
 testNudge()
 testSizeNudgeAndPresets()
 testCycleSnapAndShape()
+testPlaceAtPoint()
 testReviewEditCamera()
 console.log('smoke-camera: all ok')
