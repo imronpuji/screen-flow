@@ -39,6 +39,8 @@ export const IPC_CHANNELS = {
   EXPORT_CANCEL: 'export:cancel',
   /** Copy finished temp MP4 to a user path (Save As → Documents/Screen Flow). */
   EXPORT_SAVE: 'export:save',
+  /** Reveal a saved export in Finder / Explorer (FOKUS 4). */
+  EXPORT_REVEAL: 'export:reveal',
   /** Read cursor JSONL from a session temp path (for auto-zoom preview). */
   RECORDING_READ_CURSOR_EVENTS: 'recording:read-cursor-events',
   /** Return a screenflow-media:// URL for a temp capture file (WebM/MP4 playback). */
@@ -362,6 +364,15 @@ export type SaveExportResult =
       cancelled: true
     }
 
+export interface RevealExportRequest {
+  /** Absolute path to a saved export file. */
+  filePath: string
+}
+
+export interface RevealExportResult {
+  ok: true
+}
+
 export interface ScreenFlowApi {
   getAppInfo: () => Promise<AppInfo>
   getPlatform: () => Promise<AppInfo['platform']>
@@ -386,6 +397,8 @@ export interface ScreenFlowApi {
   onExportProgress: (listener: (event: ExportProgressEvent) => void) => () => void
   cancelExport: () => Promise<CancelExportResult>
   saveExport: (request: SaveExportRequest) => Promise<SaveExportResult>
+  /** Show the saved export in the OS file manager. */
+  revealExport: (request: RevealExportRequest) => Promise<RevealExportResult>
   readCursorEvents: (request: ReadCursorEventsRequest) => Promise<ReadCursorEventsResult>
   getMediaUrl: (request: GetMediaUrlRequest) => Promise<GetMediaUrlResult>
 }

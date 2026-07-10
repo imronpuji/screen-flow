@@ -51,6 +51,7 @@ import {
   readCursorEvents,
   requestCameraAccess,
   requestMicrophoneAccess,
+  revealExport,
   saveExport,
   setCameraActiveRanges,
   startRecording,
@@ -61,6 +62,7 @@ import { CameraLayoutMap } from './components/CameraLayoutMap'
 import { CameraMonitor } from './components/CameraMonitor'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
+import { ToastHost } from './components/Toast'
 import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
 import { loadCameraPrefs, saveCameraPrefs } from '../shared/cameraPrefs'
@@ -73,6 +75,14 @@ import {
   openCameraActiveRange,
 } from '../shared/cameraSync'
 import { isEditableTarget, matchShortcut } from '../shared/shortcuts'
+import {
+  exportCancelledToast,
+  exportFailedToast,
+  exportSavedToast,
+  exportUnsavedToast,
+  makeToast,
+  type ActiveToast,
+} from '../shared/toast'
 import {
   TOOLTIPS,
   sourcesEmptyTooltip,
@@ -115,6 +125,7 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
+  const [toast, setToast] = useState<ActiveToast | null>(null)
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
   const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
   const [lastCameraPath, setLastCameraPath] = useState<string | null>(null)
@@ -806,18 +817,38 @@ export default function App() {
         setLastSummary(
           `Exported ${formatLabel} (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
         )
+        setToast(
+          makeToast(
+            exportUnsavedToast({
+              formatLabel,
+              bytesLabel: formatBytes(result.bytesWritten),
+            }),
+          ),
+        )
       } else {
         setLastSummary(
           `Saved ${formatLabel} (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+        )
+        setToast(
+          makeToast(
+            exportSavedToast({
+              formatLabel,
+              bytesLabel: formatBytes(saved.bytesWritten),
+              outputPath: saved.outputPath,
+            }),
+          ),
         )
       }
       setExportProgress({ phase: 'done', percent: 100 })
     } catch (err) {
       if (isExportCancelledError(err)) {
         setLastSummary('Export cancelled.')
+        setToast(makeToast(exportCancelledToast()))
         setExportProgress({ phase: 'cancelled', percent: 0 })
       } else {
-        setError(err instanceof Error ? err.message : 'Export failed')
+        const message = err instanceof Error ? err.message : 'Export failed'
+        setError(message)
+        setToast(makeToast(exportFailedToast(message)))
         setExportProgress(null)
       }
     } finally {
@@ -830,6 +861,19 @@ export default function App() {
       await cancelExport()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cancel failed')
+    }
+  }
+
+  function dismissToast(id: string) {
+    setToast((t) => (t?.id === id ? null : t))
+  }
+
+  function onToastAction(active: ActiveToast) {
+    if (active.action?.id === 'reveal-export' && active.action.filePath) {
+      void revealExport({ filePath: active.action.filePath }).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Could not open folder'
+        setToast(makeToast(exportFailedToast(message)))
+      })
     }
   }
 
@@ -880,6 +924,11 @@ export default function App() {
             {lastSummary}
           </p>
         ) : null}
+        <ToastHost
+          toast={toast}
+          onDismiss={dismissToast}
+          onAction={onToastAction}
+        />
       </div>
     )
   }
@@ -1488,6 +1537,11 @@ export default function App() {
           </div>
         </aside>
       </main>
+      <ToastHost
+        toast={toast}
+        onDismiss={dismissToast}
+        onAction={onToastAction}
+      />
     </div>
   )
 }

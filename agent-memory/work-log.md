@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:55] Export toast + Show in folder (FOKUS 4)
+
+- **Dikerjakan:**
+  - `shared/toast.ts` — toast specs (saved/unsaved/cancelled/failed) + humanize errors + `makeToast`.
+  - `ToastHost` — single-slot bottom toast, auto-dismiss, Close + optional action.
+  - IPC `export:reveal` → `shell.showItemInFolder` via `assertRevealableExportPath`.
+  - Export success/cancel/fail → toast; saved toast CTA **Show in folder**.
+  - Smoke `smoke:toast`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:toast` + export-save/tooltips/shortcuts hijau.
+- **Commit:** `a81f2bc`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Export dialog size estimate; more toast coverage (Beautify); visual verify on Mac.
+
 ## [2026-07-10 15:20] Empty-state CTAs + discard confirm (FOKUS 4)
 
 - **Dikerjakan:**

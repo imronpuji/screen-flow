@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
@@ -12,6 +12,7 @@ import {
   registerScreenFlowMediaScheme,
 } from './protocol/mediaProtocol.js'
 import { saveExportedMp4 } from './ffmpeg/saveExport.js'
+import { assertRevealableExportPath } from './ffmpeg/revealExport.js'
 import {
   cancelExport,
   exportWebmToMp4,
@@ -37,6 +38,8 @@ import {
   type GetMediaUrlRequest,
   type ListSourcesRequest,
   type ReadCursorEventsRequest,
+  type RevealExportRequest,
+  type RevealExportResult,
   type SaveExportRequest,
   type SetCameraActiveRangesRequest,
   type StartRecordingRequest,
@@ -181,6 +184,15 @@ function registerIpc(): void {
       throw new Error('Invalid save payload: cleanupSource must be a boolean')
     }
     return saveExportedMp4(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.EXPORT_REVEAL, async (_event, request: RevealExportRequest) => {
+    if (!request || typeof request.filePath !== 'string') {
+      throw new Error('Invalid reveal payload: filePath required')
+    }
+    const filePath = assertRevealableExportPath(request.filePath)
+    shell.showItemInFolder(filePath)
+    return { ok: true } satisfies RevealExportResult
   })
 }
 
