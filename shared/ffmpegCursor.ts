@@ -12,6 +12,7 @@ import type { CursorEvent } from './cursor.js'
 import {
   buildClickRings,
   buildCursorKeyframes,
+  getActiveClickHighlights,
   getActiveClickRings,
   getSmoothedCursorAtTime,
   type CursorSmoothingOptions,
@@ -27,6 +28,8 @@ export interface CursorSendCmdOptions {
   ringBasePx?: number
   /** Soft spotlight diameter (0 = off). */
   spotlightPx?: number
+  /** Soft auto-highlight diameter before scale animation. */
+  highlightPx?: number
   /** Cursor visual style for drawbox filters. */
   style?: CursorStyleId
   /** Full appearance — preferred over individual size/style fields. */
@@ -58,6 +61,11 @@ function resolveDrawOptions(options: CursorSmoothingOptions & CursorSendCmdOptio
       options.spotlightPx != null
         ? options.spotlightPx > 0
         : fromAppearance.spotlightEnabled,
+    highlightPx: options.highlightPx ?? fromAppearance.highlightPx,
+    clickHighlightEnabled:
+      options.highlightPx != null
+        ? options.highlightPx > 0
+        : fromAppearance.clickHighlightEnabled,
   }
 }
 
@@ -97,6 +105,7 @@ export function buildCursorSendCmd(
   const dotSize = draw.dotSizePx
   const ringBase = draw.ringBasePx
   const spotlightSize = draw.spotlightEnabled ? draw.spotlightPx : 0
+  const highlightBase = draw.clickHighlightEnabled ? draw.highlightPx : 0
   const duration = Math.max(sampleMs, durationMs)
 
   const keyframes = buildCursorKeyframes(events)
@@ -108,6 +117,7 @@ export function buildCursorSendCmd(
   let prevDotKey = ''
   let prevRingKey = ''
   let prevSpotKey = ''
+  let prevHlKey = ''
 
   for (let t = 0; t <= duration; t += sampleMs) {
     const timeSec = (t / 1000).toFixed(3)
@@ -161,6 +171,35 @@ export function buildCursorSendCmd(
         if (dotKey !== prevDotKey) {
           parts.push(`drawbox@cursor x ${dotX}`, `drawbox@cursor y ${dotY}`)
           prevDotKey = dotKey
+        }
+      }
+    }
+
+    if (highlightBase > 0) {
+      const activeHighlights = getActiveClickHighlights(t, rings, options)
+      if (activeHighlights.length > 0) {
+        const hl = activeHighlights[activeHighlights.length - 1]!
+        const { x, y } = mapCursorToFrame(hl.x, hl.y, frameW, frameH, layout)
+        const size = Math.round(highlightBase * hl.scale)
+        const hlX = x - Math.floor(size / 2)
+        const hlY = y - Math.floor(size / 2)
+        const alpha = Math.max(0, Math.min(1, hl.opacity))
+        const hlKey = `${hlX}:${hlY}:${size}:${alpha.toFixed(2)}`
+        if (hlKey !== prevHlKey) {
+          parts.push(
+            `drawbox@hl x ${hlX}`,
+            `drawbox@hl y ${hlY}`,
+            `drawbox@hl w ${size}`,
+            `drawbox@hl h ${size}`,
+            `drawbox@hl color 0x3dd6c6@${alpha.toFixed(2)}`,
+          )
+          prevHlKey = hlKey
+        }
+      } else {
+        // Hide highlight between clicks (alpha 0).
+        if (prevHlKey !== 'off') {
+          parts.push(`drawbox@hl color 0x3dd6c6@0`)
+          prevHlKey = 'off'
         }
       }
     }
@@ -236,6 +275,7 @@ export function planCursorExport(
   const ringBase = draw.ringBasePx
   const ringThickness = 3
   const spotlightSize = draw.spotlightEnabled ? draw.spotlightPx : 0
+  const highlightBase = draw.clickHighlightEnabled ? draw.highlightPx : 0
   const crossArm = Math.max(2, Math.round(dotSize / 5))
   const crossLen = Math.max(dotSize, Math.round(dotSize * 1.4))
 
@@ -244,6 +284,13 @@ export function planCursorExport(
   if (spotlightSize > 0) {
     filters.push(
       `drawbox@spot=x=0:y=0:w=${spotlightSize}:h=${spotlightSize}:color=0x3dd6c6@0.18:t=fill`,
+    )
+  }
+
+  // Soft filled auto-highlight under the outline ring (preview ≡ export).
+  if (highlightBase > 0) {
+    filters.push(
+      `drawbox@hl=x=0:y=0:w=${highlightBase}:h=${highlightBase}:color=0x3dd6c6@0:t=fill`,
     )
   }
 

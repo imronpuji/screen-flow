@@ -1,5 +1,5 @@
 /**
- * Smoke checks for modifiable cursor appearance (size / style / hide / spotlight).
+ * Smoke checks for modifiable cursor appearance (size / style / hide / spotlight / click highlight).
  */
 import {
   appearanceToCursorDrawOptions,
@@ -21,13 +21,22 @@ function testNormalize(): void {
     style: 'crosshair',
     sizeScale: 99,
     spotlightEnabled: true,
+    clickHighlightEnabled: false,
   })
   assert(normalized.style === 'crosshair', 'style preserved')
   assert(normalized.sizeScale === 3, 'size clamped to max')
   assert(normalized.spotlightEnabled, 'spotlight on')
+  assert(!normalized.clickHighlightEnabled, 'highlight off when explicit false')
   assert(clampCursorSizeScale(0.1) === 0.5, 'min scale')
   assert(isCursorVisible(DEFAULT_CURSOR_APPEARANCE), 'default visible')
   assert(!isCursorVisible({ ...DEFAULT_CURSOR_APPEARANCE, style: 'hidden' }), 'hidden')
+  assert(DEFAULT_CURSOR_APPEARANCE.clickHighlightEnabled, 'default highlight on')
+  // Legacy prefs without the key still get highlight.
+  assert(
+    normalizeCursorAppearance({ style: 'dot', sizeScale: 1, spotlightEnabled: false })
+      .clickHighlightEnabled,
+    'missing highlight key → on',
+  )
   console.log('ok normalize')
 }
 
@@ -40,10 +49,13 @@ function testSizing(): void {
     style: 'dot',
     sizeScale: 1.5,
     spotlightEnabled: true,
+    clickHighlightEnabled: true,
   })
   assert(draw.dotSizePx === 21, '1.5× dot')
   assert(draw.spotlightEnabled, 'spotlight flag')
   assert(draw.spotlightPx > draw.dotSizePx, 'spotlight larger than dot')
+  assert(draw.clickHighlightEnabled, 'highlight flag')
+  assert(draw.highlightPx > draw.ringBasePx, 'highlight larger than ring base')
   console.log('ok sizing')
 }
 
@@ -55,25 +67,43 @@ function testExportPlans(): void {
   const videoSize = { width: 320, height: 180 }
 
   const hidden = planCursorExport(events, videoSize, 1000, null, {
-    appearance: { style: 'hidden', sizeScale: 1, spotlightEnabled: false },
+    appearance: {
+      style: 'hidden',
+      sizeScale: 1,
+      spotlightEnabled: false,
+      clickHighlightEnabled: false,
+    },
   })
   assert(!hidden.hasCursor, 'hidden skips cursor bake')
   assert(hidden.filterComplex.includes('null'), 'hidden uses null filter')
 
   const large = planCursorExport(events, videoSize, 1000, null, {
-    appearance: { style: 'dot', sizeScale: 2, spotlightEnabled: false },
+    appearance: {
+      style: 'dot',
+      sizeScale: 2,
+      spotlightEnabled: false,
+      clickHighlightEnabled: false,
+    },
   })
   assert(large.hasCursor, 'large cursor active')
   assert(large.filterComplex.includes('w=28:h=28'), '2× drawbox size')
+  assert(!large.filterComplex.includes('drawbox@hl'), 'highlight off skips hl filter')
 
   const cross = planCursorExport(events, videoSize, 1000, null, {
-    appearance: { style: 'crosshair', sizeScale: 1, spotlightEnabled: true },
+    appearance: {
+      style: 'crosshair',
+      sizeScale: 1,
+      spotlightEnabled: true,
+      clickHighlightEnabled: true,
+    },
   })
   assert(cross.hasCursor, 'crosshair active')
   assert(cross.filterComplex.includes('drawbox@cursorh'), 'horizontal arm')
   assert(cross.filterComplex.includes('drawbox@cursorv'), 'vertical arm')
   assert(cross.filterComplex.includes('drawbox@spot'), 'spotlight filter')
+  assert(cross.filterComplex.includes('drawbox@hl'), 'auto-highlight filter')
   assert(cross.sendCmd.includes('drawbox@cursorh'), 'sendcmd drives crosshair')
+  assert(cross.sendCmd.includes('drawbox@hl'), 'sendcmd drives highlight')
   console.log('ok export plans')
 }
 

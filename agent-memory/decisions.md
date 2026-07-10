@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Auto-highlight clicks (preview ≡ export)
+
+- **Keputusan:** `CursorAppearance.clickHighlightEnabled` (default **true**) mengontrol soft filled pulse di titik klik, terpisah dari outline click ring. Preview: `.cursor-overlay__highlight` (radial teal, scale+fade ~700ms via `getActiveClickHighlights`). Export: `drawbox@hl` fill `0x3dd6c6@alpha` di-drive sendcmd — ukuran dari `resolveCursorHighlightPx` (base 96×sizeScale). Legacy prefs tanpa key → **on**. Beautify semua preset menyalakan highlight. Outline ring tetap ada (lebih pendek ~450ms).
+- **Alasan:** Innovation “Auto-highlight klik” — ring outline saja terasa tipis vs Screen Studio; soft pulse membuat klik terbaca orang awam; satu flag di appearance → setup/review/export sama + persist.
+- **Status:** aktif
+
 ## [2026-07-10] Review FaceTime layout map (FOKUS 3B)
 
 - **Keputusan:** `CameraLayoutMap` juga di **RecordingReview** (section Position), bukan hanya setup/recording chrome. Click-to-place memakai `placeCameraAtPoint` + `normalizeCameraOverlay` yang sama → preview bubble ≡ export. Disabled saat exporting.

@@ -1,6 +1,7 @@
 /**
  * Persist modifiable cursor appearance prefs across sessions (renderer localStorage).
- * Style / size / spotlight restore on the next review so users don't reconfigure every recording.
+ * Style / size / spotlight / click-highlight restore on the next review so users
+ * don't reconfigure every recording.
  */
 
 import {

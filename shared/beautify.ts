@@ -55,6 +55,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       style: 'dot',
       sizeScale: 1.35,
       spotlightEnabled: true,
+      clickHighlightEnabled: true,
     },
     background: {
       enabled: true,
@@ -86,6 +87,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       style: 'dot',
       sizeScale: 1.15,
       spotlightEnabled: false,
+      clickHighlightEnabled: true,
     },
     background: {
       enabled: true,
@@ -117,6 +119,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       style: 'crosshair',
       sizeScale: 1.6,
       spotlightEnabled: true,
+      clickHighlightEnabled: true,
     },
     background: {
       enabled: true,

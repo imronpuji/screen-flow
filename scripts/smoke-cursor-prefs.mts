@@ -40,6 +40,10 @@ function testDefaults(): void {
     loaded.spotlightEnabled === DEFAULT_CURSOR_APPEARANCE.spotlightEnabled,
     'default spotlight',
   )
+  assert(
+    loaded.clickHighlightEnabled === DEFAULT_CURSOR_APPEARANCE.clickHighlightEnabled,
+    'default click highlight',
+  )
   console.log('ok defaults')
 }
 
@@ -49,6 +53,7 @@ function testRoundTrip(): void {
     style: 'crosshair',
     sizeScale: 1.5,
     spotlightEnabled: true,
+    clickHighlightEnabled: false,
   })
   saveCursorPrefs(appearance, store)
   assert(store.getItem(CURSOR_PREFS_STORAGE_KEY) != null, 'key written')
@@ -56,6 +61,7 @@ function testRoundTrip(): void {
   assert(loaded.style === 'crosshair', 'style restored')
   assert(loaded.sizeScale === 1.5, 'size restored')
   assert(loaded.spotlightEnabled === true, 'spotlight restored')
+  assert(loaded.clickHighlightEnabled === false, 'highlight off restored')
   console.log('ok round-trip')
 }
 
@@ -80,6 +86,7 @@ function testClampOnLoad(): void {
   assert(loaded.style === 'dot', 'bad style → dot')
   assert(loaded.sizeScale === 3, 'size clamped to max')
   assert(loaded.spotlightEnabled === true, 'spotlight kept')
+  assert(loaded.clickHighlightEnabled === true, 'legacy prefs → highlight on')
   console.log('ok clamp-on-load')
 }
 

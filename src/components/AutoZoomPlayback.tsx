@@ -19,8 +19,10 @@ import {
 import {
   buildClickRings,
   buildCursorKeyframes,
+  getActiveClickHighlights,
   getActiveClickRings,
   getSmoothedCursorAtTime,
+  type ActiveClickHighlight,
   type ActiveClickRing,
   type NormalizedPoint,
 } from '../../shared/cursorSmoothing'
@@ -122,6 +124,7 @@ export function AutoZoomPlayback({
   const [transform, setTransform] = useState({ scale: 1, focusX: 0.5, focusY: 0.5 })
   const [cursorPos, setCursorPos] = useState<NormalizedPoint | null>(null)
   const [clickRings, setClickRings] = useState<ActiveClickRing[]>([])
+  const [clickHighlights, setClickHighlights] = useState<ActiveClickHighlight[]>([])
   const [playing, setPlaying] = useState(false)
   const [durationMs, setDurationMs] = useState(0)
   const [currentMs, setCurrentMs] = useState(0)
@@ -283,12 +286,25 @@ export function AutoZoomPlayback({
       if (!showCursor || cursorKeyframes.length === 0) {
         setCursorPos(null)
         setClickRings([])
+        setClickHighlights([])
         return
       }
       setCursorPos(getSmoothedCursorAtTime(tMs, cursorKeyframes, videoSize, cursorGeoOpts))
       setClickRings(getActiveClickRings(tMs, clickRingTriggers))
+      setClickHighlights(
+        cursorDraw.clickHighlightEnabled
+          ? getActiveClickHighlights(tMs, clickRingTriggers)
+          : [],
+      )
     },
-    [clickRingTriggers, cursorGeoOpts, cursorKeyframes, showCursor, videoSize],
+    [
+      clickRingTriggers,
+      cursorDraw.clickHighlightEnabled,
+      cursorGeoOpts,
+      cursorKeyframes,
+      showCursor,
+      videoSize,
+    ],
   )
 
   useEffect(() => {
@@ -304,6 +320,7 @@ export function AutoZoomPlayback({
     setTransform({ scale: 1, focusX: 0.5, focusY: 0.5 })
     setCursorPos(null)
     setClickRings([])
+    setClickHighlights([])
     el.src = mediaUrl
     void el.load()
   }, [mediaUrl])
@@ -492,6 +509,20 @@ export function AutoZoomPlayback({
               }}
             />
           ) : null}
+          {clickHighlights.map((hl, i) => (
+            <span
+              key={`hl-${hl.x}-${hl.y}-${i}`}
+              className="cursor-overlay__highlight"
+              style={{
+                left: `${hl.x * 100}%`,
+                top: `${hl.y * 100}%`,
+                width: `${cursorDraw.highlightPx}px`,
+                height: `${cursorDraw.highlightPx}px`,
+                transform: `translate(-50%, -50%) scale(${hl.scale})`,
+                opacity: hl.opacity,
+              }}
+            />
+          ))}
           {clickRings.map((ring, i) => (
             <span
               key={`${ring.x}-${ring.y}-${i}`}

@@ -840,6 +840,23 @@ export function RecordingReview({
                     />
                     <span>Spotlight around cursor</span>
                   </label>
+                  <label className="review__toggle review__toggle--nested">
+                    <input
+                      type="checkbox"
+                      checked={edit.cursorAppearance.clickHighlightEnabled}
+                      disabled={exporting}
+                      onChange={(e) =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          cursorAppearance: {
+                            ...prev.cursorAppearance,
+                            clickHighlightEnabled: e.target.checked,
+                          },
+                        }))
+                      }
+                    />
+                    <span>Auto-highlight clicks</span>
+                  </label>
                 </>
               ) : null}
             </>
