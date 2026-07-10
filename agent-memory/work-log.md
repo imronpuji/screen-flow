@@ -1,6 +1,16 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 25:00] FaceTime layout map keyboard parity (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `CameraLayoutMap` — keyboard parity dengan live bubble: arrows nudge, +/- resize, `[`/`]` snap cycle, `C` shape, `0` / double-click reset (bubble tetap 1/2/3 size; map 7/9/1/3/5 corners).
+  - Review hint diperbarui; smoke `place at point` covers map keyboard helpers.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `c4566b1`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional ScreenCaptureKit.
+
 ## [2026-07-10 24:20] FaceTime layout map drag + scroll resize (FOKUS 3B)
 
 - **Dikerjakan:**
