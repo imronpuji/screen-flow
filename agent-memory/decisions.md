@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Timeline zoom-in/out (FOKUS 5)
+
+- **Keputusan:** Scrubber review punya magnifikasi diskrit **1×–8×** (`shared/timelineZoom.ts`, steps `1,1.5,2,3,4,6,8`). Viewport = `duration/zoom` berpusat di playhead (`viewAnchorMs`); marker/keep/gap/trim shade di-remap lewat `viewportPercent` / `viewportSpanPercent`; edge-drag + magnetic snap memakai `clientXToTimelineMs` + threshold dari **visible** duration. Persist `timelineZoom` di `screen-flow:timeline-prefs`. UI: tombol − / label Fit / + di scrubber + panel Timeline; shortcut `=`/`+` zoom in, `-` zoom out, `0` fit; Ctrl/⌘+scroll zoom, Shift+scroll pan.
+- **Alasan:** FOKUS 5 — “zoom-in/out timeline (perbesar detail waktu)” masih open setelah magnetic snap + keep-edge drag; clip panjang sulit trim/zoom fine tanpa magnifikasi.
+- **Status:** aktif
+
 ## [2026-07-10] Project auto-save (FOKUS 5)
 
 - **Keputusan:** Satu slot `localStorage` (`screen-flow:project-autosave`) menyimpan snapshot `{ version:1, webmPath, savedAt, durationMs, edit: ReviewEditState }`. Debounce **800ms** di `RecordingReview` setelah edit berubah. Restore hanya jika `webmPath` cocok; `normalizeReviewEditState` clamp keep/zoom/camera. Clear saat discard atau export sukses. Subtitle tenang: “Restored draft” / “Saving…” / “Saved just now”.

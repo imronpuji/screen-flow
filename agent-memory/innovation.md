@@ -18,7 +18,7 @@
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight + **auto-highlight clicks** — preview + export bake + **persist prefs**
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask) + **frame layout presets (Compact/Standard/Wide/Flat)** + **persist prefs** + **export multi-stop/angle/accent fidelity**
-- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag** + **undo/redo (coalesced)** + **playhead Mark In/Out + cut keep-before/after (S/⇧S)** + **multi-segment keep-ranges (X split · Delete · ffmpeg concat)** + **preview gap-skip (playback + scrub snap + timeline shade)** + **ripple delete toggle (merge touching clips)** + **magnetic playhead snap (scrub sticky to edit points, toggle + persist)** + **keep-clip edge drag + magnetic snap** + **collapsible property panels (Zoom/Cursor/Background/Camera/Timeline/Export) + hide sidebar** + **project auto-save (debounced by webmPath)**
+- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag** + **undo/redo (coalesced)** + **playhead Mark In/Out + cut keep-before/after (S/⇧S)** + **multi-segment keep-ranges (X split · Delete · ffmpeg concat)** + **preview gap-skip (playback + scrub snap + timeline shade)** + **ripple delete toggle (merge touching clips)** + **magnetic playhead snap (scrub sticky to edit points, toggle + persist)** + **keep-clip edge drag + magnetic snap** + **timeline zoom-in/out (1×–8× viewport)** + **collapsible property panels (Zoom/Cursor/Background/Camera/Timeline/Export) + hide sidebar** + **project auto-save (debounced by webmPath)**
 
 ## Nanti
 
@@ -28,12 +28,13 @@
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [x] Auto-highlight klik — soft filled pulse (preview + export bake) + toggle + persist + Beautify on
-- [x] Keyboard shortcuts — setup R/Space; review Space/E/B/Z/⌘Z/←→/Esc; exporting Esc
+- [x] Keyboard shortcuts — setup R/Space; review Space/E/B/Z/=/−/0/⌘Z/←→/Esc; exporting Esc
 - [x] Empty-state tooltips — catalog + hover tips + empty source/camera hints
 - [x] Empty-state CTAs — Refresh sources · Add zoom at playhead + discard confirm dialog
 - [x] Export toast feedback — success/cancel/error + Show in folder (reveal IPC)
 - [x] Export size estimate — ~low–high from format/quality/kept length (+ mic)
 - [x] Beautify toast — success toast with preset label/hint after B / chips
 - [x] Project auto-save — debounced ReviewEditState by webmPath (restore/clear)
+- [x] Timeline zoom-in/out — 1×–8× scrubber viewport + prefs + shortcuts
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path
