@@ -2,12 +2,23 @@
 
 Entri terbaru di ATAS.
 
+
 ## [2026-07-10 06:15] Cursor smoothing + click ring preview
 
 - **Dikerjakan:** `shared/cursorSmoothing.ts` (weighted smoothing, click ring animation); overlay kursor + ring di `AutoZoomPlayback` (stage aspect-ratio + zoom transform); toggle `cursorSmoothingEnabled` di review editor; smoke `smoke:cursor-smoothing`.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke cursor-smoothing/autozoom/export-trim hijau.
 - **Status:** done (preview MVP)
 - **Next:** Background padding/gradient preview; bake cursor + rings ke ffmpeg export.
+
+## [2026-07-10 13:17] Fix export gagal "ffprobe could not read video duration" + preload jatuh ke browser fallback
+
+- **Gejala:** Export MP4 error `ffprobe could not read video duration`; auto-zoom nggak jalan (auto-zoom di-bake pas encode, jadi ikut gagal). Sebelumnya jendela Electron juga tampil "browser preview / Electron capture APIs unavailable".
+- **Akar masalah:** (1) WebM dari `MediaRecorder` ditulis streaming — header tak punya `format.duration` maupun stream `duration`, jadi ffprobe balikin kosong → `probeVideoFile` hard-fail → export batal. (2) `webPreferences.sandbox` sempat `true`; preload pakai ESM import lokal (`../shared/ipc.js`) yang tak jalan di sandbox → `window.screenFlow` tak ter-inject.
+- **Dikerjakan:** `electron/ffmpeg/probe.ts` — tambah fallback `probeDurationByPackets` (scan `packet=pts_time,duration_time`, ambil pts terakhir + 1 frame) saat container/stream duration kosong; juga baca `stream=duration` sebagai lapis kedua. `electron/main.ts` — balikin `sandbox: false`.
+- **Hasil:** `build:electron` hijau; probe di file capture asli balikin durasi 15.156s (sebelumnya error); `smoke:export-autozoom` hijau. App di-relaunch dengan build baru.
+- **Status:** done
+- **Next:** Pertimbangkan kirim durasi rekaman (wall-clock `StopRecordingResult.durationMs`) sebagai hint ke export biar tak selalu bergantung scan packet; lanjut review screen (playback hasil + reveal in Finder) yang sempat ketunda.
+
 
 ## [2026-07-10 06:10] Bake trim ke ffmpeg MP4 export
 

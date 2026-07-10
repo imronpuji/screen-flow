@@ -98,6 +98,18 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User sudah trim di review; export harus match tanpa langkah manual; satu pass ffmpeg tetap jalan dengan progress/cancel.
 - **Status:** aktif (MVP)
 
+## [2026-07-10] Probe durasi WebM MediaRecorder (packet-scan fallback)
+
+- **Keputusan:** `probeVideoFile` baca `format.duration` → `stream.duration` → fallback scan `packet=pts_time,duration_time` (pts terakhir + durasi frame). Dimensi (width/height) tetap dari stream (selalu terbaca).
+- **Alasan:** WebM `MediaRecorder` streaming tak menulis duration di header, jadi ffprobe balikin kosong dan bikin export hard-fail. Scan packet pakai `-c copy` semantics (tanpa decode) → cepat sekalipun rekaman panjang, dan memberi durasi akurat yang juga dipakai timing auto-zoom (`fullDurationMs`).
+- **Status:** aktif
+
+## [2026-07-10] webPreferences.sandbox = false
+
+- **Keputusan:** BrowserWindow tetap `sandbox: false` (dengan `contextIsolation: true`, `nodeIntegration: false`).
+- **Alasan:** Preload di-compile ke ESM dan meng-import modul lokal `shared/ipc.js`; preload yang di-sandbox tak bisa ESM-import file lokal → `contextBridge` gagal, `window.screenFlow` tak muncul, UI jatuh ke browser fallback. Isolasi tetap dijaga lewat contextIsolation + IPC typed.
+- **Status:** aktif
+
 ## [2026-07-10] Cursor event capture (JSONL)
 
 - **Keputusan:** Saat `recording:start`, main menulis `cursor-events.jsonl` di session temp. Event: `{ t, x, y, kind: move|down|up|click, button? }` dengan `t` = ms sejak start. Primary: `uiohook-napi` global hook (posisi + klik). Fallback: poll `screen.getCursorScreenPoint()` ~60Hz (posisi saja). Move di-throttle (≥16ms atau ≥2px). Stop menutup stream dan expose `cursorEventsPath` + `cursorEventCount` di `StopRecordingResult`.

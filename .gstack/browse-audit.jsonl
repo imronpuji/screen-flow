@@ -1,0 +1,4 @@
+{"ts":"2026-07-10T04:50:20.288Z","cmd":"goto","args":"http://localhost:5173","origin":"http://localhost:5173/","durationMs":296,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-10T04:50:20.349Z","cmd":"text","args":"","origin":"http://localhost:5173/","durationMs":2,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-10T04:50:20.390Z","cmd":"console","args":"","origin":"http://localhost:5173/","durationMs":0,"status":"ok","hasCookies":false,"mode":"launched"}
+{"ts":"2026-07-10T04:50:26.634Z","cmd":"screenshot","args":"/private/tmp/claude-501/-Users-muhamadimron-Projects-screen-flow/a3b5e01b-f0dd-46ee-b823-211672101602/scratchpad/screen-flow-browser.png","origin":"http://localhost:5173/","durationMs":222,"status":"ok","hasCookies":false,"mode":"launched"}
