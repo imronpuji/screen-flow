@@ -1,8 +1,8 @@
-# Screen Flow Make By Imron
+# Screen Flow Make By Imron Muh
 
-Cinematic desktop screen recorder inspired by Screen Studio — auto-zoom, cursor smoothing, aesthetic backgrounds, MP4/GIF export.
+Cinematic desktop screen recorder inspired by Screen Studio ??? auto-zoom, cursor smoothing, aesthetic backgrounds, MP4/GIF export.
 
-**Stack:** Electron · React · TypeScript · ffmpeg  
+**Stack:** Electron ?? React ?? TypeScript ?? ffmpeg  
 **Platform:** macOS first (Windows later)
 
 ## Architecture
@@ -10,8 +10,8 @@ Cinematic desktop screen recorder inspired by Screen Studio — auto-zoom, curso
 | Process | Role |
 |---------|------|
 | **Main** (`electron/`) | OS APIs, capture, ffmpeg spawn, filesystem, IPC |
-| **Preload** (`electron/preload.ts`) | `contextBridge` — typed API only |
-| **Renderer** (`src/`) | React UI, timeline, preview — stay at 60fps |
+| **Preload** (`electron/preload.ts`) | `contextBridge` ??? typed API only |
+| **Renderer** (`src/`) | React UI, timeline, preview ??? stay at 60fps |
 | **Shared** (`shared/`) | IPC channel names + payload types |
 
 Security defaults: `contextIsolation: true`, `nodeIntegration: false`.
