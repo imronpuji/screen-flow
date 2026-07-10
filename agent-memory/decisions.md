@@ -96,7 +96,13 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** `shared/ffmpegCamera.ts` → scale/crop camera input ke bubble square → 1-frame geq alpha (circle/rounded) → loop → alphamerge → overlay pada frame final. Urutan filter: zoom → background → cursor → **camera** (kamera di atas). IPC `ExportMp4Request.camera` (`cameraPath` + `style`); transcode menambah `-i camera.webm` sebagai input 1 dengan `-ss` yang sama untuk trim. UI meneruskan `lastCameraPath` + `cameraOverlay` saat export.
 - **Alasan:** Preview live & export harus match layout `cameraBubbleNormRect`; mask 1-frame menghindari geq per-frame (pelajaran background); `eof_action=pass` biar screen tetap jalan kalau camera lebih pendek.
-- **Status:** aktif (MVP); review playback bubble + fine A/V sync drift = follow-up
+- **Status:** aktif (MVP); fine A/V sync drift = follow-up
+
+## [2026-07-10] Kamera review playback (recorded bubble sync)
+
+- **Keputusan:** Review memutar `camera.webm` via `screenflow-media://` di `CameraBubble` (`mediaUrl` + `currentTimeSec`). Sync seek bila drift > 80ms terhadap timeline screen. Bubble **di luar** transform auto-zoom (wrapper `zoom-playback__composite` atau full `zoom-playback__background`) supaya posisi pojok match export (zoom→bg→cursor→camera). Recorded frames **tidak** di-mirror (`mirrored=false`); live preview tetap mirrored. Layout review di-edit lewat `ReviewEditState.cameraOverlay` dan diteruskan ke export.
+- **Alasan:** Preview↔export harus sama; mirror CSS hanya untuk selfie live; camera di atas zoom agar bubble tidak ikut pan/scale.
+- **Status:** aktif
 
 ## [2026-07-10] Background rounded/shadow via 1-frame alpha mask
 

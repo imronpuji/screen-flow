@@ -1,6 +1,14 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 07:45] Camera bubble di review playback (FOKUS 3)
+
+- **Dikerjakan:** `CameraBubble` support `mediaUrl` + `currentTimeSec` sync (ε 80ms) + `mirrored=false` untuk recorded; `AutoZoomPlayback` overlay di luar zoom (composite / full background canvas = urutan ffmpeg); `ReviewEditState.cameraOverlay` + kontrol corner/size/shape di review; App load `camera.webm` via `getMediaUrl`; export pakai `edit.cameraOverlay`; smoke `smoke:camera` cek `defaultReviewEdit` camera seed.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera hijau.
+- **Commit:** `075290a`
+- **Status:** done (FOKUS 3 review playback)
+- **Next:** Export quality presets; auto-zoom Retina/anti-jitter polish; first-run onboarding / polish UX.
+
 ## [2026-07-10 07:25] Cursor appearance: size / style / hide / spotlight (FOKUS 2)
 
 - **Dikerjakan:** `shared/cursorAppearance.ts` (dot|crosshair|hidden, sizeScale 0.5–3, spotlight); preview di `AutoZoomPlayback` + kontrol review (style picker, size slider, spotlight); export bake di `ffmpegCursor` (scaled drawbox, crosshair arms, spotlight drawbox@spot, hidden → null); IPC `ExportMp4Request.cursorSmoothing.appearance`; smoke `smoke:cursor-appearance`.
