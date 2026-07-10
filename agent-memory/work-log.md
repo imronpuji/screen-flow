@@ -10,8 +10,8 @@ Entri terbaru di ATAS.
   - Smoke `smoke:project-autosave`.
 - **Hasil:** `typecheck` + `build` + `lint` + `smoke:project-autosave` + edit-history/toast/shortcuts hijau.
 - **Commit:** `f919eca`
-- **Status:** done — lanjut push/PR + owner merge callback.
-- **Next:** Timeline zoom-in/out UI; visual verify on Mac.
+- **Status:** done — PR #78 opened; owner merge callback attempted (ngrok tunnel offline ERR_NGROK_3200).
+- **Next:** Timeline zoom-in/out UI; visual verify on Mac; retry merge curl when tunnel up.
 
 ## [2026-07-10 14:05] Beautify toast feedback (FOKUS 4)
 
