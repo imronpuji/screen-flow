@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Chrome FaceTime layout map + click-to-mute (FOKUS 3B/A)
+
+- **Keputusan:** Saat kamera armed (setup atau recording), tampilkan `CameraLayoutMap` di panel **camera-controls** (app chrome) — schematic 16:9 dengan bubble marker dari koordinat relatif yang sama dengan preview/export (`cameraBubblePosition` / `placeCameraAtPoint`). Click pada map menempatkan pusat bubble lalu magnetic-snap (threshold 2× default). **Tidak** di `preview-frame` supaya tidak burn-in ke screen WebM. `CameraMonitor` boleh di-klik (atau Enter/Space) untuk memanggil `setCameraLiveDuringRecording` — komponen **tidak** memaksa `track.enabled`.
+- **Alasan:** FOKUS 3B — selama recording layout bubble disembunyikan di capture preview; orang awam butuh melihat/mengubah posisi export tanpa double FaceTime. Click-to-mute di monitor melengkapi toggle checkbox (FOKUS 3A).
+- **Status:** aktif
+
 ## [2026-07-10] Docked FaceTime monitor while recording (FOKUS 3A)
 
 - **Keputusan:** Saat `mode === 'recording'` dan ada `cameraStream`, tampilkan `CameraMonitor` di panel **camera-controls** (app chrome), bukan di `preview-frame`. Monitor menampilkan stream live dengan shape/mirror dari `CameraOverlayStyle`, status Live/Muted, dan **tidak** memanggil `track.enabled = true` (mute mid-recording tetap otoritatif). Layout bubble di preview tetap disembunyikan selama recording (hindari double FaceTime di screen WebM).
