@@ -1,57 +1,37 @@
-# Loan Journey App (React)
+# Screen Flow
 
-Mobile-first React web app implementing the full loan journey screen flow with API integration.
+Cinematic desktop screen recorder inspired by Screen Studio — auto-zoom, cursor smoothing, aesthetic backgrounds, MP4/GIF export.
 
-## Tech Stack
+**Stack:** Electron · React · TypeScript · ffmpeg  
+**Platform:** macOS first (Windows later)
 
-- React 19 + TypeScript
-- Vite
-- React Router v7
+## Architecture
 
-## Getting Started
+| Process | Role |
+|---------|------|
+| **Main** (`electron/`) | OS APIs, capture, ffmpeg spawn, filesystem, IPC |
+| **Preload** (`electron/preload.ts`) | `contextBridge` — typed API only |
+| **Renderer** (`src/`) | React UI, timeline, preview — stay at 60fps |
+| **Shared** (`shared/`) | IPC channel names + payload types |
+
+Security defaults: `contextIsolation: true`, `nodeIntegration: false`.
+
+## Scripts
 
 ```bash
 npm install
-npm run dev
+npm run dev            # Vite renderer only (browser fallback)
+npm run build          # renderer + electron main/preload
+npm run typecheck
+npm run lint
 ```
 
-Open http://localhost:5173
+Electron GUI requires a desktop environment (macOS target). CI/agents validate with `typecheck` + `build`.
 
-## Build
+## Agent memory
 
-```bash
-npm run build
-npm run preview
-```
+Incremental autonomous work is tracked in `agent-memory/` (`decisions.md`, `work-log.md`, `innovation.md`).
 
-## API Configuration
+## Status
 
-Base URL: `https://api.example.com`
-
-All protected endpoints send `Authorization: Bearer <token>` and `Content-Type: application/json`.
-
-## Screens
-
-| # | Screen | Route |
-|---|--------|-------|
-| 1 | Splash | `/` |
-| 2 | Login | `/login` |
-| 3 | Register | `/register` |
-| 4 | OTP Verification | `/otp` |
-| 5 | Dashboard | `/dashboard` |
-| 6 | Profile | `/profile` |
-| 7 | Loan Application | `/loan/apply` |
-| 8 | Review Application | `/loan/review` |
-| 9 | Application Status | `/loan/status/:id` |
-| 10 | Active Loan Detail | `/loan/active` |
-| 11 | Installment List | `/installments` |
-| 12 | Payment | `/payment/:installmentId` |
-| 13 | Payment History | `/payments/history` |
-
-## Global Behaviors
-
-- Bearer token attached on protected requests
-- 401 responses clear token and redirect to Login
-- API errors parsed from `{ error, code }`; 422 field errors surfaced inline
-- Exponential backoff retry for idempotent GET requests
-- Screen reader announcements for loading/success states
+Bootstrap: Electron shell + typed IPC + Screen Flow UI. Capture/export pipeline next.
