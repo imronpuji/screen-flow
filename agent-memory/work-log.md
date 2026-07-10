@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 15:00] Keep-clip edge drag snap (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/keepRanges.ts` — `resizeKeepRangeEdge` (neighbor clamp, min 100ms, no merge on touch).
+  - `shared/timelineSnap.ts` — `snapKeepEdgeMagnetically` (exclude self edge id).
+  - `AutoZoomPlayback` — accent keep spans + start/end handles; magnetic when snap on; `onKeepRangesChange`.
+  - `RecordingReview` → `withKeepRanges`; tooltip/hint magnetic + keep list.
+  - Smoke resize + keep-edge snap cases.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:keep-ranges` + `smoke:timeline-snap` + `smoke:tooltips` + `smoke:shortcuts` hijau.
+- **Commit:** `ba74c85`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** UI polish empty states; visual verify on Mac.
+
 ## [2026-07-10 14:45] Magnetic timeline snap (FOKUS 5)
 
 - **Dikerjakan:**
