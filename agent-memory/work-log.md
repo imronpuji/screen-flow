@@ -8,7 +8,7 @@ Entri terbaru di ATAS.
   - Review scrubber: marker track (zoom bars / click ticks, click-to-seek) + trim shade.
   - Smoke `smoke:timeline-markers`; remove “Timeline clip markers” from Coming next.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke timeline-markers/tooltips/autozoom/shortcuts/beautify hijau.
-- **Commit:** (pending)
+- **Commit:** `b058897`
 - **Status:** done (editor slice)
 - **Next:** Per-click zoom points (manual edit); visual verify Retina zoom on Mac.
 
