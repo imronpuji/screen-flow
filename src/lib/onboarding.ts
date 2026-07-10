@@ -32,16 +32,16 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
   {
     id: 'record',
     title: 'Pick a screen & record',
-    body: 'Grant Screen Recording if asked, choose a display or window, then hit Start. Optionally turn on the FaceTime camera bubble.',
+    body: 'Grant Screen Recording if asked, choose a display or window, then hit Start (or press R / Space). Optionally turn on the FaceTime camera bubble.',
   },
   {
     id: 'polish',
     title: 'Polish in one click',
-    body: 'After you stop, use Beautify presets (Tutorial, Product demo, Social) or tweak zoom, cursor, and background yourself.',
+    body: 'After you stop, use Beautify presets (Tutorial, Product demo, Social) or press B. Tweak zoom, cursor, and background yourself — Space plays the preview.',
   },
   {
     id: 'export',
     title: 'Export MP4',
-    body: 'Pick Draft, Good, or High quality and export. Screen Flow saves an H.264 MP4 you can share right away.',
+    body: 'Pick Draft, Good, or High quality and export (E). Screen Flow saves an H.264 MP4 you can share right away.',
   },
 ] as const

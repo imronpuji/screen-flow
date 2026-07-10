@@ -1,6 +1,29 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 08:20] Fix FaceTime double + export 234
+
+- **Dikerjakan:**
+  - Hide live FaceTime bubble while recording (badge only) so full-display capture does not burn camera into screen WebM → review shows one fixed `camera.webm` overlay.
+  - Export: replace output `-to endMs` with `-t duration` after `-ss`; omit duration limit on full exports (EOF) to avoid VFR WebM overshoot → libx264 "Conversion failed!" / exit 234.
+  - Harden `planCameraExport`: `fps=30`, `setsar=1`, `format=yuv420p` after overlay; `repeatlast=1`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/export-effects/export-trim hijau.
+- **Commit:** `2fe2c1e`
+- **Status:** done
+- **Next:** Empty-state tooltips; timeline markers; visual verify Retina zoom on Mac.
+
+## [2026-07-10 08:10] Keyboard shortcuts (polish)
+
+- **Dikerjakan:**
+  - `shared/shortcuts.ts` — catalog + `matchShortcut` / `isEditableTarget` / scrub deltas (setup·recording·review·exporting).
+  - Setup/recording: **R** / **Space** start-stop; **Esc** stop while recording (skip while onboarding).
+  - Review: **Space** play/pause, **←/→** scrub (Shift=5s), **E** export, **B** Beautify, **Esc** discard / cancel export.
+  - UI hints (`kbd`) + onboarding copy mentions shortcuts; smoke `smoke:shortcuts`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke shortcuts/onboarding/beautify hijau.
+- **Commit:** `73152d3`
+- **Status:** done (polish slice 2)
+- **Next:** Empty-state tooltips; timeline clip markers; visual verify Retina zoom on Mac.
+
 ## [2026-07-10 08:05] First-run onboarding + one-click Beautify
 
 - **Dikerjakan:**

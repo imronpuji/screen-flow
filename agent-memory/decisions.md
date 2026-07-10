@@ -197,3 +197,21 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Overlay 3 langkah di setup (record → polish/beautify → export MP4). Completion flag di `localStorage` key `screen-flow:onboarding-done`. Skip = mark done. Tidak memblok Electron permission flow.
 - **Alasan:** Roadmap #11 — first-run tanpa baca manual; localStorage cukup (tanpa main-process prefs) untuk MVP.
 - **Status:** aktif
+
+## [2026-07-10] Keyboard shortcuts (context-aware)
+
+- **Keputusan:** Catalog + matcher murni di `shared/shortcuts.ts`. Konteks: **setup/recording** → R/Space toggle record (Esc stop saat recording); **review** → Space play, ←/→ scrub (Shift=5s), E export, B Beautify Tutorial, Esc discard; **exporting** → Esc cancel. Abaikan saat target editable / modifier Cmd·Ctrl·Alt. Onboarding memblok shortcut setup.
+- **Alasan:** Roadmap #11 polish — orang awam bisa rekam/review/export tanpa mouse; pure matcher smoke-testable di CI.
+- **Status:** aktif
+
+## [2026-07-10] FaceTime: hide live bubble while recording
+
+- **Keputusan:** Saat `mode === 'recording'`, UI tidak menampilkan live `CameraBubble` (hanya badge "Camera recording"). Webcam tetap ditulis ke `camera.webm`. Review/export menampilkan satu overlay dari track kamera.
+- **Alasan:** Full-display capture membakar bubble live ke screen WebM → double FaceTime di review. Screen Studio-like: kamera dikomposit sekali di akhir, posisi fixed di pojok (di luar auto-zoom).
+- **Status:** aktif
+
+## [2026-07-10] Export trim: `-t` duration, not `-to` end
+
+- **Keputusan:** Setelah input `-ss`, batasi output dengan `-t (end-start)` (dengan undershoot 50ms). Full export (start≈0, end≈durasi sumber) **tanpa** `-t`/`-to` — biarkan EOF. Camera filter akhiri `format=yuv420p` + `fps=30` pada input kamera.
+- **Alasan:** `-to endMs` setelah seek meminta `endMs` detik output (bukan sisa klip) → overrun → libx264 "Conversion failed!" (exit 234). WebM VFR probe sering lebih panjang dari frame aktual.
+- **Status:** aktif

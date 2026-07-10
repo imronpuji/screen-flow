@@ -91,14 +91,17 @@ export function planCameraExport(
       : roundedBubbleAlphaExpr(bubbleW, 255)
 
   // Cover-fit camera into square bubble, then attach 1-frame alpha mask.
+  // fps+setsar stabilize MediaRecorder VFR WebM; final format=yuv420p avoids
+  // libx264 "Conversion failed!" after rgba/yuva overlay on some macOS builds.
   const lines: string[] = [
-    `[${cameraInputIndex}:v]scale=${bubbleW}:${bubbleH}:force_original_aspect_ratio=increase,` +
-      `crop=${bubbleW}:${bubbleH},format=rgba[${camRaw}]`,
+    `[${cameraInputIndex}:v]fps=30,scale=${bubbleW}:${bubbleH}:force_original_aspect_ratio=increase,` +
+      `crop=${bubbleW}:${bubbleH},setsar=1,format=rgba[${camRaw}]`,
     `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
       `geq=r=0:g=0:b=0:a='${alphaExpr}'[${maskStill}]`,
     `[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`,
     `[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`,
-    `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass[${outputLabel}]`,
+    `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1,` +
+      `format=yuv420p[${outputLabel}]`,
   ]
 
   return {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ExportProgressEvent } from '../../shared/ipc'
 import type { CursorEvent } from '../../shared/cursor'
 import {
@@ -25,6 +25,11 @@ import {
   type CameraOverlayStyle,
   type CameraShape,
 } from '../../shared/camera'
+import {
+  isEditableTarget,
+  matchShortcut,
+  shortcutsForContext,
+} from '../../shared/shortcuts'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 
@@ -82,6 +87,46 @@ export function RecordingReview({
   )
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
+  const editRef = useRef(edit)
+
+  useEffect(() => {
+    editRef.current = edit
+  }, [edit])
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return
+      const context = exporting ? 'exporting' : 'review'
+      const action = matchShortcut(event, context)
+      if (!action) return
+
+      if (action === 'cancel-export') {
+        event.preventDefault()
+        onCancelExport()
+        return
+      }
+      if (exporting) return
+
+      if (action === 'export') {
+        event.preventDefault()
+        onExport(editRef.current)
+        return
+      }
+      if (action === 'beautify') {
+        event.preventDefault()
+        setEdit((prev) =>
+          applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
+        )
+        return
+      }
+      if (action === 'discard') {
+        event.preventDefault()
+        onDiscard()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [exporting, hasCameraTrack, onCancelExport, onDiscard, onExport])
 
   function patchCamera(partial: Partial<CameraOverlayStyle>) {
     setEdit((prev) => ({
@@ -114,14 +159,14 @@ export function RecordingReview({
           </p>
         </div>
         <div className="review__header-actions">
-          <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard}>
+          <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard} title="Esc">
             New recording
           </button>
           <button
             type="button"
             className="btn btn--accent"
             disabled={exporting}
-            title="Apply Tutorial look: zoom, spotlight cursor, Aurora frame"
+            title="B — Apply Tutorial look: zoom, spotlight cursor, Aurora frame"
             onClick={() =>
               setEdit((prev) =>
                 applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
@@ -134,12 +179,13 @@ export function RecordingReview({
             type="button"
             className="btn btn--primary"
             disabled={exporting}
+            title="E"
             onClick={() => onExport(edit)}
           >
             {exporting ? 'Exporting…' : 'Export MP4'}
           </button>
           {exporting ? (
-            <button type="button" className="btn btn--danger" onClick={onCancelExport}>
+            <button type="button" className="btn btn--danger" onClick={onCancelExport} title="Esc">
               Cancel
             </button>
           ) : null}
@@ -572,11 +618,21 @@ export function RecordingReview({
           </div>
 
           <div className="review__coming">
+            <p className="review__coming-title">Keyboard</p>
+            <ul className="review__shortcuts">
+              {shortcutsForContext(exporting ? 'exporting' : 'review').map((s) => (
+                <li key={`${s.id}-${s.keys}`}>
+                  <kbd className="kbd">{s.keys}</kbd> {s.description}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="review__coming">
             <p className="review__coming-title">Coming next</p>
             <ul>
               <li>Per-click zoom points</li>
-              <li>Keyboard shortcuts</li>
               <li>Timeline clip markers</li>
+              <li>Empty-state tooltips</li>
             </ul>
           </div>
         </aside>
