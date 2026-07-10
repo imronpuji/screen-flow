@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Empty-state CTAs + discard confirm (FOKUS 4)
+
+- **Keputusan:** `EmptyHint` boleh membawa **action CTA** (button) di samping title/body. Setup sources-empty → CTA Refresh; Zoom panel kosong → CTA Add at playhead (`zoom-empty`). Aksi destruktif **New recording** / shortcut Esc membuka dialog konfirmasi (`discard-confirm`); Esc kedua / Keep editing membatalkan. Copy tetap di `shared/tooltips.ts`.
+- **Alasan:** FOKUS 4 — empty state harus mengajak aksi, bukan hanya teks; discard tanpa konfirmasi mudah menghapus sesi edit.
+- **Status:** aktif
+
 ## [2026-07-10] Keep-clip edge drag + magnetic snap (FOKUS 5)
 
 - **Keputusan:** Keep-range spans di scrubber punya handle start/end (accent). Drag memanggil `resizeKeepRangeEdge(ranges, index, edge, tMs, durationMs)` — clamp ke tetangga + `MIN_KEEP_MS` (100), **tanpa** merge on touch (razor edit points tetap). Saat **Magnetic snap** on, proposed time di-snap lewat `snapKeepEdgeMagnetically` (exclude id `keep-{i}-start|end` supaya tidak self-stick) ke target yang sama dengan playhead snap. UI: `onKeepRangesChange` → `withKeepRanges` (preview ≡ export concat).

@@ -93,6 +93,12 @@ function testSourcesEmpty(): void {
   assert(sourcesEmptyTooltip(false).id === 'sources-browser', 'browser empty')
   assert(Boolean(TOOLTIPS['sources-empty'].body), 'empty has body')
   assert(Boolean(TOOLTIPS['camera-review-empty'].body), 'camera empty has body')
+  assert(Boolean(TOOLTIPS['zoom-empty'].body), 'zoom empty has body')
+  assert(Boolean(TOOLTIPS['discard-confirm'].body), 'discard confirm has body')
+  assert(
+    TOOLTIPS['discard-review'].body?.includes('confirmation'),
+    'discard tip mentions confirmation',
+  )
   console.log('ok sources empty')
 }
 

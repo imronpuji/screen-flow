@@ -35,16 +35,43 @@ export function Tooltip({ copy, children, block = false, className }: TooltipPro
   )
 }
 
-/** Inline empty-state callout (always visible, not hover-only). */
-export function EmptyHint({ copy, className }: { copy: TooltipCopy; className?: string }) {
+export interface EmptyHintAction {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  /** Native title / aria hint for the CTA. */
+  title?: string
+}
+
+/** Inline empty-state callout (always visible, not hover-only) with optional CTA. */
+export function EmptyHint({
+  copy,
+  className,
+  action,
+}: {
+  copy: TooltipCopy
+  className?: string
+  action?: EmptyHintAction
+}) {
   return (
-    <p
+    <div
       className={['sf-empty-hint', className].filter(Boolean).join(' ')}
       data-tooltip-id={copy.id}
       role="status"
     >
       <span className="sf-empty-hint__title">{copy.title}</span>
       {copy.body ? <span className="sf-empty-hint__body">{copy.body}</span> : null}
-    </p>
+      {action ? (
+        <button
+          type="button"
+          className="btn btn--ghost sf-empty-hint__action"
+          disabled={action.disabled}
+          title={action.title ?? action.label}
+          onClick={action.onClick}
+        >
+          {action.label}
+        </button>
+      ) : null}
+    </div>
   )
 }

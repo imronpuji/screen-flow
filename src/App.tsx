@@ -1435,6 +1435,16 @@ export default function App() {
                 <EmptyHint
                   copy={sourcesEmptyTooltip(inElectron)}
                   className="preview-frame__hint"
+                  action={
+                    inElectron
+                      ? {
+                          label: 'Refresh sources',
+                          onClick: () => void refreshSources(),
+                          disabled: busy,
+                          title: TOOLTIPS['refresh-sources'].title,
+                        }
+                      : undefined
+                  }
                 />
               ) : (
                 <ul className="source-list">
