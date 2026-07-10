@@ -38,6 +38,9 @@ import {
   CAMERA_NUDGE_STEP_SHIFT,
   CAMERA_SIZE_NUDGE_STEP,
   CAMERA_SIZE_NUDGE_STEP_SHIFT,
+  CAMERA_SNAP_CYCLE_ORDER,
+  cycleCameraShape,
+  cycleCameraSnapPreset,
 } from '../shared/camera.ts'
 import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
 
@@ -509,6 +512,63 @@ function testSizeNudgeAndPresets(): void {
   console.log('ok size nudge + presets')
 }
 
+function testCycleSnapAndShape(): void {
+  assert(CAMERA_SNAP_CYCLE_ORDER.length === 8, 'cycle order has 8')
+  assert(CAMERA_SNAP_CYCLE_ORDER[0] === 'top-left', 'cycle starts TL')
+  assert(CAMERA_SNAP_CYCLE_ORDER[4] === 'bottom-right', 'cycle mid BR')
+
+  let style = applyCameraSnapPreset(DEFAULT_CAMERA_OVERLAY, 'top-left')
+  style = cycleCameraSnapPreset(style, 'next')
+  assert(matchCameraSnapTarget(style) === 'top-center', 'next from TL → top')
+  style = cycleCameraSnapPreset(style, 'next')
+  assert(matchCameraSnapTarget(style) === 'top-right', 'next → TR')
+  style = cycleCameraSnapPreset(style, 'prev')
+  assert(matchCameraSnapTarget(style) === 'top-center', 'prev back to top')
+
+  // Wrap: left-center → next → top-left
+  style = applyCameraSnapPreset(DEFAULT_CAMERA_OVERLAY, 'left-center')
+  style = cycleCameraSnapPreset(style, 'next')
+  assert(matchCameraSnapTarget(style) === 'top-left', 'wrap clockwise')
+
+  // Custom free layout: step from nearest
+  const free = normalizeCameraOverlay({
+    ...DEFAULT_CAMERA_OVERLAY,
+    anchor: 'free',
+    x: CAMERA_SAFE_MARGIN + 0.02,
+    y: CAMERA_SAFE_MARGIN + 0.02,
+  })
+  const cycled = cycleCameraSnapPreset(free, 'next')
+  assert(matchCameraSnapTarget(cycled) != null, 'custom lands on a preset')
+  assert(matchCameraSnapTarget(cycled) !== 'top-left', 'custom steps past nearest TL')
+
+  let shapeStyle = normalizeCameraOverlay({
+    shape: 'circle',
+    sizePercent: 24,
+    lockAspect: true,
+  })
+  shapeStyle = cycleCameraShape(shapeStyle, 'next')
+  assert(shapeStyle.shape === 'rounded', 'circle → rounded')
+  shapeStyle = cycleCameraShape(shapeStyle, 'next')
+  assert(shapeStyle.shape === 'rectangle', 'rounded → rectangle')
+  shapeStyle = cycleCameraShape(shapeStyle, 'next')
+  assert(shapeStyle.shape === 'circle', 'rectangle → circle')
+  assert(shapeStyle.lockAspect === true, 'circle re-locks')
+  assert(shapeStyle.heightPercent === shapeStyle.sizePercent, 'circle square')
+
+  const unlocked = normalizeCameraOverlay({
+    shape: 'rectangle',
+    lockAspect: false,
+    sizePercent: 30,
+    heightPercent: 16,
+  })
+  const toRounded = cycleCameraShape(unlocked, 'prev')
+  assert(toRounded.shape === 'rounded', 'prev rectangle → rounded')
+  assert(toRounded.lockAspect === false, 'keeps unlock on rounded')
+  assert(toRounded.heightPercent === 16, 'keeps free height')
+
+  console.log('ok cycle snap + shape')
+}
+
 function testReviewEditCamera(): void {
   const plain = defaultReviewEdit(5000)
   assert(plain.cameraOverlay.enabled === false, 'default review camera off')
@@ -542,5 +602,6 @@ testSnapAndPresets()
 testResizeHandles()
 testNudge()
 testSizeNudgeAndPresets()
+testCycleSnapAndShape()
 testReviewEditCamera()
 console.log('smoke-camera: all ok')

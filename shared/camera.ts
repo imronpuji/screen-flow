@@ -16,6 +16,8 @@
  * - Size nudge: +/- (or =/_) adjust width % (Shift = larger); lockAspect keeps height in sync; reclamps.
  * - Size presets: S/M/L quick widths (16/22/32%); keys 1/2/3 when bubble focused.
  * - Layout reset: key 0 / double-click → bottom-right + medium size (keeps device/chrome/shape).
+ * - Snap cycle: `[` / `]` walk 8 presets clockwise (corners + edge mids) when bubble focused.
+ * - Shape cycle: `C` walks circle → rounded → rectangle (keeps size/position; circle re-locks).
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
@@ -312,6 +314,21 @@ export const CAMERA_SNAP_PRESETS: readonly CameraSnapTarget[] = [
   ...CAMERA_EDGE_TARGETS,
 ] as const
 
+/**
+ * Clockwise walk order for `[` / `]` snap cycling (starts top-left, around the frame).
+ * Distinct from CAMERA_SNAP_PRESETS listing order (corners then edges).
+ */
+export const CAMERA_SNAP_CYCLE_ORDER: readonly CameraSnapTarget[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'right-center',
+  'bottom-right',
+  'bottom-center',
+  'bottom-left',
+  'left-center',
+] as const
+
 /** Short labels for preset buttons / selects. */
 export function cameraSnapPresetLabel(target: CameraSnapTarget): string {
   switch (target) {
@@ -596,6 +613,63 @@ export function matchCameraSnapTarget(
     }
   }
   return bestDist <= epsilon ? best : null
+}
+
+export type CameraCycleDirection = 'next' | 'prev'
+
+/**
+ * Cycle snap preset clockwise (`next` / `]`) or counter-clockwise (`prev` / `[`).
+ * If layout is free/custom, starts from nearest target then steps once.
+ */
+export function cycleCameraSnapPreset(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  direction: CameraCycleDirection = 'next',
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
+  const order = CAMERA_SNAP_CYCLE_ORDER
+  const matched = matchCameraSnapTarget(style, frameAspect)
+  const currentIndex = matched ? order.indexOf(matched) : -1
+  const step = direction === 'next' ? 1 : -1
+  const from =
+    currentIndex >= 0
+      ? currentIndex
+      : // Custom: jump from nearest (even outside epsilon) then step.
+        (() => {
+          const nearest = matchCameraSnapTarget(style, frameAspect, 1)
+          const idx = nearest ? order.indexOf(nearest) : 0
+          return idx >= 0 ? idx : 0
+        })()
+  const nextIndex = (from + step + order.length) % order.length
+  return applyCameraSnapPreset(style, order[nextIndex]!, frameAspect)
+}
+
+/**
+ * Cycle bubble shape: circle → rounded → rectangle → …
+ * Circle forces aspect lock + square height; other shapes keep lockAspect as-is.
+ */
+export function cycleCameraShape(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  direction: CameraCycleDirection = 'next',
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
+  const base = normalizeCameraOverlay(style, frameAspect)
+  const order = CAMERA_SHAPES
+  const currentIndex = Math.max(0, order.indexOf(base.shape))
+  const step = direction === 'next' ? 1 : -1
+  const nextIndex = (currentIndex + step + order.length) % order.length
+  const shape = order[nextIndex]!
+  if (shape === 'circle') {
+    return normalizeCameraOverlay(
+      {
+        ...base,
+        shape,
+        lockAspect: true,
+        heightPercent: base.sizePercent,
+      },
+      frameAspect,
+    )
+  }
+  return normalizeCameraOverlay({ ...base, shape }, frameAspect)
 }
 
 /**
