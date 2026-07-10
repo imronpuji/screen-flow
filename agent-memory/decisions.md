@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Collapsible review editor panels (FOKUS 5)
+
+- **Keputusan:** Panel properti review dipecah jadi 6 section collapsible (`zoom` / `cursor` / `background` / `camera` / `timeline` / `export`) via `shared/editorPanels.ts` + `EditorPanel`. Default: Zoom+Camera+Timeline open; sisanya collapsed. Chrome **Expand / Collapse / Hide** — Hide menyembunyikan seluruh sidebar (preview-first). State + `sidebarCollapsed` persist di `screen-flow:editor-panels` (`editorPanelPrefs`). Tidak menyentuh metadata edit / export.
+- **Alasan:** FOKUS 5 layout — sidebar panjang menakutkan orang awam; accordion + hide memberi ruang napas tanpa mengorbankan power controls. Persist supaya preferensi chrome tetap antar sesi.
+- **Status:** aktif
+
 ## [2026-07-10] Review timeline cut at playhead (FOKUS 5)
 
 - **Keputusan:** Cut/trim di playhead memakai **satu keep-range** (`trimStartMs`/`trimEndMs`) lewat `shared/timelineCut.ts`. `[` Mark In, `]` Mark Out, `S` cut-after (keep before), `⇧S` cut-before (keep after). Semua lewat `normalizeTrim` (min 100ms) + undo history. `splitTrimAtPlayhead` ada untuk calon multi-segment; **belum** di-wire ke export (butuh ffmpeg concat).

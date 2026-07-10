@@ -95,8 +95,17 @@ import {
   upsertZoomPointOverride,
   type ZoomFocusNudgeDirection,
 } from '../../shared/zoomPoints'
+import {
+  collapseAllEditorPanels,
+  expandAllEditorPanels,
+  toggleEditorPanel,
+  type EditorChromeState,
+  type EditorPanelId,
+} from '../../shared/editorPanels'
+import { loadEditorPanelPrefs, saveEditorPanelPrefs } from '../../shared/editorPanelPrefs'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import { CameraLayoutMap } from './CameraLayoutMap'
+import { EditorPanel } from './EditorPanel'
 import { EmptyHint, Tooltip } from './Tooltip'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 import { TOOLTIPS } from '../../shared/tooltips'
@@ -171,6 +180,9 @@ export function RecordingReview({
     )
   })
   const edit = editHistory.present
+  const [editorChrome, setEditorChrome] = useState<EditorChromeState>(() =>
+    loadEditorPanelPrefs(),
+  )
 
   function setEdit(
     updater: ReviewEditState | ((prev: ReviewEditState) => ReviewEditState),
@@ -190,6 +202,17 @@ export function RecordingReview({
   function redoReviewEdit() {
     if (exporting) return
     setEditHistory((history) => redoEdit(history))
+  }
+
+  function togglePanel(id: EditorPanelId) {
+    setEditorChrome((prev) => ({
+      ...prev,
+      panels: toggleEditorPanel(prev.panels, id),
+    }))
+  }
+
+  function setSidebarCollapsed(collapsed: boolean) {
+    setEditorChrome((prev) => ({ ...prev, sidebarCollapsed: collapsed }))
   }
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
@@ -212,6 +235,10 @@ export function RecordingReview({
       quality: edit.exportQuality,
     })
   }, [edit.exportFormat, edit.exportQuality])
+
+  useEffect(() => {
+    saveEditorPanelPrefs(editorChrome)
+  }, [editorChrome])
 
   const zoomSegments = useMemo(
     () =>
@@ -625,9 +652,69 @@ export function RecordingReview({
           />
         </section>
 
+        {editorChrome.sidebarCollapsed ? (
+          <div className="review__editor-collapsed" aria-label="Editor collapsed">
+            <button
+              type="button"
+              className="btn btn--ghost review__editor-expand"
+              onClick={() => setSidebarCollapsed(false)}
+              title="Show edit panel"
+            >
+              Edit ▸
+            </button>
+          </div>
+        ) : (
         <aside className="review__editor" aria-label="Edit recording">
-          <h3 className="review__panel-title">Edit</h3>
+          <div className="review__editor-chrome">
+            <h3 className="review__panel-title">Edit</h3>
+            <div className="review__editor-chrome-actions">
+              <button
+                type="button"
+                className="btn btn--ghost review__chrome-btn"
+                onClick={() =>
+                  setEditorChrome((prev) => ({
+                    ...prev,
+                    panels: expandAllEditorPanels(),
+                  }))
+                }
+                title="Expand all panels"
+              >
+                Expand
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost review__chrome-btn"
+                onClick={() =>
+                  setEditorChrome((prev) => ({
+                    ...prev,
+                    panels: collapseAllEditorPanels(),
+                  }))
+                }
+                title="Collapse all panels"
+              >
+                Collapse
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost review__chrome-btn"
+                onClick={() => setSidebarCollapsed(true)}
+                title="Hide edit panel"
+              >
+                Hide
+              </button>
+            </div>
+          </div>
 
+          <EditorPanel
+            id="zoom"
+            open={editorChrome.panels.zoom}
+            onToggle={togglePanel}
+            summary={
+              edit.autoZoomEnabled
+                ? `${enabledZoomCount}/${totalZoomSlots} on`
+                : 'Off'
+            }
+          >
           <label className="review__toggle">
             <input
               type="checkbox"
@@ -856,6 +943,18 @@ export function RecordingReview({
             </div>
           ) : null}
 
+          </EditorPanel>
+
+          <EditorPanel
+            id="cursor"
+            open={editorChrome.panels.cursor}
+            onToggle={togglePanel}
+            summary={
+              edit.cursorSmoothingEnabled
+                ? edit.cursorAppearance.style
+                : 'Off'
+            }
+          >
           <label className="review__toggle">
             <input
               type="checkbox"
@@ -964,6 +1063,14 @@ export function RecordingReview({
             </>
           ) : null}
 
+          </EditorPanel>
+
+          <EditorPanel
+            id="background"
+            open={editorChrome.panels.background}
+            onToggle={togglePanel}
+            summary={edit.background.enabled ? 'On' : 'Off'}
+          >
           <label className="review__toggle">
             <input
               type="checkbox"
@@ -1119,6 +1226,20 @@ export function RecordingReview({
             </>
           ) : null}
 
+          </EditorPanel>
+
+          <EditorPanel
+            id="camera"
+            open={editorChrome.panels.camera}
+            onToggle={togglePanel}
+            summary={
+              !hasCameraTrack
+                ? 'None'
+                : edit.cameraOverlay.enabled
+                  ? 'On'
+                  : 'Off'
+            }
+          >
           {hasCameraTrack ? (
             <>
               <label className="review__toggle">
@@ -1551,6 +1672,14 @@ export function RecordingReview({
             <EmptyHint copy={TOOLTIPS['camera-review-empty']} className="review__hint" />
           )}
 
+          </EditorPanel>
+
+          <EditorPanel
+            id="timeline"
+            open={editorChrome.panels.timeline}
+            onToggle={togglePanel}
+            summary={formatTimeMs(trimDurationMs)}
+          >
           <div className="review__field">
             <label className="review__label" htmlFor="trim-start">
               Trim start {formatTimeMs(edit.trimStartMs)}
@@ -1690,6 +1819,14 @@ export function RecordingReview({
               : ''}
           </p>
 
+          </EditorPanel>
+
+          <EditorPanel
+            id="export"
+            open={editorChrome.panels.export}
+            onToggle={togglePanel}
+            summary={`${getExportFormatPreset(edit.exportFormat).label} · ${getExportQualityPreset(edit.exportQuality).label}`}
+          >
           <div className="review__field">
             <span className="review__label" id="beautify-label">
               One-click beautify
@@ -1795,7 +1932,9 @@ export function RecordingReview({
               ))}
             </ul>
           </div>
+          </EditorPanel>
         </aside>
+        )}
       </div>
     </div>
   )
