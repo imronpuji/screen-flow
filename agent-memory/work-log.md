@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:05] Beautify toast feedback (FOKUS 4)
+
+- **Dikerjakan:**
+  - `shared/toast.ts` — `beautifyAppliedToast({ label, hint })` (success + preset hint).
+  - `RecordingReview` — `applyBeautifyLook` + `onToast`; header Beautify / preset chips / shortcut B.
+  - `App` — `showToast` wired to review; smoke `smoke:toast` covers beautify copy.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:toast` + `smoke:beautify` + `smoke:shortcuts` hijau.
+- **Commit:** `91d40ce`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Auto-save project; visual verify on Mac.
+
 ## [2026-07-10 13:55] Export dialog size estimate (FOKUS 4)
 
 - **Dikerjakan:**

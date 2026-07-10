@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Beautify toast feedback (FOKUS 4)
+
+- **Keputusan:** Setelah one-click Beautify (header button, preset chips, shortcut **B**), review memanggil `onToast(beautifyAppliedToast({ label, hint }))`. Spec murni di `shared/toast.ts` (tanpa import beautify — smoke strip-types aman). App `showToast` → `ToastHost` single-slot; tone success, durasi info (4.2s), body = preset hint.
+- **Alasan:** FOKUS 4 — tiap aksi butuh feedback; Beautify mengubah banyak knob sekaligus jadi toast konfirmasi mengurangi “apa yang berubah?”.
+- **Status:** aktif
+
 ## [2026-07-10] Export size estimate (FOKUS 4)
 
 - **Keputusan:** Estimasi ukuran file di panel Export lewat `shared/exportSizeEstimate.ts` (bukan probe ffmpeg). MP4 memakai target bitrate VideoToolbox (4M/8M/16M); WebM memakai bitrate VP9 empiris; GIF memakai fps×area×bpp dari `gifOptionsForQuality`. Durasi = `totalKeepDurationMs`. Mic AAC 128k ditambah bila camera track + `micEnabled` (diabaikan untuk GIF). Tampilkan rentang `~low–high` (±20–55% per format) + hint tenang; panel summary ikut label.
