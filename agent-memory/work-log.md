@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 11:45] Camera size nudge (+/-) + S/M/L presets (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `nudgeCameraSize` (+/− 1%, Shift 4%); `CAMERA_SIZE_PRESETS` S/M/L (16/22/32%); `applyCameraSizePreset` / `matchCameraSizePreset`.
+  - `CameraBubble` — +/-/=/_ keys grow/shrink (stopPropagation); title hint updated.
+  - Setup + Review — S/M/L preset buttons next to size slider; review hint mentions +/-.
+  - Smoke `smoke:camera` covers size nudge clamp + presets + free-aspect height keep.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** `deec949` (feature) / `ee6a4cc` (memory)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; multi-segment only if MediaRecorder restart required; background presets polish atau zoom add-at-playhead.
+
 ## [2026-07-10 11:40] Camera bubble arrow-key nudge (FOKUS 3B)
 
 - **Dikerjakan:**

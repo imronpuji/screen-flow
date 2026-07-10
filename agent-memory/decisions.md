@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera bubble size nudge + S/M/L presets (FOKUS 3B)
+
+- **Keputusan:** Fine-tune ukuran bubble lewat `nudgeCameraSize(direction, { shift })`. Step default **1** sizePercent (`CAMERA_SIZE_NUDGE_STEP`); Shift = **4** (`CAMERA_SIZE_NUDGE_STEP_SHIFT`). Keys: `+`/`=` grow, `-`/`_` shrink (bubble focused). Preset cepat **S/M/L** = 16/22/32% (`CAMERA_SIZE_PRESETS`); lockAspect → height ikut; unlocked → hanya width. `normalizeCameraOverlay` reclamps posisi (corner re-layout / free clamp).
+- **Alasan:** Slider saja lambat untuk orang awam; pasangan natural dengan arrow-key position nudge; angka S/M/L di dalam 12–40% (readable face tanpa menutup demo).
+- **Status:** aktif
+
 ## [2026-07-10] Camera bubble arrow-key nudge (FOKUS 3B)
 
 - **Keputusan:** Fine-tune posisi bubble lewat `nudgeCameraLayout(direction, { shift })`. Step default **0.5%** frame (`CAMERA_NUDGE_STEP`); Shift = **2%** (`CAMERA_NUDGE_STEP_SHIFT`). Nudge selalu set `anchor: 'free'` lalu `clampCameraLayout` (safe margin 3%). UI: bubble `tabIndex=0` saat interactive; focus setelah pointer-down; Arrow keys di bubble `stopPropagation` agar tidak memicu scrub ←→ di review.
@@ -64,8 +70,8 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 ## [2026-07-10] Camera layout: relative coords + drag snap
 
-- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame), `heightPercent` (% lebar frame; = sizePercent saat lock), `lockAspect` (default true; circle forced), `anchor` (`corner` preset | `free`), `shape` (`circle` | `rounded` | `rectangle`), plus chrome `shadowEnabled` / `borderEnabled` / `borderWidthPx` / `borderColor`. Preview CSS (`left`/`top` % + `borderRadius` via `cameraShapeBorderRadius` + border/box-shadow via `cameraBubbleChromeStyle` + aspect-ratio atau height) dan ffmpeg `cameraBubbleNormRect` + `planCameraExport` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame (width & heightPercent). Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed; lock = square, unlock = free). Export: circle/rounded = 1-frame geq mask; **rectangle camera = no mask**; shadow/border = still+loop (lihat “Camera bubble border + soft shadow”).
-- **Alasan:** FOKUS 3B/3E — corner-only terasa kasar; drag+snap+resize+3 bentuk+chrome+free aspect = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
+- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame), `heightPercent` (% lebar frame; = sizePercent saat lock), `lockAspect` (default true; circle forced), `anchor` (`corner` preset | `free`), `shape` (`circle` | `rounded` | `rectangle`), plus chrome `shadowEnabled` / `borderEnabled` / `borderWidthPx` / `borderColor`. Preview CSS (`left`/`top` % + `borderRadius` via `cameraShapeBorderRadius` + border/box-shadow via `cameraBubbleChromeStyle` + aspect-ratio atau height) dan ffmpeg `cameraBubbleNormRect` + `planCameraExport` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame (width & heightPercent). Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed; lock = square, unlock = free). Size nudge → `nudgeCameraSize` (+/− keys); S/M/L presets 16/22/32%. Export: circle/rounded = 1-frame geq mask; **rectangle camera = no mask**; shadow/border = still+loop (lihat “Camera bubble border + soft shadow”).
+- **Alasan:** FOKUS 3B/3E — corner-only terasa kasar; drag+snap+resize+3 bentuk+chrome+free aspect+size presets = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
 - **Status:** aktif
 
 ## [2026-07-10] Camera free aspect unlock (rectangle/rounded)

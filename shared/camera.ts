@@ -13,6 +13,8 @@
  *   (rectangle/rounded only — circle always locked square).
  * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
  * - Nudge: arrow keys move free layout by small relative steps (Shift = larger); clamps to safe margin.
+ * - Size nudge: +/- (or =/_) adjust width % (Shift = larger); lockAspect keeps height in sync; reclamps.
+ * - Size presets: S/M/L quick widths (16/22/32%) — same relative coords for preview ≡ export.
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
@@ -103,8 +105,25 @@ export const CAMERA_SNAP_THRESHOLD = 0.045
 export const CAMERA_NUDGE_STEP = 0.005
 /** Shift+arrow nudge step as fraction of frame (≈2%). */
 export const CAMERA_NUDGE_STEP_SHIFT = 0.02
+/** +/- size nudge step in sizePercent points. */
+export const CAMERA_SIZE_NUDGE_STEP = 1
+/** Shift+/- size nudge step in sizePercent points. */
+export const CAMERA_SIZE_NUDGE_STEP_SHIFT = 4
 
 export type CameraNudgeDirection = 'left' | 'right' | 'up' | 'down'
+export type CameraSizeNudgeDirection = 'grow' | 'shrink'
+
+/** Quick width presets (within 12–40%) — S readable face, M default, L presenter. */
+export type CameraSizePresetId = 'small' | 'medium' | 'large'
+export const CAMERA_SIZE_PRESETS: readonly {
+  id: CameraSizePresetId
+  label: string
+  sizePercent: number
+}[] = [
+  { id: 'small', label: 'S', sizePercent: 16 },
+  { id: 'medium', label: 'M', sizePercent: 22 },
+  { id: 'large', label: 'L', sizePercent: 32 },
+] as const
 /** Default aspect used when deriving corner layout without a known frame size. */
 export const CAMERA_DEFAULT_ASPECT = 16 / 9
 
@@ -617,6 +636,75 @@ export function nudgeCameraLayout(
     },
     aspect,
   )
+}
+
+/**
+ * Grow/shrink bubble width by sizePercent points (+/- keys). When lockAspect,
+ * height follows. Position reclamped via normalize (corner presets re-layout).
+ */
+export function nudgeCameraSize(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  direction: CameraSizeNudgeDirection,
+  options: { shift?: boolean; frameAspect?: number } = {},
+): CameraOverlayStyle {
+  const aspect =
+    options.frameAspect && options.frameAspect > 0
+      ? options.frameAspect
+      : CAMERA_DEFAULT_ASPECT
+  const base = normalizeCameraOverlay(style, aspect)
+  const step = options.shift ? CAMERA_SIZE_NUDGE_STEP_SHIFT : CAMERA_SIZE_NUDGE_STEP
+  const delta = direction === 'grow' ? step : -step
+  const sizePercent = base.sizePercent + delta
+  const heightPercent = base.lockAspect
+    ? sizePercent
+    : base.heightPercent
+  return normalizeCameraOverlay(
+    {
+      ...base,
+      sizePercent,
+      heightPercent,
+    },
+    aspect,
+  )
+}
+
+export function isCameraSizePresetId(value: unknown): value is CameraSizePresetId {
+  return (
+    typeof value === 'string' &&
+    CAMERA_SIZE_PRESETS.some((p) => p.id === value)
+  )
+}
+
+/** Apply S/M/L width preset; lockAspect keeps height square. */
+export function applyCameraSizePreset(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  presetId: CameraSizePresetId,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
+  const preset = CAMERA_SIZE_PRESETS.find((p) => p.id === presetId)
+  const sizePercent = preset?.sizePercent ?? DEFAULT_CAMERA_OVERLAY.sizePercent
+  const base = normalizeCameraOverlay(style, frameAspect)
+  return normalizeCameraOverlay(
+    {
+      ...base,
+      sizePercent,
+      heightPercent: base.lockAspect ? sizePercent : base.heightPercent,
+    },
+    frameAspect,
+  )
+}
+
+/** Match current width to an S/M/L preset (exact sizePercent). */
+export function matchCameraSizePreset(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+): CameraSizePresetId | null {
+  const size = normalizeCameraOverlay(style).sizePercent
+  const hit = CAMERA_SIZE_PRESETS.find((p) => p.sizePercent === size)
+  return hit?.id ?? null
+}
+
+export function cameraSizePresetLabel(id: CameraSizePresetId): string {
+  return CAMERA_SIZE_PRESETS.find((p) => p.id === id)?.label ?? id
 }
 
 /** Clamp overlay style to safe UI/export ranges; fill x/y from corner when needed. */

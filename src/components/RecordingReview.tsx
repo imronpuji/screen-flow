@@ -19,11 +19,14 @@ import {
 } from '../../shared/exportQuality'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
+  CAMERA_SIZE_PRESETS,
   CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
+  applyCameraSizePreset,
   applyCameraSnapPreset,
   cameraShapeAllowsFreeAspect,
   cameraSnapPresetLabel,
+  matchCameraSizePreset,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
@@ -622,8 +625,8 @@ export function RecordingReview({
                       })}
                     </div>
                     <p className="review__hint">
-                      Drag to move (magnetic snap to corners &amp; edges) · corner handles
-                      resize
+                      Drag to move (magnetic snap to corners &amp; edges) · arrows nudge ·
+                      +/- resize · corner handles resize
                       {edit.cameraOverlay.lockAspect
                         ? ' with aspect lock'
                         : ' freely (unlocked)'}
@@ -658,6 +661,38 @@ export function RecordingReview({
                         })
                       }
                     />
+                    <div
+                      className="review__presets review__presets--size"
+                      role="group"
+                      aria-label="Camera size presets"
+                    >
+                      {CAMERA_SIZE_PRESETS.map((preset) => {
+                        const active =
+                          matchCameraSizePreset(edit.cameraOverlay) === preset.id
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            className={`review__preset${
+                              active ? ' review__preset--active' : ''
+                            }`}
+                            disabled={exporting}
+                            title={`${preset.label} · ${preset.sizePercent}%`}
+                            onClick={() =>
+                              setEdit((prev) => ({
+                                ...prev,
+                                cameraOverlay: applyCameraSizePreset(
+                                  prev.cameraOverlay,
+                                  preset.id,
+                                ),
+                              }))
+                            }
+                          >
+                            <span className="review__preset-label">{preset.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
                   </div>
 
                   {!edit.cameraOverlay.lockAspect &&

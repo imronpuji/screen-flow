@@ -12,6 +12,7 @@ import {
   cameraSnapTargets,
   normalizeCameraOverlay,
   nudgeCameraLayout,
+  nudgeCameraSize,
   resizeCameraFromHandle,
   snapCameraLayout,
   type CameraNudgeDirection,
@@ -266,13 +267,31 @@ export function CameraBubble({
       ArrowDown: 'down',
     }
     const direction = map[e.key]
-    if (!direction) return
-    e.preventDefault()
-    e.stopPropagation()
     const metrics = parentMetrics()
     const aspect = metrics?.aspect ?? frameAspect ?? 16 / 9
+
+    if (direction) {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        nudgeCameraLayout(style, direction, { shift: e.shiftKey, frameAspect: aspect }),
+      )
+      return
+    }
+
+    // +/- (and =/_ without shift) grow/shrink width; Shift = larger step.
+    const grow =
+      e.key === '+' || e.key === '=' || e.key === 'Add'
+    const shrink =
+      e.key === '-' || e.key === '_' || e.key === 'Subtract'
+    if (!grow && !shrink) return
+    e.preventDefault()
+    e.stopPropagation()
     onLayoutChange(
-      nudgeCameraLayout(style, direction, { shift: e.shiftKey, frameAspect: aspect }),
+      nudgeCameraSize(style, grow ? 'grow' : 'shrink', {
+        shift: e.shiftKey,
+        frameAspect: aspect,
+      }),
     )
   }
 
@@ -436,8 +455,8 @@ export function CameraBubble({
         title={
           interactive
             ? displayStyle.lockAspect
-              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · corner handles resize (aspect locked)'
-              : 'Drag to reposition — snaps to corners & edges · arrows nudge · corner handles free resize'
+              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize · corner handles resize (aspect locked)'
+              : 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize width · corner handles free resize'
             : undefined
         }
         onPointerDown={interactive ? onMovePointerDown : undefined}
