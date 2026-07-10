@@ -3,14 +3,18 @@
  */
 import {
   CAMERA_CORNERS,
+  CAMERA_MAX_SIZE_PERCENT,
+  CAMERA_MIN_SIZE_PERCENT,
   CAMERA_SAFE_MARGIN,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
   cameraBubbleNormRect,
   cameraBubblePosition,
+  cameraBubbleSizeNorm,
   clampCameraLayout,
   layoutFromCorner,
   normalizeCameraOverlay,
+  resizeCameraFromHandle,
   snapCameraLayout,
 } from '../shared/camera.ts'
 import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
@@ -152,6 +156,55 @@ function testSnapAndPresets(): void {
   console.log('ok snap + presets')
 }
 
+function testResizeHandles(): void {
+  const start = normalizeCameraOverlay({
+    enabled: true,
+    anchor: 'free',
+    x: 0.3,
+    y: 0.3,
+    sizePercent: 20,
+  }, 16 / 9)
+  const { w, h } = cameraBubbleSizeNorm(start.sizePercent, 16 / 9)
+
+  // SE: grow toward bottom-right — opposite (NW) stays fixed.
+  const se = resizeCameraFromHandle(
+    start,
+    'se',
+    start.x + w * 1.5,
+    start.y + h * 1.5,
+    16 / 9,
+  )
+  assert(se.sizePercent > start.sizePercent, 'se grows')
+  assert(se.sizePercent <= CAMERA_MAX_SIZE_PERCENT, 'se clamp max')
+  assert(nearly(se.x, start.x, 1e-3), 'se keeps top-left x')
+  assert(nearly(se.y, start.y, 1e-3), 'se keeps top-left y')
+  assert(se.anchor === 'free', 'resize → free anchor')
+
+  // NW: shrink toward center — opposite (SE) stays fixed.
+  const seCornerX = start.x + w
+  const seCornerY = start.y + h
+  const nw = resizeCameraFromHandle(
+    start,
+    'nw',
+    start.x + w * 0.4,
+    start.y + h * 0.4,
+    16 / 9,
+  )
+  assert(nw.sizePercent < start.sizePercent, 'nw shrinks')
+  assert(nw.sizePercent >= CAMERA_MIN_SIZE_PERCENT, 'nw clamp min')
+  const nwSize = cameraBubbleSizeNorm(nw.sizePercent, 16 / 9)
+  assert(nearly(nw.x + nwSize.w, seCornerX, 1e-3), 'nw keeps SE x')
+  assert(nearly(nw.y + nwSize.h, seCornerY, 1e-3), 'nw keeps SE y')
+
+  // Huge drag clamps to max without leaving the frame.
+  const huge = resizeCameraFromHandle(start, 'se', 2, 2, 16 / 9)
+  assert(huge.sizePercent === CAMERA_MAX_SIZE_PERCENT, 'huge → max size')
+  assert(huge.x >= CAMERA_SAFE_MARGIN - 1e-9, 'huge still in frame x')
+  assert(huge.y >= CAMERA_SAFE_MARGIN - 1e-9, 'huge still in frame y')
+
+  console.log('ok resize handles')
+}
+
 function testReviewEditCamera(): void {
   const plain = defaultReviewEdit(5000)
   assert(plain.cameraOverlay.enabled === false, 'default review camera off')
@@ -180,5 +233,6 @@ testNormalize()
 testPosition()
 testNormRect()
 testSnapAndPresets()
+testResizeHandles()
 testReviewEditCamera()
 console.log('smoke-camera: all ok')

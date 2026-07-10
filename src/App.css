@@ -1131,6 +1131,50 @@
   transition: box-shadow 120ms ease;
 }
 
+.camera-bubble--resizing {
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.55),
+    0 0 0 2px rgba(61, 214, 198, 0.55);
+}
+
+.camera-bubble__handle {
+  position: absolute;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  margin: -6px;
+  border-radius: 2px;
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  background: rgba(61, 214, 198, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.camera-bubble__handle--nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.camera-bubble__handle--ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.camera-bubble__handle--sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.camera-bubble__handle--se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
 /* Review/export match: no entrance motion that looks like the bubble is drifting. */
 .camera-bubble--fixed {
   animation: none;
