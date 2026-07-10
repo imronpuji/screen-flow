@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { CameraShape } from '../../shared/camera'
 
 export interface CameraMonitorProps {
@@ -8,6 +8,11 @@ export interface CameraMonitorProps {
   mirrored?: boolean
   shape?: CameraShape
   className?: string
+  /**
+   * Click / Enter / Space toggles mid-recording mute. Parent owns track.enabled
+   * + activeRanges — this component never forces tracks on.
+   */
+  onToggleLive?: () => void
 }
 
 /**
@@ -21,6 +26,7 @@ export function CameraMonitor({
   mirrored = true,
   shape = 'circle',
   className = '',
+  onToggleLive,
 }: CameraMonitorProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
 
@@ -43,12 +49,40 @@ export function CameraMonitor({
         ? 'camera-monitor__frame--rounded'
         : 'camera-monitor__frame--circle'
 
+  const interactive = Boolean(onToggleLive)
+
+  function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    if (!onToggleLive) return
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    onToggleLive()
+  }
+
   return (
     <div
       className={`camera-monitor${live ? '' : ' camera-monitor--muted'}${
-        className ? ` ${className}` : ''
-      }`}
-      aria-label={live ? 'FaceTime monitor live' : 'FaceTime monitor muted'}
+        interactive ? ' camera-monitor--interactive' : ''
+      }${className ? ` ${className}` : ''}`}
+      aria-label={
+        live
+          ? interactive
+            ? 'FaceTime monitor live — click to mute'
+            : 'FaceTime monitor live'
+          : interactive
+            ? 'FaceTime monitor muted — click to unmute'
+            : 'FaceTime monitor muted'
+      }
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      title={
+        interactive
+          ? live
+            ? 'Click to mute FaceTime'
+            : 'Click to unmute FaceTime'
+          : undefined
+      }
+      onClick={onToggleLive}
+      onKeyDown={onKeyDown}
     >
       <div className={`camera-monitor__frame ${shapeClass}`}>
         <video
@@ -65,6 +99,9 @@ export function CameraMonitor({
       </div>
       <span className="camera-monitor__status" role="status">
         {live ? 'Live' : 'Muted'}
+        {interactive ? (
+          <span className="camera-monitor__hint"> · click to {live ? 'mute' : 'unmute'}</span>
+        ) : null}
       </span>
     </div>
   )

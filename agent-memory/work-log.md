@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 23:05] Chrome FaceTime layout map + click-to-mute (FOKUS 3B/A)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `placeCameraAtPoint` (center → magnetic snap; layout map click-to-place).
+  - `src/components/CameraLayoutMap.tsx` — chrome schematic (relative coords ≡ preview/export); click place; tidak di capture preview.
+  - `CameraMonitor` — click/Enter/Space → mute/unmute mid-recording (parent owns tracks).
+  - `App.tsx` + CSS — wire map saat camera on; monitor `onToggleLive`.
+  - Smoke `place at point` di `smoke:camera`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `c8bcbeb`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; auto-highlight klik; optional ScreenCaptureKit.
+
 ## [2026-07-10 22:35] Docked FaceTime monitor while recording (FOKUS 3A)
 
 - **Dikerjakan:**

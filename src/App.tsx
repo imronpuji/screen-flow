@@ -57,6 +57,7 @@ import {
   stopRecording,
 } from './lib/runtime'
 import { CameraBubble } from './components/CameraBubble'
+import { CameraLayoutMap } from './components/CameraLayoutMap'
 import { CameraMonitor } from './components/CameraMonitor'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
@@ -1343,10 +1344,23 @@ export default function App() {
               </p>
             ) : null}
             {/*
+              Layout map lives in chrome (not capture preview) so mid-recording
+              position/size edits stay visible without burning FaceTime into
+              screen WebM. Same relative coords as preview/export.
+            */}
+            {cameraOverlay.enabled || cameraLive ? (
+              <CameraLayoutMap
+                style={cameraOverlay}
+                disabled={busy}
+                onLayoutChange={(next) => setCameraOverlay(normalizeCameraOverlay(next))}
+              />
+            ) : null}
+            {/*
               Docked self-view in app chrome while recording. Kept out of the
               capture preview so the layout-positioned bubble is not burned into
               screen WebM (export composites camera.webm once). Does not touch
               track.enabled — mid-recording mute stays authoritative.
+              Click toggles mute via setCameraLiveDuringRecording.
             */}
             {isRecording && cameraStream ? (
               <CameraMonitor
@@ -1354,6 +1368,9 @@ export default function App() {
                 live={cameraLive}
                 mirrored={cameraOverlay.mirrored}
                 shape={cameraOverlay.shape}
+                onToggleLive={() => {
+                  void setCameraLiveDuringRecording(!cameraLive)
+                }}
               />
             ) : null}
           </div>

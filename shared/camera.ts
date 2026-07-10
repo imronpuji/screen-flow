@@ -18,6 +18,8 @@
  * - Layout reset: key 0 / double-click → bottom-right + medium size (keeps device/chrome/shape).
  * - Snap cycle: `[` / `]` walk 8 presets clockwise (corners + edge mids) when bubble focused.
  * - Shape cycle: `C` walks circle → rounded → rectangle (keeps size/position; circle re-locks).
+ * - Layout map (chrome): click-to-place via `placeCameraAtPoint` (center → snap); same relative
+ *   coords as preview/export so mid-recording edits stay visible without burn-in on screen WebM.
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
@@ -380,6 +382,58 @@ export function cameraSnapTargets(
     { id: 'bottom-center', x: midX, y: 1 - m - h },
     { id: 'bottom-right', x: 1 - m - w, y: 1 - m - h },
   ]
+}
+
+/**
+ * Place the bubble so its center sits at a frame-relative point (0–1), then
+ * magnetic-snap. Used by the chrome layout map (click-to-place) so setup and
+ * mid-recording position edits share the same relative coords as preview/export.
+ */
+export function placeCameraAtPoint(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  pointerX: number,
+  pointerY: number,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  threshold: number = CAMERA_SNAP_THRESHOLD * 2,
+): CameraOverlayStyle {
+  const aspect = frameAspect > 0 ? frameAspect : CAMERA_DEFAULT_ASPECT
+  const base = normalizeCameraOverlay(style, aspect)
+  const { w, h } = cameraBubbleSizeNorm(
+    base.sizePercent,
+    aspect,
+    base.heightPercent,
+  )
+  const x = Number.isFinite(pointerX) ? pointerX - w / 2 : base.x
+  const y = Number.isFinite(pointerY) ? pointerY - h / 2 : base.y
+  const snapped = snapCameraLayout(
+    x,
+    y,
+    base.sizePercent,
+    aspect,
+    threshold,
+    base.heightPercent,
+  )
+  if (snapped.snapped && snapped.target) {
+    return applyCameraSnapPreset(base, snapped.target, aspect)
+  }
+  const clamped = clampCameraLayout(
+    snapped.x,
+    snapped.y,
+    base.sizePercent,
+    aspect,
+    base.heightPercent,
+  )
+  return normalizeCameraOverlay(
+    {
+      ...base,
+      anchor: 'free',
+      x: clamped.x,
+      y: clamped.y,
+      sizePercent: base.sizePercent,
+      heightPercent: base.heightPercent,
+    },
+    aspect,
+  )
 }
 
 /**
