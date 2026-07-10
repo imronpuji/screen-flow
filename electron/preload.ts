@@ -4,9 +4,11 @@ import {
   type AppendChunkRequest,
   type AppendChunkResult,
   type AppInfo,
+  type CancelExportResult,
   type CaptureSource,
   type ExportMp4Request,
   type ExportMp4Result,
+  type ExportProgressEvent,
   type ListSourcesRequest,
   type PermissionStatus,
   type RecordingStatus,
@@ -37,6 +39,17 @@ const api: ScreenFlowApi = {
     ) as Promise<AppendChunkResult>,
   exportWebmToMp4: (request: ExportMp4Request) =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, request) as Promise<ExportMp4Result>,
+  onExportProgress: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, payload: ExportProgressEvent) => {
+      listener(payload)
+    }
+    ipcRenderer.on(IPC_CHANNELS.EXPORT_PROGRESS, handler)
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.EXPORT_PROGRESS, handler)
+    }
+  },
+  cancelExport: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_CANCEL) as Promise<CancelExportResult>,
 }
 
 contextBridge.exposeInMainWorld('screenFlow', api)

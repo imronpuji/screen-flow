@@ -2,9 +2,11 @@ import type {
   AppendChunkRequest,
   AppendChunkResult,
   AppInfo,
+  CancelExportResult,
   CaptureSource,
   ExportMp4Request,
   ExportMp4Result,
+  ExportProgressEvent,
   ListSourcesRequest,
   PermissionStatus,
   RecordingStatus,
@@ -98,6 +100,26 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   return window.screenFlow.exportWebmToMp4(request)
 }
 
+export function onExportProgress(
+  listener: (event: ExportProgressEvent) => void,
+): () => void {
+  if (!window.screenFlow?.onExportProgress) {
+    return () => undefined
+  }
+  return window.screenFlow.onExportProgress(listener)
+}
+
+export async function cancelExport(): Promise<CancelExportResult> {
+  if (!window.screenFlow?.cancelExport) {
+    throw new Error('Export cancel requires the Electron app')
+  }
+  return window.screenFlow.cancelExport()
+}
+
 export function isElectronBridgeAvailable(): boolean {
   return Boolean(window.screenFlow)
+}
+
+export function isExportCancelledError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes('EXPORT_CANCELLED')
 }
