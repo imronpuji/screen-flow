@@ -6,7 +6,7 @@
 import type { BackgroundStyle } from './background.js'
 import { normalizeBackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
-import { normalizeCameraOverlay } from './camera.js'
+import { applyCameraCornerPreset } from './camera.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import { normalizeCursorAppearance } from './cursorAppearance.js'
 import type { ReviewEditState } from './edit.js'
@@ -119,14 +119,16 @@ export function applyBeautifyPreset(
     cursorSmoothingEnabled: preset.cursorSmoothingEnabled,
     cursorAppearance: normalizeCursorAppearance(preset.cursorAppearance),
     background: normalizeBackgroundStyle(preset.background),
-    cameraOverlay: normalizeCameraOverlay({
-      ...edit.cameraOverlay,
-      // Beautify turns the bubble on whenever a camera track exists.
-      enabled: hasCamera,
-      corner: preset.camera.corner,
-      sizePercent: preset.camera.sizePercent,
-      shape: preset.camera.shape,
-    }),
+    cameraOverlay: applyCameraCornerPreset(
+      {
+        ...edit.cameraOverlay,
+        // Beautify turns the bubble on whenever a camera track exists.
+        enabled: hasCamera,
+        sizePercent: preset.camera.sizePercent,
+        shape: preset.camera.shape,
+      },
+      preset.camera.corner,
+    ),
     exportQuality: normalizeExportQuality(preset.exportQuality),
   }
 }

@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   cameraBubblePosition,
+  clampCameraLayout,
+  normalizeCameraOverlay,
+  snapCameraLayout,
   type CameraOverlayStyle,
 } from '../../shared/camera'
 
@@ -19,6 +22,13 @@ export interface CameraBubbleProps {
   /** Extra class on the root bubble (e.g. muted preview chrome). */
   className?: string
   label?: string
+  /**
+   * When set, bubble is draggable; pointer-up snaps to corner/edge.
+   * Parent should persist the returned style (preview ≡ export coords).
+   */
+  onLayoutChange?: (next: CameraOverlayStyle) => void
+  /** Frame aspect (width/height) for snap/clamp; defaults from parent box. */
+  frameAspect?: number
 }
 
 const SYNC_EPSILON_SEC = 0.08
@@ -33,14 +43,31 @@ export function CameraBubble({
   style,
   className = '',
   label = 'Camera',
+  onLayoutChange,
+  frameAspect,
 }: CameraBubbleProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const [readySourceKey, setReadySourceKey] = useState<string | null>(null)
-  const pos = cameraBubblePosition(style)
+  const [dragStyle, setDragStyle] = useState<CameraOverlayStyle | null>(null)
+  const dragRef = useRef<{
+    pointerId: number
+    startClientX: number
+    startClientY: number
+    originX: number
+    originY: number
+    parentW: number
+    parentH: number
+    aspect: number
+  } | null>(null)
+
+  const displayStyle = dragStyle ?? style
+  const pos = cameraBubblePosition(displayStyle)
   const useRecorded = Boolean(mediaUrl)
   const active = style.enabled && (useRecorded || Boolean(stream))
   const sourceKey = useRecorded ? `rec:${mediaUrl ?? ''}` : `live:${stream?.id ?? ''}`
   const hasFrames = readySourceKey === sourceKey
+  const interactive = Boolean(onLayoutChange)
 
   useEffect(() => {
     const el = videoRef.current
@@ -129,20 +156,116 @@ export function CameraBubble({
     }
   }, [currentTimeSec, useRecorded])
 
+  function resolveAspect(parentW: number, parentH: number): number {
+    if (frameAspect && frameAspect > 0) return frameAspect
+    if (parentW > 0 && parentH > 0) return parentW / parentH
+    return 16 / 9
+  }
+
+  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!interactive || !onLayoutChange) return
+    if (e.button !== 0) return
+    const root = rootRef.current
+    const parent = root?.offsetParent as HTMLElement | null
+    if (!root || !parent) return
+
+    const parentRect = parent.getBoundingClientRect()
+    if (parentRect.width <= 0 || parentRect.height <= 0) return
+
+    const aspect = resolveAspect(parentRect.width, parentRect.height)
+    const base = normalizeCameraOverlay(style, aspect)
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      originX: base.x,
+      originY: base.y,
+      parentW: parentRect.width,
+      parentH: parentRect.height,
+      aspect,
+    }
+    setDragStyle(base)
+  }
+
+  function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== e.pointerId) return
+    const dx = (e.clientX - drag.startClientX) / drag.parentW
+    const dy = (e.clientY - drag.startClientY) / drag.parentH
+    const clamped = clampCameraLayout(
+      drag.originX + dx,
+      drag.originY + dy,
+      style.sizePercent,
+      drag.aspect,
+    )
+    setDragStyle(
+      normalizeCameraOverlay(
+        {
+          ...style,
+          anchor: 'free',
+          x: clamped.x,
+          y: clamped.y,
+        },
+        drag.aspect,
+      ),
+    )
+  }
+
+  function finishDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== e.pointerId || !onLayoutChange) return
+    dragRef.current = null
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    } catch {
+      /* already released */
+    }
+
+    const dx = (e.clientX - drag.startClientX) / drag.parentW
+    const dy = (e.clientY - drag.startClientY) / drag.parentH
+    const snapped = snapCameraLayout(
+      drag.originX + dx,
+      drag.originY + dy,
+      style.sizePercent,
+      drag.aspect,
+    )
+
+    const next = normalizeCameraOverlay(
+      {
+        ...style,
+        x: snapped.x,
+        y: snapped.y,
+        anchor: snapped.corner ?? 'free',
+        corner: snapped.corner ?? style.corner,
+      },
+      drag.aspect,
+    )
+    setDragStyle(null)
+    onLayoutChange(next)
+  }
+
   if (!active) return null
 
   return (
     <div
-      className={`camera-bubble ${useRecorded ? 'camera-bubble--fixed' : ''} ${className}`.trim()}
+      ref={rootRef}
+      className={`camera-bubble ${useRecorded ? 'camera-bubble--fixed' : ''} ${
+        interactive ? 'camera-bubble--interactive' : ''
+      } ${dragStyle ? 'camera-bubble--dragging' : ''} ${className}`.trim()}
       style={{
         top: pos.top,
-        bottom: pos.bottom,
         left: pos.left,
-        right: pos.right,
         width: pos.width,
         borderRadius: pos.borderRadius,
       }}
       aria-label={label}
+      title={interactive ? 'Drag to reposition — snaps to corners & edges' : undefined}
+      onPointerDown={interactive ? onPointerDown : undefined}
+      onPointerMove={interactive ? onPointerMove : undefined}
+      onPointerUp={interactive ? finishDrag : undefined}
+      onPointerCancel={interactive ? finishDrag : undefined}
     >
       <video
         ref={videoRef}
