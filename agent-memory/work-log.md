@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Export: `keepRanges` di IPC; multi-segment → encode per range + ffmpeg concat (copy/re-encode; GIF filter concat).
   - Smoke `smoke:keep-ranges` + shortcuts/tooltips.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke keep-ranges/timeline-cut/shortcuts/tooltips/edit-history/beautify/export-trim hijau.
-- **Commit:** (pending)
+- **Commit:** `d034a9f` (memory `09976b5`)
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Preview gap-skip saat playback; ripple-delete toggle; visual verify on Mac.
 
