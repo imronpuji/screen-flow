@@ -16,6 +16,8 @@ import {
   type ReadCursorEventsRequest,
   type ReadCursorEventsResult,
   type RecordingStatus,
+  type RevealExportRequest,
+  type RevealExportResult,
   type SaveExportRequest,
   type SaveExportResult,
   type ScreenFlowApi,
@@ -75,6 +77,8 @@ const api: ScreenFlowApi = {
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_CANCEL) as Promise<CancelExportResult>,
   saveExport: (request: SaveExportRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_SAVE, request) as Promise<SaveExportResult>,
+  revealExport: (request: RevealExportRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_REVEAL, request) as Promise<RevealExportResult>,
   readCursorEvents: (request: ReadCursorEventsRequest) =>
     ipcRenderer.invoke(
       IPC_CHANNELS.RECORDING_READ_CURSOR_EVENTS,

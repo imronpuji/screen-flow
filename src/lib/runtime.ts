@@ -16,6 +16,8 @@ import type {
   ReadCursorEventsRequest,
   ReadCursorEventsResult,
   RecordingStatus,
+  RevealExportRequest,
+  RevealExportResult,
   SaveExportRequest,
   SaveExportResult,
   SetCameraActiveRangesRequest,
@@ -176,6 +178,13 @@ export async function saveExport(request: SaveExportRequest): Promise<SaveExport
     throw new Error('Save export requires the Electron app')
   }
   return window.screenFlow.saveExport(request)
+}
+
+export async function revealExport(request: RevealExportRequest): Promise<RevealExportResult> {
+  if (!window.screenFlow?.revealExport) {
+    throw new Error('Reveal export requires the Electron app')
+  }
+  return window.screenFlow.revealExport(request)
 }
 
 export function isElectronBridgeAvailable(): boolean {
