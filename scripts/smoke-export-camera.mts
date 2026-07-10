@@ -50,6 +50,29 @@ function testCameraPlan(): void {
   assert(plan.filterComplex.includes('0xE8EEF4'), 'default border color plate')
   assert(plan.overlay.w === 64, `bubble w even (got ${plan.overlay.w})`)
   assert(plan.overlay.x > 200, 'bottom-right x near right')
+  assert(plan.mirroredApplied === true, 'default mirror hflip')
+  assert(plan.filterComplex.includes('hflip'), 'hflip in graph')
+  assert(plan.opacityApplied === false, 'default full opacity')
+
+  const natural = planCameraExport(
+    { ...style, mirrored: false },
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+  )
+  assert(natural.mirroredApplied === false, 'mirror off')
+  assert(!natural.filterComplex.includes('hflip'), 'no hflip when natural')
+
+  const faded = planCameraExport(
+    { ...style, opacity: 0.6, shadowEnabled: false, borderEnabled: false },
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+  )
+  assert(faded.opacityApplied === true, 'opacity applied')
+  assert(faded.filterComplex.includes('a=153') || faded.filterComplex.includes("a='"), 'faded alpha')
 
   const off = planCameraExport(
     { ...style, enabled: false },
@@ -82,6 +105,24 @@ function testCameraPlan(): void {
   assert(rectPlan.filterComplex.includes('overlay='), 'rectangle still overlays')
   assert(rectPlan.filterComplex.includes('format=yuv420p'), 'rectangle yuv420p')
   assert(rectPlan.borderApplied, 'rectangle border on')
+  assert(rectPlan.mirroredApplied, 'rectangle still mirrored by default')
+
+  const rectFade = planCameraExport(
+    {
+      ...style,
+      shape: 'rectangle',
+      opacity: 0.5,
+      shadowEnabled: false,
+      borderEnabled: false,
+      mirrored: false,
+    },
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+  )
+  assert(rectFade.opacityApplied, 'rect opacity')
+  assert(rectFade.filterComplex.includes('colorchannelmixer=aa=0.5'), 'rect aa mixer')
   console.log('ok camera plan')
 }
 

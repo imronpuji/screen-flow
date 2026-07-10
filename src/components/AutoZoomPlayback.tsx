@@ -312,7 +312,6 @@ export function AutoZoomPlayback({
       mediaUrl={cameraMediaUrl}
       currentTimeSec={cameraTimeSec}
       playing={playing}
-      mirrored={false}
       style={cameraOverlay}
       label="Camera overlay"
       onLayoutChange={onCameraLayoutChange}

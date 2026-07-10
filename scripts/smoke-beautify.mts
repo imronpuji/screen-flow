@@ -48,6 +48,8 @@ function testApplyCameraLayout(): void {
   assert(next.cameraOverlay.borderWidthPx === 3, 'social border width')
   assert(next.cameraOverlay.borderColor === '#F0A05A', 'social amber outline')
   assert(next.cameraOverlay.shadowEnabled === true, 'social shadow on')
+  assert(next.cameraOverlay.mirrored === true, 'social mirrored')
+  assert(next.cameraOverlay.opacity === 0.92, 'social soft opacity')
   assert(next.cursorAppearance.style === 'crosshair', 'social crosshair')
   assert(next.cursorAppearance.spotlightEnabled === true, 'social spotlight')
   assert(next.exportQuality === 'draft', 'social draft')
@@ -59,6 +61,8 @@ function testDemoBorderColor(): void {
   const next = applyBeautifyPreset(base, 'demo', { hasCameraTrack: true })
   assert(next.cameraOverlay.borderColor === '#3DD6C6', 'demo teal outline')
   assert(next.cameraOverlay.shape === 'rectangle', 'demo rectangle')
+  assert(next.cameraOverlay.mirrored === false, 'demo natural (no mirror)')
+  assert(next.cameraOverlay.opacity === 1, 'demo full opacity')
   console.log('ok demo border color')
 }
 

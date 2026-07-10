@@ -1,11 +1,13 @@
 /**
  * Plan ffmpeg overlay for FaceTime/webcam bubble bake into export.
  * Matches shared/camera.ts layout (relative x/y + size%, circle/rounded/rectangle)
- * plus optional outline + soft drop shadow (preview ≡ export).
+ * plus optional outline + soft drop shadow, mirror (hflip), and opacity
+ * (preview ≡ export).
  *
  * Circle/rounded: ONE-FRAME geq alpha → loop → alphamerge (same pattern as
  * background rounded corners) so we never run geq per video frame.
- * Rectangle: skip mask — opaque square overlay (preview border-radius: 0).
+ * Rectangle: skip mask — opaque square overlay (preview border-radius: 0);
+ * when opacity < 1, rectangle also goes through rgba + colorchannelmixer.
  *
  * Chrome order on the base frame: shadow (under) → border plate → camera video.
  * Border = solid shape plate at full bubble size; camera is inset by borderWidthPx
@@ -43,6 +45,10 @@ export interface CameraFilterPlan {
   borderApplied: boolean
   /** True when setpts drift compensation was injected. */
   driftApplied: boolean
+  /** True when camera stream is horizontally flipped (FaceTime selfie). */
+  mirroredApplied: boolean
+  /** True when opacity < 1 was baked into camera/chrome alpha. */
+  opacityApplied: boolean
 }
 
 /** Soft-shadow blur radius in px (applied once on a still, then looped). */
@@ -112,6 +118,8 @@ export function planCameraExport(
     shadowApplied: false,
     borderApplied: false,
     driftApplied: false,
+    mirroredApplied: false,
+    opacityApplied: false,
   }
 
   if (!normalized.enabled) return empty
@@ -145,11 +153,22 @@ export function planCameraExport(
   const enableSuffix =
     enableExpr && enableExpr.trim().length > 0 ? `:enable='${enableExpr.trim()}'` : ''
 
+  const mirroredApplied = normalized.mirrored
+  const flipSuffix = mirroredApplied ? ',hflip' : ''
+  const opacity = Math.max(0, Math.min(1, normalized.opacity))
+  const opacityApplied = opacity < 0.999
+  const opacityAa = opacityApplied ? Number(opacity.toFixed(3)) : 1
+  const shadowAlpha = Math.max(
+    0,
+    Math.min(255, Math.round(CAMERA_SHADOW_ALPHA * opacity)),
+  )
+  const plateOpaque = Math.max(0, Math.min(255, Math.round(255 * opacity)))
+
   // Cover-fit camera into (possibly inset) bubble. fps+setsar stabilize MediaRecorder
   // VFR WebM; final format=yuv420p avoids libx264 "Conversion failed!" after rgba.
   const camScaled =
     `[${cameraInputIndex}:v]${ptsPrefix}fps=30,scale=${innerW}:${innerH}:force_original_aspect_ratio=increase,` +
-    `crop=${innerW}:${innerH},setsar=1`
+    `crop=${innerW}:${innerH}${flipSuffix},setsar=1`
 
   const lines: string[] = []
   let baseLabel = baseInputLabel
@@ -165,14 +184,14 @@ export function planCameraExport(
     const withShadow = `${outputLabel}_bgs`
     const shadowX = x - CAMERA_SHADOW_PAD_PX + CAMERA_SHADOW_OFFSET_X
     const shadowY = y - CAMERA_SHADOW_PAD_PX + CAMERA_SHADOW_OFFSET_Y
-    const alpha = shapeAlphaExpr(normalized.shape, bubbleW, CAMERA_SHADOW_ALPHA)
+    const alpha = shapeAlphaExpr(normalized.shape, bubbleW, shadowAlpha)
     const blur = `boxblur=${CAMERA_SHADOW_BLUR_PX}:${Math.max(1, Math.floor(CAMERA_SHADOW_BLUR_PX / 2))}`
     const pad = `pad=${shadowW}:${shadowH}:(ow-iw)/2:(oh-ih)/2:color=0x00000000`
 
     if (alpha == null) {
       lines.push(
         `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
-          `geq=r=0:g=0:b=0:a=${CAMERA_SHADOW_ALPHA},${pad},${blur}[${shadowSrc}]`,
+          `geq=r=0:g=0:b=0:a=${shadowAlpha},${pad},${blur}[${shadowSrc}]`,
       )
     } else {
       lines.push(
@@ -193,13 +212,22 @@ export function planCameraExport(
     const plateStill = `${outputLabel}_platestill`
     const plateLoop = `${outputLabel}_bord`
     const withBorder = `${outputLabel}_bb`
-    const plateAlpha = shapeAlphaExpr(normalized.shape, bubbleW, 255)
+    const plateAlpha = shapeAlphaExpr(normalized.shape, bubbleW, plateOpaque)
 
     if (plateAlpha == null) {
-      lines.push(
-        `color=c=${borderColor}:s=${bubbleW}x${bubbleH}:r=1:d=1,format=yuv420p[${plateStill}]`,
-      )
-      lines.push(`[${plateStill}]loop=loop=-1:size=1[${plateLoop}]`)
+      if (opacityApplied) {
+        const plateRaw = `${outputLabel}_plateraw`
+        lines.push(
+          `color=c=${borderColor}:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
+            `colorchannelmixer=aa=${opacityAa}[${plateRaw}]`,
+        )
+        lines.push(`[${plateRaw}]loop=loop=-1:size=1[${plateLoop}]`)
+      } else {
+        lines.push(
+          `color=c=${borderColor}:s=${bubbleW}x${bubbleH}:r=1:d=1,format=yuv420p[${plateStill}]`,
+        )
+        lines.push(`[${plateStill}]loop=loop=-1:size=1[${plateLoop}]`)
+      }
       lines.push(
         `[${baseLabel}][${plateLoop}]overlay=${x}:${y}:format=auto:shortest=1${enableSuffix}[${withBorder}]`,
       )
@@ -227,8 +255,17 @@ export function planCameraExport(
 
   // —— Camera video (inset when border is on) ——
   const camRaw = `${outputLabel}_raw`
-  if (normalized.shape === 'rectangle') {
+  const useMask = normalized.shape !== 'rectangle'
+  if (!useMask && !opacityApplied) {
     lines.push(`${camScaled},format=yuv420p[${camRaw}]`)
+    lines.push(
+      `[${baseLabel}][${camRaw}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1${enableSuffix},` +
+        `format=yuv420p[${outputLabel}]`,
+    )
+  } else if (!useMask && opacityApplied) {
+    lines.push(
+      `${camScaled},format=rgba,colorchannelmixer=aa=${opacityAa}[${camRaw}]`,
+    )
     lines.push(
       `[${baseLabel}][${camRaw}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1${enableSuffix},` +
         `format=yuv420p[${outputLabel}]`,
@@ -239,8 +276,8 @@ export function planCameraExport(
     const maskLoop = `${outputLabel}_maskloop`
     const alphaExpr =
       normalized.shape === 'circle'
-        ? circleAlphaExpr(255)
-        : roundedBubbleAlphaExpr(innerW, 255)
+        ? circleAlphaExpr(plateOpaque)
+        : roundedBubbleAlphaExpr(innerW, plateOpaque)
 
     lines.push(`${camScaled},format=rgba[${camRaw}]`)
     lines.push(
@@ -264,5 +301,7 @@ export function planCameraExport(
     shadowApplied,
     borderApplied,
     driftApplied,
+    mirroredApplied,
+    opacityApplied,
   }
 }

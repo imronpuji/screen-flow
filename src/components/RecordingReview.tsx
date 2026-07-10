@@ -679,6 +679,35 @@ export function RecordingReview({
                     <span>Camera outline</span>
                   </label>
 
+                  <label className="review__toggle">
+                    <input
+                      type="checkbox"
+                      checked={edit.cameraOverlay.mirrored}
+                      disabled={exporting}
+                      onChange={(e) => patchCamera({ mirrored: e.target.checked })}
+                    />
+                    <span>Mirror camera (selfie)</span>
+                  </label>
+
+                  <div className="review__field">
+                    <label className="review__label" htmlFor="cam-opacity">
+                      Opacity {Math.round(edit.cameraOverlay.opacity * 100)}%
+                    </label>
+                    <input
+                      id="cam-opacity"
+                      className="review__range"
+                      type="range"
+                      min={35}
+                      max={100}
+                      step={1}
+                      value={Math.round(edit.cameraOverlay.opacity * 100)}
+                      disabled={exporting}
+                      onChange={(e) =>
+                        patchCamera({ opacity: Number(e.target.value) / 100 })
+                      }
+                    />
+                  </div>
+
                   {edit.cameraOverlay.borderEnabled ? (
                     <>
                       <div className="review__field">
