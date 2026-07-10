@@ -26,6 +26,8 @@ export type TooltipId =
   | 'trim-mark-out'
   | 'trim-cut-after'
   | 'trim-cut-before'
+  | 'trim-split'
+  | 'trim-delete-segment'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -133,6 +135,14 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'trim-cut-before': {
     id: 'trim-cut-before',
     title: '⇧S · Cut before playhead (keep after)',
+  },
+  'trim-split': {
+    id: 'trim-split',
+    title: 'X · Razor split at playhead (multi-segment)',
+  },
+  'trim-delete-segment': {
+    id: 'trim-delete-segment',
+    title: 'Delete · Remove keep-range under playhead',
   },
 }
 

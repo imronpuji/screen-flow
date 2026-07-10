@@ -21,6 +21,8 @@ export type ShortcutAction =
   | 'mark-out'
   | 'cut-after'
   | 'cut-before'
+  | 'split-segment'
+  | 'delete-segment'
 
 export interface ShortcutBinding {
   id: ShortcutAction
@@ -121,6 +123,18 @@ export const SHORTCUTS: readonly ShortcutBinding[] = [
     contexts: ['review'],
     description: 'Cut before playhead (keep after)',
   },
+  {
+    id: 'split-segment',
+    keys: 'X',
+    contexts: ['review'],
+    description: 'Razor split keep-range at playhead',
+  },
+  {
+    id: 'delete-segment',
+    keys: 'Delete',
+    contexts: ['review'],
+    description: 'Delete keep-range under playhead',
+  },
 ] as const
 
 export const SCRUB_STEP_MS = 1000
@@ -213,6 +227,9 @@ export function matchShortcut(
   if (key === ']') return 'mark-out'
   // S = cut after (keep before); Shift+S = cut before (keep after).
   if (lower === 's') return event.shiftKey ? 'cut-before' : 'cut-after'
+  // X = razor split into multi-segment keep-ranges (S stays keep-before).
+  if (lower === 'x') return 'split-segment'
+  if (key === 'Delete' || key === 'Backspace') return 'delete-segment'
   if (key === 'Escape') return 'discard'
   return null
 }

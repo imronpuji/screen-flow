@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:45] Multi-segment keep-ranges + ffmpeg concat (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/keepRanges.ts` — normalize/split/delete/cutGap/mergeAdjacent + total duration; `ReviewEditState.keepRanges` + `withKeepRanges`.
+  - Review: **X** razor split, **Delete/Backspace** hapus segmen; daftar keep-ranges; Mark/cut sync ke keep.
+  - Export: `keepRanges` di IPC; multi-segment → encode per range + ffmpeg concat (copy/re-encode; GIF filter concat).
+  - Smoke `smoke:keep-ranges` + shortcuts/tooltips.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke keep-ranges/timeline-cut/shortcuts/tooltips/edit-history/beautify/export-trim hijau.
+- **Commit:** `d034a9f` (memory `09976b5`)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Preview gap-skip saat playback; ripple-delete toggle; visual verify on Mac.
+
 ## [2026-07-10 13:25] Collapsible review editor panels (FOKUS 5)
 
 - **Dikerjakan:**

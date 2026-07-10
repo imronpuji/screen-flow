@@ -6,7 +6,7 @@ import {
   clampCursorSizeScale,
   type CursorStyleId,
 } from '../../shared/cursorAppearance'
-import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
+import { defaultReviewEdit, formatTimeMs, withKeepRanges, type ReviewEditState } from '../../shared/edit'
 import {
   EDIT_HISTORY_COALESCE_MS,
   canRedo,
@@ -76,6 +76,15 @@ import {
   markInAtPlayhead,
   markOutAtPlayhead,
 } from '../../shared/timelineCut'
+import {
+  applyTrimToKeepRanges,
+  canSplitKeepRangesAtPlayhead,
+  deleteKeepRangeAtPlayhead,
+  findKeepRangeIndex,
+  normalizeKeepRanges,
+  splitKeepRangesAtPlayhead,
+  totalKeepDurationMs,
+} from '../../shared/keepRanges'
 import { buildZoomSegments } from '../../shared/autozoom'
 import {
   buildCursorKeyframes,
@@ -433,7 +442,36 @@ export function RecordingReview({
           if (next.startMs === prev.trimStartMs && next.endMs === prev.trimEndMs) {
             return prev
           }
-          return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+          // Mark/cut collapse to a single keep window (classic trim).
+          return withKeepRanges(prev, [next], full)
+        })
+        return
+      }
+      if (action === 'split-segment') {
+        event.preventDefault()
+        const ph = playheadMsRef.current
+        const full = durationMsRef.current
+        setEdit((prev) => {
+          const ranges = normalizeKeepRanges(prev.keepRanges, full)
+          const next = splitKeepRangesAtPlayhead(ranges, ph, full)
+          if (!next) return prev
+          return withKeepRanges(prev, next, full)
+        })
+        return
+      }
+      if (action === 'delete-segment') {
+        event.preventDefault()
+        const ph = playheadMsRef.current
+        const full = durationMsRef.current
+        setEdit((prev) => {
+          const ranges = normalizeKeepRanges(prev.keepRanges, full)
+          // Prefer deleting the segment under the playhead; if only one range,
+          // cut a gap using mark-style outer trim is not available — no-op.
+          const deleted = deleteKeepRangeAtPlayhead(ranges, ph, full)
+          if (deleted) return withKeepRanges(prev, deleted, full)
+          // Single range: if playhead is inside, split then delete the shorter side? No —
+          // use cutGap between previous razor points only. Fallback: no-op.
+          return prev
         })
         return
       }
@@ -535,7 +573,12 @@ export function RecordingReview({
     }
   }
 
-  const trimDurationMs = Math.max(0, edit.trimEndMs - edit.trimStartMs)
+  const keepRanges = normalizeKeepRanges(edit.keepRanges, durationMs)
+  const trimDurationMs = totalKeepDurationMs(keepRanges)
+  const canSplit = canSplitKeepRangesAtPlayhead(keepRanges, playheadMs, durationMs)
+  const canDeleteSegment =
+    keepRanges.length > 1 && findKeepRangeIndex(keepRanges, playheadMs) >= 0
+  const activeSegmentIndex = findKeepRangeIndex(keepRanges, playheadMs)
 
   return (
     <div className="review">
@@ -1695,11 +1738,14 @@ export function RecordingReview({
               disabled={exporting || durationMs <= 0}
               onChange={(e) => {
                 const startMs = Number(e.target.value)
-                setEdit((prev) => ({
-                  ...prev,
-                  trimStartMs: startMs,
-                  trimEndMs: Math.max(prev.trimEndMs, startMs + 100),
-                }))
+                setEdit((prev) => {
+                  const trim = {
+                    startMs,
+                    endMs: Math.max(prev.trimEndMs, startMs + 100),
+                  }
+                  const ranges = applyTrimToKeepRanges(prev.keepRanges, trim, durationMs)
+                  return withKeepRanges(prev, ranges, durationMs)
+                })
               }}
             />
           </div>
@@ -1719,11 +1765,14 @@ export function RecordingReview({
               disabled={exporting || durationMs <= 0}
               onChange={(e) => {
                 const endMs = Number(e.target.value)
-                setEdit((prev) => ({
-                  ...prev,
-                  trimEndMs: endMs,
-                  trimStartMs: Math.min(prev.trimStartMs, endMs - 100),
-                }))
+                setEdit((prev) => {
+                  const trim = {
+                    endMs,
+                    startMs: Math.min(prev.trimStartMs, endMs - 100),
+                  }
+                  const ranges = applyTrimToKeepRanges(prev.keepRanges, trim, durationMs)
+                  return withKeepRanges(prev, ranges, durationMs)
+                })
               }}
             />
           </div>
@@ -1745,7 +1794,7 @@ export function RecordingReview({
                         playheadMs,
                         durationMs,
                       )
-                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                      return withKeepRanges(prev, [next], durationMs)
                     })
                   }
                 >
@@ -1764,7 +1813,7 @@ export function RecordingReview({
                         playheadMs,
                         durationMs,
                       )
-                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                      return withKeepRanges(prev, [next], durationMs)
                     })
                   }
                 >
@@ -1783,7 +1832,7 @@ export function RecordingReview({
                         playheadMs,
                         durationMs,
                       )
-                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                      return withKeepRanges(prev, [next], durationMs)
                     })
                   }
                 >
@@ -1802,21 +1851,84 @@ export function RecordingReview({
                         playheadMs,
                         durationMs,
                       )
-                      return { ...prev, trimStartMs: next.startMs, trimEndMs: next.endMs }
+                      return withKeepRanges(prev, [next], durationMs)
                     })
                   }
                 >
                   <span className="review__preset-label">Keep after · ⇧S</span>
                 </button>
               </Tooltip>
+              <Tooltip copy={TOOLTIPS['trim-split']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0 || !canSplit}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = splitKeepRangesAtPlayhead(
+                        prev.keepRanges,
+                        playheadMs,
+                        durationMs,
+                      )
+                      if (!next) return prev
+                      return withKeepRanges(prev, next, durationMs)
+                    })
+                  }
+                >
+                  <span className="review__preset-label">Split · X</span>
+                </button>
+              </Tooltip>
+              <Tooltip copy={TOOLTIPS['trim-delete-segment']}>
+                <button
+                  type="button"
+                  className="review__preset"
+                  disabled={exporting || durationMs <= 0 || !canDeleteSegment}
+                  onClick={() =>
+                    setEdit((prev) => {
+                      const next = deleteKeepRangeAtPlayhead(
+                        prev.keepRanges,
+                        playheadMs,
+                        durationMs,
+                      )
+                      if (!next) return prev
+                      return withKeepRanges(prev, next, durationMs)
+                    })
+                  }
+                >
+                  <span className="review__preset-label">Delete seg</span>
+                </button>
+              </Tooltip>
             </div>
           </div>
 
+          {keepRanges.length > 1 ? (
+            <div className="review__field review__field--compact">
+              <span className="review__label">
+                Keep ranges · {keepRanges.length}
+                {activeSegmentIndex >= 0 ? ` · seg ${activeSegmentIndex + 1}` : ''}
+              </span>
+              <ul className="review__hint" style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                {keepRanges.map((r, i) => (
+                  <li key={`${r.startMs}-${r.endMs}-${i}`}>
+                    {i + 1}. {formatTimeMs(r.startMs)} → {formatTimeMs(r.endMs)}
+                    {i === activeSegmentIndex ? ' ←' : ''}
+                  </li>
+                ))}
+              </ul>
+              <p className="review__hint">
+                Gaps are skipped on export (ffmpeg concat). Split (X) then Delete to cut the
+                middle.
+              </p>
+            </div>
+          ) : null}
+
           <p className="review__hint">
             Export length: {formatTimeMs(trimDurationMs)}
-            {edit.trimStartMs > 0 || edit.trimEndMs < durationMs
-              ? ' (trim baked into MP4 export)'
-              : ''}
+            {keepRanges.length > 1
+              ? ` (${keepRanges.length} segments concatenated)`
+              : edit.trimStartMs > 0 || edit.trimEndMs < durationMs
+                ? ' (trim baked into MP4 export)'
+                : ''}
           </p>
 
           </EditorPanel>

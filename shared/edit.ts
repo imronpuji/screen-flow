@@ -10,7 +10,15 @@ import type { ExportFormatId } from './exportFormat.js'
 import { DEFAULT_EXPORT_FORMAT, normalizeExportFormat } from './exportFormat.js'
 import type { ExportQualityId } from './exportQuality.js'
 import { DEFAULT_EXPORT_QUALITY, normalizeExportQuality } from './exportQuality.js'
+import {
+  defaultKeepRanges,
+  normalizeKeepRanges,
+  outerTrimFromKeepRanges,
+  type KeepRange,
+} from './keepRanges.js'
 import type { ManualZoomPoint, ZoomPointOverride } from './zoomPoints.js'
+
+export type { KeepRange }
 
 /** Lightweight edit state for post-record review (trim + effects). */
 
@@ -22,6 +30,12 @@ export interface TrimRange {
 export interface ReviewEditState {
   trimStartMs: number
   trimEndMs: number
+  /**
+   * Non-destructive keep windows on the source timeline (FOKUS 5).
+   * One range ≡ classic trim; multiple ranges with gaps → ffmpeg concat on export.
+   * `trimStartMs`/`trimEndMs` mirror the outer envelope for scrubber compat.
+   */
+  keepRanges: KeepRange[]
   autoZoomEnabled: boolean
   /**
    * Per-click zoom edits (enable/disable + peak scale) keyed by auto-segment index.
@@ -82,9 +96,11 @@ export function defaultReviewEdit(
   cursorAppearance?: CursorAppearance | null,
   exportFormat?: ExportFormatId | null,
 ): ReviewEditState {
+  const keepRanges = defaultKeepRanges(durationMs)
   return {
-    trimStartMs: 0,
-    trimEndMs: Math.max(0, durationMs),
+    trimStartMs: keepRanges[0]?.startMs ?? 0,
+    trimEndMs: keepRanges[0]?.endMs ?? Math.max(0, durationMs),
+    keepRanges,
     autoZoomEnabled: true,
     zoomPointOverrides: [],
     manualZoomPoints: [],
@@ -110,4 +126,20 @@ export function formatTimeMs(ms: number): string {
   const sec = Math.floor(totalSec % 60)
   const frac = Math.floor((totalSec % 1) * 10)
   return `${min}:${sec.toString().padStart(2, '0')}.${frac}`
+}
+
+/** Apply keep-ranges and sync legacy trimStart/trimEnd outer envelope. */
+export function withKeepRanges(
+  edit: ReviewEditState,
+  ranges: KeepRange[],
+  fullDurationMs: number,
+): ReviewEditState {
+  const keepRanges = normalizeKeepRanges(ranges, fullDurationMs)
+  const outer = outerTrimFromKeepRanges(keepRanges)
+  return {
+    ...edit,
+    keepRanges,
+    trimStartMs: outer.startMs,
+    trimEndMs: outer.endMs,
+  }
 }

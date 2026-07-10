@@ -253,6 +253,11 @@ export interface ExportMp4Request {
   camera?: ExportCameraOverlayRequest
   /** When set, ffmpeg -ss/-to trims before encode (auto-zoom events re-based to trim start). */
   trim?: ExportTrimRequest
+  /**
+   * Multi-segment keep windows (FOKUS 5). When 2+ ranges with gaps, main exports
+   * each segment then ffmpeg-concats. Prefer over single `trim` when both set.
+   */
+  keepRanges?: ExportTrimRequest[]
   /** Encode quality preset (draft | good | high). Default good. */
   quality?: ExportQualityId
   /** Container format (mp4 | webm | gif). Default mp4. */

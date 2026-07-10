@@ -26,6 +26,12 @@ import {
   type TrimRange,
 } from '../../shared/edit.js'
 import {
+  defaultKeepRanges,
+  mergeAdjacentKeepRanges,
+  totalKeepDurationMs,
+  type KeepRange,
+} from '../../shared/keepRanges.js'
+import {
   appendGifPaletteFilters,
   buildGifFilterFromInput,
   exportFormatExtension,
@@ -67,6 +73,8 @@ export type ExportProgressListener = (event: ExportProgressEvent) => void
 
 let activeChild: ChildProcess | null = null
 let cancelRequested = false
+/** >0 while multi-segment export re-enters exportWebmToMp4 for each keep-range. */
+let exportNestDepth = 0
 const progressListeners = new Set<ExportProgressListener>()
 
 export function onExportProgress(listener: ExportProgressListener): () => void {
@@ -360,12 +368,277 @@ export function cancelExport(): { ok: true; cancelled: boolean } {
   return { ok: true, cancelled: true }
 }
 
+
+/**
+ * Resolve keep-ranges for export: prefer `keepRanges`, else single `trim`, else full clip.
+ * Adjacent/touching ranges are merged so razor-only splits stay a single encode.
+ */
+function resolveExportKeepRanges(
+  request: ExportMp4Request,
+  fullDurationMs: number,
+): KeepRange[] {
+  if (request.keepRanges && request.keepRanges.length > 0) {
+    return mergeAdjacentKeepRanges(request.keepRanges, fullDurationMs)
+  }
+  if (request.trim) {
+    return mergeAdjacentKeepRanges([request.trim], fullDurationMs)
+  }
+  return defaultKeepRanges(fullDurationMs)
+}
+
+function runFfmpegArgs(args: string[]): Promise<{ code: number; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    if (cancelRequested) {
+      reject(new ExportCancelledError())
+      return
+    }
+    const child = spawn(FFMPEG_BIN, args, { stdio: ['ignore', 'ignore', 'pipe'] })
+    activeChild = child
+    let stderr = ''
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+    child.on('error', (err) => {
+      activeChild = null
+      reject(
+        new Error(
+          `Failed to spawn ffmpeg (${FFMPEG_BIN}): ${err.message}. Install ffmpeg or set SCREEN_FLOW_FFMPEG.`,
+        ),
+      )
+    })
+    child.on('close', (code) => {
+      activeChild = null
+      if (cancelRequested) {
+        reject(new ExportCancelledError())
+        return
+      }
+      resolve({ code: code ?? 1, stderr })
+    })
+  })
+}
+
+async function concatExportSegments(options: {
+  segmentPaths: string[]
+  outputPath: string
+  format: ExportFormatId
+  sessionDir: string
+}): Promise<void> {
+  const { segmentPaths, outputPath, format, sessionDir } = options
+  if (segmentPaths.length === 0) {
+    throw new Error('No segments to concatenate')
+  }
+  if (segmentPaths.length === 1) {
+    fs.renameSync(segmentPaths[0]!, outputPath)
+    return
+  }
+
+  emitProgress({
+    phase: 'encoding',
+    percent: 92,
+    message: `Joining ${segmentPaths.length} segments…`,
+  })
+
+  if (format === 'gif') {
+    const args = ['-y']
+    for (const seg of segmentPaths) {
+      args.push('-i', seg)
+    }
+    const labels = segmentPaths.map((_, i) => `[${i}:v]`).join('')
+    const filter = `${labels}concat=n=${segmentPaths.length}:v=1:a=0[v]`
+    args.push('-filter_complex', filter, '-map', '[v]', outputPath)
+    const result = await runFfmpegArgs(args)
+    if (result.code !== 0) {
+      throw new Error(
+        `ffmpeg concat (gif) exited with code ${result.code}${
+          result.stderr ? `: ${result.stderr.slice(-600)}` : ''
+        }`,
+      )
+    }
+    return
+  }
+
+  const listPath = path.join(sessionDir, 'concat-list.txt')
+  const listBody = segmentPaths
+    .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
+    .join('\n')
+  fs.writeFileSync(listPath, listBody, 'utf8')
+  try {
+    const args = [
+      '-y',
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      listPath,
+      '-c',
+      'copy',
+      outputPath,
+    ]
+    let result = await runFfmpegArgs(args)
+    if (result.code !== 0) {
+      const encoder = pickVideoEncoder('good', format)
+      const reArgs = [
+        '-y',
+        '-f',
+        'concat',
+        '-safe',
+        '0',
+        '-i',
+        listPath,
+        '-c:v',
+        encoder.codec,
+        ...encoder.extraArgs,
+        '-an',
+        outputPath,
+      ]
+      result = await runFfmpegArgs(reArgs)
+    }
+    if (result.code !== 0) {
+      throw new Error(
+        `ffmpeg concat exited with code ${result.code}${
+          result.stderr ? `: ${result.stderr.slice(-600)}` : ''
+        }`,
+      )
+    }
+  } finally {
+    try {
+      fs.unlinkSync(listPath)
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
+/**
+ * Multi-segment export: encode each keep-range, then ffmpeg-concat.
+ * Re-enters `exportWebmToMp4` per segment with a single trim (no nested multi).
+ */
+async function exportMultiSegmentKeepRanges(
+  request: ExportMp4Request,
+  ctx: {
+    inputPath: string
+    outputPath: string
+    format: ExportFormatId
+    formatPreset: ReturnType<typeof getExportFormatPreset>
+    ext: string
+    fullDurationMs: number
+    keepRanges: KeepRange[]
+  },
+): Promise<ExportMp4Result> {
+  const { inputPath, outputPath, format, formatPreset, ext, keepRanges } = ctx
+  const sessionDir = path.dirname(outputPath)
+  const segmentPaths: string[] = []
+  const totalMs = totalKeepDurationMs(keepRanges)
+
+  emitProgress({
+    phase: 'starting',
+    percent: 0,
+    message: `Exporting ${keepRanges.length} segments (${msToFfmpegSec(totalMs)}s)…`,
+  })
+
+  let lastResult: ExportMp4Result | null = null
+  try {
+    for (let i = 0; i < keepRanges.length; i++) {
+      if (cancelRequested) throw new ExportCancelledError()
+      const range = keepRanges[i]!
+      const segPath = path.join(sessionDir, `segment-${i}.${ext}`)
+      emitProgress({
+        phase: 'encoding',
+        percent: Math.round((i / keepRanges.length) * 88),
+        message: `Segment ${i + 1}/${keepRanges.length}…`,
+      })
+
+      exportNestDepth += 1
+      try {
+        lastResult = await exportWebmToMp4({
+          ...request,
+          trim: range,
+          keepRanges: undefined,
+          outputPath: segPath,
+          cleanupTemp: false,
+        })
+      } finally {
+        exportNestDepth -= 1
+      }
+      segmentPaths.push(lastResult.outputPath)
+    }
+
+    await concatExportSegments({
+      segmentPaths,
+      outputPath,
+      format,
+      sessionDir,
+    })
+
+    if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+      throw new Error(`ffmpeg produced an empty ${formatPreset.label}`)
+    }
+
+    const cleanupTemp = request.cleanupTemp !== false
+    if (cleanupTemp && inputPath !== outputPath) {
+      try {
+        fs.unlinkSync(inputPath)
+      } catch {
+        /* best-effort */
+      }
+    }
+    if (cleanupTemp && request.camera?.cameraPath) {
+      try {
+        const cam = assertUnderScreenFlowTemp(request.camera.cameraPath)
+        if (cam !== outputPath) fs.unlinkSync(cam)
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    const bytesWritten = fs.statSync(outputPath).size
+    emitProgress({
+      phase: 'done',
+      percent: 100,
+      message: `Wrote ${bytesWritten} bytes`,
+    })
+
+    return {
+      ok: true,
+      outputPath,
+      bytesWritten,
+      codec: lastResult?.codec ?? 'unknown',
+      quality: lastResult?.quality,
+      format,
+      autoZoomApplied: lastResult?.autoZoomApplied,
+      backgroundApplied: lastResult?.backgroundApplied,
+      cursorApplied: lastResult?.cursorApplied,
+      cameraApplied: lastResult?.cameraApplied,
+      trimApplied: true,
+    }
+  } catch (err) {
+    try {
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+    } catch {
+      /* ignore */
+    }
+    throw err
+  } finally {
+    for (const seg of segmentPaths) {
+      try {
+        if (seg !== outputPath && fs.existsSync(seg)) fs.unlinkSync(seg)
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+}
+
 /**
  * Transcode a finished capture.webm into export.mp4 / .webm / .gif
  * (same session dir by default). Optionally removes the source WebM after success.
+ * Multi-segment `keepRanges` → per-segment encode + ffmpeg concat.
  */
 export async function exportWebmToMp4(request: ExportMp4Request): Promise<ExportMp4Result> {
-  cancelRequested = false
+  if (exportNestDepth === 0) {
+    cancelRequested = false
+  }
 
   const format = normalizeExportFormat(request.format)
   const formatPreset = getExportFormatPreset(format)
@@ -394,13 +667,27 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   const probe = await probeVideoFile(inputPath)
   const fullDurationMs = probe.durationSec * 1000
 
+  const resolvedKeep = resolveExportKeepRanges(request, fullDurationMs)
+  if (resolvedKeep.length > 1) {
+    return exportMultiSegmentKeepRanges(request, {
+      inputPath,
+      outputPath,
+      format,
+      formatPreset,
+      ext,
+      fullDurationMs,
+      keepRanges: resolvedKeep,
+    })
+  }
+
   let trimRange: TrimRange | undefined
   let trimApplied = false
-  // Always seed progress + runaway-graph -t from the probed duration (trim may narrow it).
+  // Always seed progress + filter-graph -t from the probed duration (trim may narrow it).
   let expectedDurationSec: number | undefined = probe.durationSec
 
-  if (request.trim) {
-    trimRange = normalizeTrim(request.trim, fullDurationMs)
+  const effectiveTrim = resolvedKeep[0] ?? request.trim
+  if (effectiveTrim) {
+    trimRange = normalizeTrim(effectiveTrim, fullDurationMs)
     const trimmedMs = trimDurationMs(trimRange)
     if (trimmedMs < 100) {
       throw new Error('Trim range is too short (minimum 100ms)')
@@ -742,7 +1029,9 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         /* best-effort */
       }
     }
-    cancelRequested = false
+    if (exportNestDepth === 0) {
+      cancelRequested = false
+    }
     activeChild = null
   }
 }

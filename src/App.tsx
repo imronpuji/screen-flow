@@ -745,6 +745,10 @@ export default function App() {
           startMs: _edit.trimStartMs,
           endMs: _edit.trimEndMs,
         },
+        keepRanges:
+          _edit.keepRanges.length > 1
+            ? _edit.keepRanges.map((r) => ({ startMs: r.startMs, endMs: r.endMs }))
+            : undefined,
       }
       if (_edit.autoZoomEnabled && lastCursorEventsPath) {
         exportRequest.autoZoom = {
