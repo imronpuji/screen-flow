@@ -80,6 +80,7 @@ import {
   type ZoomFocusNudgeDirection,
 } from '../../shared/zoomPoints'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
+import { CameraLayoutMap } from './CameraLayoutMap'
 import { EmptyHint, Tooltip } from './Tooltip'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 import { TOOLTIPS } from '../../shared/tooltips'
@@ -1101,6 +1102,20 @@ export function RecordingReview({
 
                   <div className="review__field">
                     <span className="review__label">Position</span>
+                    {/*
+                      Same chrome schematic as setup/recording — click-to-place
+                      uses relative coords identical to preview bubble + export.
+                    */}
+                    <CameraLayoutMap
+                      style={edit.cameraOverlay}
+                      disabled={exporting}
+                      onLayoutChange={(next) =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          cameraOverlay: normalizeCameraOverlay(next),
+                        }))
+                      }
+                    />
                     <div className="review__presets" role="group" aria-label="Camera position presets">
                       {CAMERA_SNAP_PRESETS.map((target) => {
                         const active = matchCameraSnapTarget(edit.cameraOverlay) === target
@@ -1130,9 +1145,9 @@ export function RecordingReview({
                       })}
                     </div>
                     <p className="review__hint">
-                      Drag to move (magnetic snap to corners &amp; edges) · arrows nudge ·
-                      +/- resize · 1/2/3 size · [ ] snap cycle · C shape · 0 or double-click
-                      reset · corner handles resize
+                      Click the layout map or drag the bubble (magnetic snap) · arrows
+                      nudge · +/- resize · 1/2/3 size · [ ] snap cycle · C shape · 0 or
+                      double-click reset · corner handles resize
                       {edit.cameraOverlay.lockAspect
                         ? ' with aspect lock'
                         : ' freely (unlocked)'}
