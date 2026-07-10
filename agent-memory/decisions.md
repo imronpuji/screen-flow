@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera bubble arrow-key nudge (FOKUS 3B)
+
+- **Keputusan:** Fine-tune posisi bubble lewat `nudgeCameraLayout(direction, { shift })`. Step default **0.5%** frame (`CAMERA_NUDGE_STEP`); Shift = **2%** (`CAMERA_NUDGE_STEP_SHIFT`). Nudge selalu set `anchor: 'free'` lalu `clampCameraLayout` (safe margin 3%). UI: bubble `tabIndex=0` saat interactive; focus setelah pointer-down; Arrow keys di bubble `stopPropagation` agar tidak memicu scrub ←→ di review.
+- **Alasan:** Drag+snap bagus untuk kasar; orang awam butuh geser halus tanpa mouse pixel-hunting; preview≡export tetap pakai koordinat relatif yang sama.
+- **Status:** aktif
+
 ## [2026-07-10] Persist FaceTime camera overlay prefs
 
 - **Keputusan:** Seluruh `CameraOverlayStyle` (device, layout x/y/size/anchor/shape, chrome, mirror, opacity, mic, enabled) disimpan di renderer `localStorage` (`screen-flow:camera-overlay`) lewat `shared/cameraPrefs.ts` + `normalizeCameraOverlay`. App hydrate on launch; save on every change; bila `enabled` tersimpan, reopen live preview sekali. Review memanggil `onCameraOverlayChange` supaya edit layout ikut ke setup berikutnya; kalau clip tanpa camera track, flag `enabled` setup **tidak** ditimpa `false`.
