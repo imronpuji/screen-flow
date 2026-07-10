@@ -18,7 +18,8 @@
     "smoke:export-save": "node --experimental-strip-types scripts/smoke-export-save.mts",
     "smoke:cursor-events": "node --experimental-strip-types scripts/smoke-cursor-events.mts",
     "smoke:autozoom": "node --experimental-strip-types scripts/smoke-autozoom.mts",
-    "smoke:export-autozoom": "node --experimental-strip-types scripts/smoke-export-autozoom.mts"
+    "smoke:export-autozoom": "node --experimental-strip-types scripts/smoke-export-autozoom.mts",
+    "smoke:export-trim": "node --experimental-strip-types scripts/smoke-export-trim.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

@@ -86,6 +86,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
 - **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
+## [2026-07-10] Export trim bake (ffmpeg -ss/-to)
+
+- **Keputusan:** Review trim sliders → `ExportMp4Request.trim` → ffmpeg `-ss startMs -to endMs` sebelum encode. Cursor events di-filter & di-offset ke timeline trim agar auto-zoom sendcmd tetap selaras preview.
+- **Alasan:** User sudah trim di review; export harus match tanpa langkah manual; satu pass ffmpeg tetap jalan dengan progress/cancel.
+- **Status:** aktif (MVP)
+
 ## [2026-07-10] Cursor event capture (JSONL)
 
 - **Keputusan:** Saat `recording:start`, main menulis `cursor-events.jsonl` di session temp. Event: `{ t, x, y, kind: move|down|up|click, button? }` dengan `t` = ms sejak start. Primary: `uiohook-napi` global hook (posisi + klik). Fallback: poll `screen.getCursorScreenPoint()` ~60Hz (posisi saja). Move di-throttle (≥16ms atau ≥2px). Stop menutup stream dan expose `cursorEventsPath` + `cursorEventCount` di `StopRecordingResult`.

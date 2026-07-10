@@ -170,7 +170,7 @@ export function RecordingReview({
           <p className="review__hint">
             Export length: {formatTimeMs(trimDurationMs)}
             {edit.trimStartMs > 0 || edit.trimEndMs < durationMs
-              ? ' (trim applied in preview; full trim on export coming soon)'
+              ? ' (trim baked into MP4 export)'
               : ''}
           </p>
 

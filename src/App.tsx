@@ -274,6 +274,10 @@ export default function App() {
       const exportRequest: Parameters<typeof exportWebmToMp4>[0] = {
         inputPath: lastWebmPath,
         cleanupTemp: true,
+        trim: {
+          startMs: _edit.trimStartMs,
+          endMs: _edit.trimEndMs,
+        },
       }
       if (_edit.autoZoomEnabled && lastCursorEventsPath) {
         exportRequest.autoZoom = { cursorEventsPath: lastCursorEventsPath }
@@ -282,17 +286,22 @@ export default function App() {
       clearReview()
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
 
+      const baked: string[] = []
+      if (result.trimApplied) baked.push('trim')
+      if (result.autoZoomApplied) baked.push('auto-zoom')
+      const bakedLabel = baked.length ? `, ${baked.join(' + ')} baked` : ''
+
       const saved = await saveExport({
         sourcePath: result.outputPath,
         cleanupSource: true,
       })
       if (saved.cancelled) {
         setLastSummary(
-          `Exported MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
+          `Exported MP4 (${result.codec}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
         )
       } else {
         setLastSummary(
-          `Saved MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+          `Saved MP4 (${result.codec}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
         )
       }
       setExportProgress({ phase: 'done', percent: 100 })

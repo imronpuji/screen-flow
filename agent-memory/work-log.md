@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 06:10] Bake trim ke ffmpeg MP4 export
+
+- **Dikerjakan:** `shared/edit.ts` helpers (`normalizeTrim`, `applyTrimToCursorEvents`, `msToFfmpegSec`); IPC `ExportMp4Request.trim`; transcode `-ss/-to` + re-base cursor events untuk auto-zoom; UI kirim trim dari review sliders; smoke `smoke:export-trim`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke trim/autozoom/progress hijau.
+- **Status:** done
+- **Next:** Cursor smoothing + click ring; background padding/gradient preview.
+
 ## [2026-07-10 06:05] Post-record Review & Edit UI + fix preview playback
 
 - **Dikerjakan:** `screenflow-media://` custom protocol (fix file:// blocked dari http dev); mode `review` penuh dengan `RecordingReview` (preview besar, play/scrub, trim in/out, toggle auto-zoom); `AutoZoomPlayback` timeline + error states; `requestData()` sebelum MediaRecorder stop.
