@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Docked FaceTime monitor while recording (FOKUS 3A)
+
+- **Keputusan:** Saat `mode === 'recording'` dan ada `cameraStream`, tampilkan `CameraMonitor` di panel **camera-controls** (app chrome), bukan di `preview-frame`. Monitor menampilkan stream live dengan shape/mirror dari `CameraOverlayStyle`, status Live/Muted, dan **tidak** memanggil `track.enabled = true` (mute mid-recording tetap otoritatif). Layout bubble di preview tetap disembunyikan selama recording (hindari double FaceTime di screen WebM).
+- **Alasan:** FOKUS 3A — orang awam perlu melihat wajah sendiri saat rekam; badge teks saja terasa buta. Monitor di chrome ≠ posisi overlay export, jadi tidak menciptakan burn-in double di pojok layout.
+- **Status:** aktif
+
 ## [2026-07-10] Persist export format + quality prefs
 
 - **Keputusan:** `ExportPrefs` `{ format, quality }` disimpan di renderer `localStorage` (`screen-flow:export-prefs`) lewat `shared/exportPrefs.ts` + `normalizeExportPrefs`. Review hydrate via `defaultReviewEdit(..., quality, background, cursor, format)`; save on every `exportFormat` / `exportQuality` change (Beautify ikut). Pola sama FaceTime `cameraPrefs` / background / cursor prefs.
