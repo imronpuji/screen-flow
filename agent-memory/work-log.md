@@ -9,9 +9,9 @@ Entri terbaru di ATAS.
   - `AutoZoomPlayback` — scrub/marker seek pakai magnetic; keyboard frame-step & gap-skip free.
   - Timeline panel toggle + tooltip `trim-magnetic-snap`; smoke `smoke:timeline-snap`.
 - **Hasil:** `typecheck` + `build` + `lint` + `smoke:timeline-snap` + `smoke:tooltips` + `smoke:keep-ranges` + `smoke:shortcuts` hijau.
-- **Commit:** `2158d73`
-- **Status:** done — lanjut push/PR + owner merge callback.
-- **Next:** Clip-edge drag snap / visual verify on Mac; UI polish empty states.
+- **Commit:** `2158d73` (memory `a36e36c`)
+- **Status:** done — PR #72 merged via owner callback.
+- **Next:** Clip-edge drag snap; UI polish empty states; visual verify on Mac.
 
 ## [2026-07-10 14:05] Ripple-delete toggle (FOKUS 5)
 
