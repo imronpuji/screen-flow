@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ExportProgressEvent } from '../../shared/ipc'
 import type { CursorEvent } from '../../shared/cursor'
 import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
+import { BACKGROUND_PRESETS } from '../../shared/background'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 
 export interface RecordingReviewProps {
@@ -101,6 +102,7 @@ export function RecordingReview({
             cursorEvents={cursorEvents}
             autoZoomEnabled={edit.autoZoomEnabled}
             cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
+            background={edit.background}
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             onDurationMs={onDurationMs}
@@ -133,6 +135,96 @@ export function RecordingReview({
             />
             <span>Cursor smoothing + click rings</span>
           </label>
+
+          <label className="review__toggle">
+            <input
+              type="checkbox"
+              checked={edit.background.enabled}
+              disabled={exporting}
+              onChange={(e) =>
+                setEdit((prev) => ({
+                  ...prev,
+                  background: { ...prev.background, enabled: e.target.checked },
+                }))
+              }
+            />
+            <span>Aesthetic background + padding</span>
+          </label>
+
+          {edit.background.enabled ? (
+            <>
+              <div className="review__field">
+                <span className="review__label">Background style</span>
+                <div className="review__presets" role="group" aria-label="Background preset">
+                  {BACKGROUND_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      className={`review__preset${
+                        edit.background.presetId === preset.id ? ' review__preset--active' : ''
+                      }`}
+                      disabled={exporting}
+                      title={preset.label}
+                      aria-label={preset.label}
+                      aria-pressed={edit.background.presetId === preset.id}
+                      onClick={() =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          background: { ...prev.background, presetId: preset.id },
+                        }))
+                      }
+                    >
+                      <span
+                        className="review__preset-swatch"
+                        style={{ background: preset.css }}
+                      />
+                      <span className="review__preset-label">{preset.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="review__field">
+                <label className="review__label" htmlFor="bg-padding">
+                  Padding — {edit.background.paddingPercent}%
+                </label>
+                <input
+                  id="bg-padding"
+                  type="range"
+                  className="review__range"
+                  min={4}
+                  max={24}
+                  step={1}
+                  value={edit.background.paddingPercent}
+                  disabled={exporting}
+                  onChange={(e) =>
+                    setEdit((prev) => ({
+                      ...prev,
+                      background: {
+                        ...prev.background,
+                        paddingPercent: Number(e.target.value),
+                      },
+                    }))
+                  }
+                />
+              </div>
+
+              <label className="review__toggle review__toggle--nested">
+                <input
+                  type="checkbox"
+                  checked={edit.background.shadowEnabled}
+                  disabled={exporting}
+                  onChange={(e) =>
+                    setEdit((prev) => ({
+                      ...prev,
+                      background: { ...prev.background, shadowEnabled: e.target.checked },
+                    }))
+                  }
+                />
+                <span>Drop shadow</span>
+              </label>
+            </>
+          ) : null}
 
           <div className="review__field">
             <label className="review__label" htmlFor="trim-start">
@@ -190,7 +282,7 @@ export function RecordingReview({
           <div className="review__coming">
             <p className="review__coming-title">Coming next</p>
             <ul>
-              <li>Background & padding</li>
+              <li>Bake background + cursor into export</li>
               <li>Per-click zoom points</li>
               <li>Export GIF / WebM</li>
             </ul>

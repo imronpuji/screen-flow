@@ -1,3 +1,5 @@
+import type { BackgroundStyle } from './background.js'
+import { DEFAULT_BACKGROUND_STYLE } from './background.js'
 import type { CursorEvent } from './cursor.js'
 
 /** Lightweight edit state for post-record review (trim + effects). */
@@ -12,6 +14,7 @@ export interface ReviewEditState {
   trimEndMs: number
   autoZoomEnabled: boolean
   cursorSmoothingEnabled: boolean
+  background: BackgroundStyle
 }
 
 /** Clamp trim handles to a valid export window (≥100ms). */
@@ -43,6 +46,7 @@ export function defaultReviewEdit(durationMs: number): ReviewEditState {
     trimEndMs: Math.max(0, durationMs),
     autoZoomEnabled: true,
     cursorSmoothingEnabled: true,
+    background: { ...DEFAULT_BACKGROUND_STYLE },
   }
 }
 

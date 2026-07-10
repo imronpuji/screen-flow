@@ -3,6 +3,13 @@
 Entri terbaru di ATAS.
 
 
+## [2026-07-10 06:20] Background padding + gradient preview
+
+- **Dikerjakan:** `shared/background.ts` (5 preset gradient, padding %, corner radius, shadow); extend `ReviewEditState.background`; frame kartu di `AutoZoomPlayback` (gradient + padding + rounded + shadow); kontrol review (toggle, preset picker, padding slider, shadow); smoke `smoke:background`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke background/cursor-smoothing hijau.
+- **Status:** done (preview MVP)
+- **Next:** Bake background + cursor smoothing ke ffmpeg export; polish preset gaya (Tutorial/Demo).
+
 ## [2026-07-10 06:15] Cursor smoothing + click ring preview
 
 - **Dikerjakan:** `shared/cursorSmoothing.ts` (weighted smoothing, click ring animation); overlay kursor + ring di `AutoZoomPlayback` (stage aspect-ratio + zoom transform); toggle `cursorSmoothingEnabled` di review editor; smoke `smoke:cursor-smoothing`.
