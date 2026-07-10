@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 04:55] Export progress IPC + cancel ffmpeg
+
+- **Dikerjakan:** Parse ffmpeg `-progress` / Duration → `export:progress` push ke renderer; IPC `export:cancel` (SIGTERM child); UI Cancel + % status; smoke `npm run smoke:export-progress`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke hijau.
+- **Status:** done
+- **Next:** Save-dialog ke Documents setelah export; atau cursor event capture untuk auto-zoom.
+
 ## [2026-07-10 04:50] ffmpeg WebM → MP4 export + temp cleanup
 
 - **Dikerjakan:** Modul `electron/ffmpeg/transcode.ts` (spawn ffmpeg, VideoToolbox/libx264, path guard temp); IPC `export:webm-to-mp4`; preload + runtime bridge; tombol Export MP4 di UI setelah stop (cleanup WebM on success).

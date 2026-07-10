@@ -2,18 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import type {
   AppInfo,
   CaptureSource,
+  ExportProgressEvent,
   PermissionStatus,
   RecordingStatus,
 } from '../shared/ipc'
 import { startLiveCapture, type LiveCaptureHandle } from './lib/captureStream'
 import {
   appendRecordingChunk,
+  cancelExport,
   exportWebmToMp4,
   fetchAppInfo,
   fetchCaptureSources,
   fetchPermissionStatus,
   fetchRecordingStatus,
   isElectronBridgeAvailable,
+  isExportCancelledError,
+  onExportProgress,
   startRecording,
   stopRecording,
 } from './lib/runtime'
@@ -46,6 +50,7 @@ export default function App() {
   const [lastSummary, setLastSummary] = useState<string | null>(null)
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState<ExportProgressEvent | null>(null)
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
 
@@ -55,6 +60,12 @@ export default function App() {
     inElectron && !busy && Boolean(selectedSourceId) && permission?.screen !== 'denied'
   const canExport =
     inElectron && !busy && !isRecording && !exporting && Boolean(lastWebmPath)
+
+  useEffect(() => {
+    return onExportProgress((event) => {
+      setExportProgress(event)
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -202,6 +213,7 @@ export default function App() {
   async function onExportMp4() {
     if (!lastWebmPath) return
     setExporting(true)
+    setExportProgress({ phase: 'starting', percent: 0 })
     setError(null)
     try {
       const result = await exportWebmToMp4({
@@ -212,10 +224,25 @@ export default function App() {
       setLastSummary(
         `Exported MP4 (${result.codec}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath}`,
       )
+      setExportProgress({ phase: 'done', percent: 100 })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Export failed')
+      if (isExportCancelledError(err)) {
+        setLastSummary('Export cancelled.')
+        setExportProgress({ phase: 'cancelled', percent: 0 })
+      } else {
+        setError(err instanceof Error ? err.message : 'Export failed')
+        setExportProgress(null)
+      }
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function onCancelExport() {
+    try {
+      await cancelExport()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cancel failed')
     }
   }
 
@@ -259,6 +286,15 @@ export default function App() {
             >
               {exporting ? 'Exporting…' : 'Export MP4'}
             </button>
+            {exporting ? (
+              <button
+                type="button"
+                className="btn btn--danger"
+                onClick={() => void onCancelExport()}
+              >
+                Cancel export
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn--ghost"
@@ -268,6 +304,13 @@ export default function App() {
               Refresh sources
             </button>
           </div>
+          {exporting && exportProgress ? (
+            <p className="shell__status" role="status">
+              Export {exportProgress.phase}
+              {exportProgress.percent > 0 ? ` · ${exportProgress.percent}%` : ''}
+              {exportProgress.message ? ` — ${exportProgress.message}` : ''}
+            </p>
+          ) : null}
           {permission ? (
             <p
               className={

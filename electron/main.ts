@@ -2,7 +2,12 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
-import { exportWebmToMp4 } from './ffmpeg/transcode.js'
+import {
+  cancelExport,
+  exportWebmToMp4,
+  ExportCancelledError,
+  onExportProgress,
+} from './ffmpeg/transcode.js'
 import {
   appendRecordingChunk,
   getRecordingStatus,
@@ -82,7 +87,7 @@ function registerIpc(): void {
     return appendRecordingChunk(request)
   })
 
-  ipcMain.handle(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, (_event, request: ExportMp4Request) => {
+  ipcMain.handle(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, async (_event, request: ExportMp4Request) => {
     if (!request || typeof request.inputPath !== 'string' || !request.inputPath.trim()) {
       throw new Error('Invalid export payload: inputPath required')
     }
@@ -92,12 +97,33 @@ function registerIpc(): void {
     if (request.cleanupTemp != null && typeof request.cleanupTemp !== 'boolean') {
       throw new Error('Invalid export payload: cleanupTemp must be a boolean')
     }
-    return exportWebmToMp4(request)
+    try {
+      return await exportWebmToMp4(request)
+    } catch (err) {
+      if (err instanceof ExportCancelledError) {
+        // Structured cancel so renderer can distinguish from hard failures.
+        throw new Error('EXPORT_CANCELLED', { cause: err })
+      }
+      throw err
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.EXPORT_CANCEL, () => cancelExport())
+}
+
+function broadcastExportProgress(): void {
+  onExportProgress((event) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send(IPC_CHANNELS.EXPORT_PROGRESS, event)
+      }
+    }
   })
 }
 
 app.whenReady().then(() => {
   registerIpc()
+  broadcastExportProgress()
   createWindow()
 
   app.on('activate', () => {

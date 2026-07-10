@@ -5,15 +5,53 @@
  * Codec strategy:
  * - darwin → prefer VideoToolbox (h264_videotoolbox), fall back to libx264
  * - elsewhere → libx264 (CI/Linux agents)
+ *
+ * Progress: parse Duration + out_time_ms from ffmpeg stderr (best-effort %).
+ * Cancel: SIGTERM the active child; export rejects with ExportCancelledError.
  */
 
 import { app } from 'electron'
-import { spawn } from 'node:child_process'
+import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { ExportMp4Request, ExportMp4Result } from '../../shared/ipc.js'
+import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
+import {
+  clampPercent,
+  parseFfmpegDurationSec,
+  parseFfmpegTimeSec,
+} from './progress.js'
 
 const FFMPEG_BIN = process.env.SCREEN_FLOW_FFMPEG ?? 'ffmpeg'
+
+export class ExportCancelledError extends Error {
+  constructor(message = 'Export cancelled') {
+    super(message)
+    this.name = 'ExportCancelledError'
+  }
+}
+
+export type ExportProgressListener = (event: ExportProgressEvent) => void
+
+let activeChild: ChildProcess | null = null
+let cancelRequested = false
+const progressListeners = new Set<ExportProgressListener>()
+
+export function onExportProgress(listener: ExportProgressListener): () => void {
+  progressListeners.add(listener)
+  return () => {
+    progressListeners.delete(listener)
+  }
+}
+
+function emitProgress(event: ExportProgressEvent): void {
+  for (const listener of progressListeners) {
+    try {
+      listener(event)
+    } catch {
+      /* never let a bad UI listener kill encode */
+    }
+  }
+}
 
 function screenFlowTempRoot(): string {
   return path.join(app.getPath('temp'), 'screen-flow')
@@ -43,21 +81,37 @@ function pickVideoEncoder(): { codec: string; extraArgs: string[] } {
   }
 }
 
-function runFfmpeg(args: string[]): Promise<{ code: number; stderr: string }> {
+function runFfmpeg(
+  args: string[],
+  onStderr?: (chunk: string) => void,
+): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve, reject) => {
+    if (activeChild) {
+      reject(new Error('An export is already in progress'))
+      return
+    }
+    if (cancelRequested) {
+      reject(new ExportCancelledError())
+      return
+    }
+
     const child = spawn(FFMPEG_BIN, args, {
       stdio: ['ignore', 'ignore', 'pipe'],
     })
+    activeChild = child
 
     let stderr = ''
     child.stderr?.on('data', (chunk: Buffer) => {
+      const text = chunk.toString('utf8')
       // Cap stderr so a runaway encode cannot blow memory in main.
       if (stderr.length < 64_000) {
-        stderr += chunk.toString('utf8')
+        stderr += text
       }
+      onStderr?.(text)
     })
 
     child.on('error', (err) => {
+      if (activeChild === child) activeChild = null
       reject(
         new Error(
           `Failed to spawn ffmpeg (${FFMPEG_BIN}): ${err.message}. Install ffmpeg or set SCREEN_FLOW_FFMPEG.`,
@@ -65,7 +119,12 @@ function runFfmpeg(args: string[]): Promise<{ code: number; stderr: string }> {
       )
     })
 
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
+      if (activeChild === child) activeChild = null
+      if (cancelRequested || signal === 'SIGTERM' || signal === 'SIGKILL') {
+        reject(new ExportCancelledError())
+        return
+      }
       resolve({ code: code ?? 1, stderr })
     })
   })
@@ -88,9 +147,54 @@ async function transcodeOnce(
     'yuv420p',
     '-movflags',
     '+faststart',
+    // Machine-readable progress lines on stderr (out_time_ms=…).
+    '-progress',
+    'pipe:2',
+    '-nostats',
     outputPath,
   ]
-  return runFfmpeg(args)
+
+  let durationSec: number | undefined
+
+  return runFfmpeg(args, (chunk) => {
+    const maybeDuration = parseFfmpegDurationSec(chunk)
+    if (maybeDuration != null && maybeDuration > 0) {
+      durationSec = maybeDuration
+    }
+    const timeSec = parseFfmpegTimeSec(chunk)
+    if (timeSec == null) return
+
+    const percent =
+      durationSec && durationSec > 0
+        ? clampPercent((timeSec / durationSec) * 100)
+        : 0
+
+    emitProgress({
+      phase: 'encoding',
+      percent,
+      timeSec,
+      durationSec,
+    })
+  })
+}
+
+/**
+ * Request cancellation of the in-flight ffmpeg child (if any).
+ * Safe to call when idle — returns cancelled: false and does not latch cancel state.
+ */
+export function cancelExport(): { ok: true; cancelled: boolean } {
+  const child = activeChild
+  if (!child) {
+    return { ok: true, cancelled: false }
+  }
+  cancelRequested = true
+  try {
+    child.kill('SIGTERM')
+  } catch {
+    /* process may have already exited */
+  }
+  emitProgress({ phase: 'cancelled', percent: 0, message: 'Export cancelled' })
+  return { ok: true, cancelled: true }
 }
 
 /**
@@ -98,6 +202,8 @@ async function transcodeOnce(
  * Optionally removes the source WebM after a successful encode.
  */
 export async function exportWebmToMp4(request: ExportMp4Request): Promise<ExportMp4Result> {
+  cancelRequested = false
+
   const inputPath = assertUnderScreenFlowTemp(request.inputPath)
   if (!fs.existsSync(inputPath)) {
     throw new Error(`Input file not found: ${inputPath}`)
@@ -112,42 +218,83 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   )
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
 
-  let encoder = pickVideoEncoder()
-  let result = await transcodeOnce(inputPath, outputPath, encoder)
+  emitProgress({ phase: 'starting', percent: 0, message: 'Starting ffmpeg…' })
 
-  // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
-  // fall back to software x264 once.
-  if (result.code !== 0 && encoder.codec === 'h264_videotoolbox') {
-    encoder = {
-      codec: 'libx264',
-      extraArgs: ['-preset', 'veryfast', '-crf', '20'],
+  try {
+    let encoder = pickVideoEncoder()
+    let result = await transcodeOnce(inputPath, outputPath, encoder)
+
+    // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
+    // fall back to software x264 once.
+    if (result.code !== 0 && encoder.codec === 'h264_videotoolbox' && !cancelRequested) {
+      encoder = {
+        codec: 'libx264',
+        extraArgs: ['-preset', 'veryfast', '-crf', '20'],
+      }
+      emitProgress({
+        phase: 'encoding',
+        percent: 0,
+        message: 'Retrying with libx264…',
+      })
+      result = await transcodeOnce(inputPath, outputPath, encoder)
     }
-    result = await transcodeOnce(inputPath, outputPath, encoder)
-  }
 
-  if (result.code !== 0) {
-    throw new Error(
-      `ffmpeg exited with code ${result.code}${result.stderr ? `: ${result.stderr.slice(-800)}` : ''}`,
-    )
-  }
-
-  if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
-    throw new Error('ffmpeg produced an empty MP4')
-  }
-
-  const cleanupTemp = request.cleanupTemp !== false
-  if (cleanupTemp && inputPath !== outputPath) {
-    try {
-      fs.unlinkSync(inputPath)
-    } catch {
-      /* best-effort; export still succeeded */
+    if (result.code !== 0) {
+      const message = `ffmpeg exited with code ${result.code}${
+        result.stderr ? `: ${result.stderr.slice(-800)}` : ''
+      }`
+      emitProgress({ phase: 'error', percent: 0, message })
+      throw new Error(message)
     }
-  }
 
-  return {
-    ok: true,
-    outputPath,
-    bytesWritten: fs.statSync(outputPath).size,
-    codec: encoder.codec,
+    if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+      const message = 'ffmpeg produced an empty MP4'
+      emitProgress({ phase: 'error', percent: 0, message })
+      throw new Error(message)
+    }
+
+    const cleanupTemp = request.cleanupTemp !== false
+    if (cleanupTemp && inputPath !== outputPath) {
+      try {
+        fs.unlinkSync(inputPath)
+      } catch {
+        /* best-effort; export still succeeded */
+      }
+    }
+
+    const bytesWritten = fs.statSync(outputPath).size
+    emitProgress({
+      phase: 'done',
+      percent: 100,
+      message: `Wrote ${bytesWritten} bytes`,
+    })
+
+    return {
+      ok: true,
+      outputPath,
+      bytesWritten,
+      codec: encoder.codec,
+    }
+  } catch (err) {
+    if (err instanceof ExportCancelledError) {
+      // Partial MP4 is useless — remove best-effort.
+      try {
+        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+      } catch {
+        /* ignore */
+      }
+      throw err
+    }
+    if (!(err instanceof Error && err.message.startsWith('ffmpeg exited'))) {
+      emitProgress({
+        phase: 'error',
+        percent: 0,
+        message: err instanceof Error ? err.message : 'Export failed',
+      })
+    }
+    throw err
+  } finally {
+    cancelRequested = false
+    activeChild = null
   }
 }

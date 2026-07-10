@@ -13,6 +13,9 @@ export const IPC_CHANNELS = {
   RECORDING_GET_STATUS: 'recording:get-status',
   RECORDING_APPEND_CHUNK: 'recording:append-chunk',
   EXPORT_WEBM_TO_MP4: 'export:webm-to-mp4',
+  /** Main → renderer push while ffmpeg encodes. */
+  EXPORT_PROGRESS: 'export:progress',
+  EXPORT_CANCEL: 'export:cancel',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -123,6 +126,31 @@ export interface ExportMp4Result {
   codec: string
 }
 
+/** Live encode status pushed from main while ffmpeg runs. */
+export type ExportProgressPhase =
+  | 'starting'
+  | 'encoding'
+  | 'done'
+  | 'cancelled'
+  | 'error'
+
+export interface ExportProgressEvent {
+  phase: ExportProgressPhase
+  /** 0–100; best-effort from ffmpeg time/duration. */
+  percent: number
+  /** Decoded media time so far (seconds), when known. */
+  timeSec?: number
+  /** Input duration (seconds), when known from ffmpeg banner. */
+  durationSec?: number
+  message?: string
+}
+
+export interface CancelExportResult {
+  ok: true
+  /** True when an in-flight ffmpeg child was signalled. */
+  cancelled: boolean
+}
+
 export interface ScreenFlowApi {
   getAppInfo: () => Promise<AppInfo>
   getPlatform: () => Promise<AppInfo['platform']>
@@ -133,6 +161,9 @@ export interface ScreenFlowApi {
   getRecordingStatus: () => Promise<RecordingStatus>
   appendRecordingChunk: (request: AppendChunkRequest) => Promise<AppendChunkResult>
   exportWebmToMp4: (request: ExportMp4Request) => Promise<ExportMp4Result>
+  /** Subscribe to encode progress; returns unsubscribe. */
+  onExportProgress: (listener: (event: ExportProgressEvent) => void) => () => void
+  cancelExport: () => Promise<CancelExportResult>
 }
 
 declare global {
