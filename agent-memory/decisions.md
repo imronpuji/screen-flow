@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Background export gradient fidelity (preview ≡ CSS)
+
+- **Keputusan:** Setiap `BackgroundPreset` membawa `exportGradient` (sumber tunggal dengan `css`): multi-stop `colors[]` (2–8 → lavfi `nb_colors`), `angleDeg` (CSS 0°=up, clockwise → `cssAngleToGradientLine` ke tepi frame), dan optional `accents[]` (soft radial wash: 1-frame `geq` → `loop` → `overlay`, pola sama shadow). `buildGradientsLavfi` memakai `type=linear` + `speed=0.00001` (static; default lavfi 0.01 berputar). Endpoint gradient **selalu ≥0** (lavfi menolak x/y < −1).
+- **Alasan:** Export 2-warna diagonal kasar ≠ preview CSS (multi-stop + radial aurora/sunset); orang awam melihat beda besar preview vs MP4.
+- **Status:** aktif
+
 ## [2026-07-10] Persist cursor appearance prefs
 
 - **Keputusan:** `CursorAppearance` (style, sizeScale, spotlightEnabled) disimpan di renderer `localStorage` (`screen-flow:cursor-appearance`) lewat `shared/cursorPrefs.ts` + `normalizeCursorAppearance`. Review hydrate via `defaultReviewEdit(..., cursorAppearance)`; save on every `edit.cursorAppearance` change (Beautify ikut). Pola sama FaceTime `cameraPrefs` / background prefs.
