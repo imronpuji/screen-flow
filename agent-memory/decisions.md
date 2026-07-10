@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Per-click zoom point overrides
+
+- **Keputusan:** Auto-zoom tetap dibangun dari click events (`buildZoomSegments`). Manual edit menyimpan `ZoomPointOverride[]` di `ReviewEditState.zoomPointOverrides` (index → enabled + optional peakScale). Preview & export memanggil `applyZoomPointOverrides` sebelum sample transform / sendcmd. IPC `ExportAutoZoomRequest.zoomOverrides`. Beautify tidak menghapus overrides.
+- **Alasan:** User bisa matikan zoom yang mengganggu atau perbesar fokus tanpa menulis ulang engine; index segment stabil dalam satu session; pure helpers smoke-testable (`smoke:zoom-points`).
+- **Status:** aktif (MVP); focus nudge / add-at-playhead = follow-up
+
 ## [2026-07-10] Stack dasar
 
 - **Keputusan:** Electron + React + TypeScript + ffmpeg.

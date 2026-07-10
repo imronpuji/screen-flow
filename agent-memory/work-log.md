@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:05] Per-click zoom points (manual edit)
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — enable/disable + peak-scale overrides keyed by auto-segment index; apply/upsert helpers.
+  - Review editor: zoom-point list (toggle + scale 1.1–3×); preview + export bake share `applyZoomPointOverrides`.
+  - IPC/export: `ExportAutoZoomRequest.zoomOverrides` → `planAutoZoomExport` / transcode; Beautify preserves overrides.
+  - Smoke `smoke:zoom-points`; remove “Per-click zoom points” from Coming next.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/autozoom/export-autozoom/beautify/timeline-markers/export-effects hijau.
+- **Commit:** `7015792`
+- **Status:** done (editor slice)
+- **Next:** Visual verify Retina zoom on Mac; optional focus nudge / add-manual zoom at playhead.
+
 ## [2026-07-10 09:00] Timeline clip markers (editor)
 
 - **Dikerjakan:**
