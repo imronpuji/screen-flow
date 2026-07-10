@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - macOS TCC `requestMicrophoneAccess`; MediaRecorder picks `vp9/vp8,opus` + audio bitrate when mic live.
   - Mid-recording mute disables **all** tracks (video+audio); export probes camera audio → AAC map + `cameraMicAudioFilter` (adelay/atrim = same start lag as video).
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-sync/export-camera/beautify/export-effects hijau.
-- **Commit:** (pending)
+- **Commit:** `de86273`
 - **Status:** done (FOKUS 3A — mic selaras video kamera)
 - **Next:** Visual verify on Mac (mic in MP4 + mute silence); multi-segment only if MediaRecorder restart ever required.
 
