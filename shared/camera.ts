@@ -10,6 +10,7 @@
  * - Size clamp: 12–40% of frame width (min readable face; max keeps screen readable).
  * - Resize: corner handles keep the opposite corner fixed; aspect always locked (square).
  * - Shapes: circle (50% radius), rounded (~22%), rectangle (0 — no ffmpeg alpha mask).
+ * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  */
 
 export type CameraCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
@@ -43,6 +44,14 @@ export interface CameraOverlayStyle {
   /** Bubble width as % of the preview/frame width (12–40). */
   sizePercent: number
   shape: CameraShape
+  /** Soft drop shadow under the bubble (preview box-shadow ≡ ffmpeg still+blur). */
+  shadowEnabled: boolean
+  /** Outline around the bubble. */
+  borderEnabled: boolean
+  /** Outline thickness in CSS/logical px (1–6); ignored when borderEnabled is false. */
+  borderWidthPx: number
+  /** Outline color as #RRGGBB (preview + ffmpeg plate). */
+  borderColor: string
 }
 
 export const CAMERA_CORNERS: readonly CameraCorner[] = [
@@ -62,6 +71,13 @@ export const CAMERA_SNAP_THRESHOLD = 0.045
 /** Default aspect used when deriving corner layout without a known frame size. */
 export const CAMERA_DEFAULT_ASPECT = 16 / 9
 
+/** Outline thickness clamp (logical px) — thin enough for small bubbles, visible on 1080p. */
+export const CAMERA_MIN_BORDER_PX = 1
+export const CAMERA_MAX_BORDER_PX = 6
+/** Default outline — soft off-white matching prior hardcoded CSS. */
+export const CAMERA_DEFAULT_BORDER_COLOR = '#E8EEF4'
+export const CAMERA_DEFAULT_BORDER_WIDTH_PX = 2
+
 export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
   const corner: CameraCorner = 'bottom-right'
   const sizePercent = 22
@@ -75,6 +91,10 @@ export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
     y: layout.y,
     sizePercent,
     shape: 'circle' as CameraShape,
+    shadowEnabled: true,
+    borderEnabled: true,
+    borderWidthPx: CAMERA_DEFAULT_BORDER_WIDTH_PX,
+    borderColor: CAMERA_DEFAULT_BORDER_COLOR,
   }
 })()
 
@@ -90,11 +110,44 @@ function isCameraShape(value: unknown): value is CameraShape {
   return typeof value === 'string' && (CAMERA_SHAPES as readonly string[]).includes(value)
 }
 
+/** Normalize #RGB / #RRGGBB (optional alpha ignored) → uppercase #RRGGBB; else default. */
+export function normalizeCameraBorderColor(value: unknown): string {
+  if (typeof value !== 'string') return CAMERA_DEFAULT_BORDER_COLOR
+  const raw = value.trim()
+  const short = /^#([0-9a-fA-F]{3})$/.exec(raw)
+  if (short) {
+    const [r, g, b] = short[1]!.split('')
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase()
+  }
+  const full = /^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/.exec(raw)
+  if (full) return `#${full[1]!.toUpperCase()}`
+  return CAMERA_DEFAULT_BORDER_COLOR
+}
+
 /** CSS border-radius for preview — must match ffmpeg mask (circle/rounded) or none (rectangle). */
 export function cameraShapeBorderRadius(shape: CameraShape): string {
   if (shape === 'circle') return '50%'
   if (shape === 'rounded') return '22%'
   return '0'
+}
+
+/**
+ * Preview chrome (border + shadow) — same knobs ffmpeg bakes.
+ * Shadow approximates `0 10px 28px rgba(0,0,0,0.45)` when enabled.
+ */
+export function cameraBubbleChromeStyle(style: CameraOverlayStyle): {
+  border: string
+  boxShadow: string
+} {
+  const normalized = normalizeCameraOverlay(style)
+  const border =
+    normalized.borderEnabled && normalized.borderWidthPx > 0
+      ? `${normalized.borderWidthPx}px solid ${normalized.borderColor}`
+      : 'none'
+  const boxShadow = normalized.shadowEnabled
+    ? '0 10px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(61, 214, 198, 0.18)'
+    : 'none'
+  return { border, boxShadow }
 }
 
 /** Normalized bubble size (width fraction + height fraction for a square bubble). */
@@ -355,22 +408,47 @@ export function normalizeCameraOverlay(
     y,
     sizePercent,
     shape,
+    shadowEnabled:
+      typeof partial?.shadowEnabled === 'boolean'
+        ? partial.shadowEnabled
+        : DEFAULT_CAMERA_OVERLAY.shadowEnabled,
+    borderEnabled:
+      typeof partial?.borderEnabled === 'boolean'
+        ? partial.borderEnabled
+        : DEFAULT_CAMERA_OVERLAY.borderEnabled,
+    borderWidthPx: Math.round(
+      clamp(
+        typeof partial?.borderWidthPx === 'number' && Number.isFinite(partial.borderWidthPx)
+          ? partial.borderWidthPx
+          : DEFAULT_CAMERA_OVERLAY.borderWidthPx,
+        CAMERA_MIN_BORDER_PX,
+        CAMERA_MAX_BORDER_PX,
+      ),
+    ),
+    borderColor: normalizeCameraBorderColor(
+      partial?.borderColor ?? DEFAULT_CAMERA_OVERLAY.borderColor,
+    ),
   }
 }
 
-/** CSS inset + size for the bubble relative to a positioned parent frame. */
+/** CSS inset + size + chrome for the bubble relative to a positioned parent frame. */
 export function cameraBubblePosition(style: CameraOverlayStyle): {
   top: string
   left: string
   width: string
   borderRadius: string
+  border: string
+  boxShadow: string
 } {
   const normalized = normalizeCameraOverlay(style)
+  const chrome = cameraBubbleChromeStyle(normalized)
   return {
     top: `${normalized.y * 100}%`,
     left: `${normalized.x * 100}%`,
     width: `${normalized.sizePercent}%`,
     borderRadius: cameraShapeBorderRadius(normalized.shape),
+    border: chrome.border,
+    boxShadow: chrome.boxShadow,
   }
 }
 

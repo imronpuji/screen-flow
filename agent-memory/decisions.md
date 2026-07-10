@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera bubble border + soft shadow (preview ≡ export)
+
+- **Keputusan:** `CameraOverlayStyle` menambah `shadowEnabled`, `borderEnabled`, `borderWidthPx` (1–6), `borderColor` (`#RRGGBB`). Preview memakai `cameraBubbleChromeStyle` / `cameraBubblePosition` (CSS border + box-shadow). Export (`planCameraExport`): urutan **shadow → border plate → camera inset**. Shadow = still hitam berbentuk bubble → pad → `boxblur` sekali → loop → overlay (pola sama background). Border = still warna outline berbentuk bubble (loop) di ukuran penuh; video kamera di-scale ke `bubble − 2×borderWidth` dan di-center supaya cincin outline terlihat. Default: shadow on, border 2px `#E8EEF4`.
+- **Alasan:** FOKUS 3E — bubble tanpa outline/shadow terasa datar; chrome harus ikut data layout supaya preview React = MP4.
+- **Status:** aktif
+
 ## [2026-07-10] Background export must EOF (shortest=1)
 
 - **Keputusan:** `gradients` + `loop=-1` adalah sumber infinite. Overlay background wajib `shortest=1`; `gradients` di-trim ke `durationMs` export. Transcode effects graph juga dapat `-t` padded dari probe duration sebagai hard ceiling. Tanpa ini, full export (tanpa `-t`) hang di 100% sambil CPU panas.
@@ -10,9 +16,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 ## [2026-07-10] Camera layout: relative coords + drag snap
 
-- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame; bubble kotak), `anchor` (`corner` preset | `free`), `shape` (`circle` | `rounded` | `rectangle`). Preview CSS (`left`/`top` % + `borderRadius` via `cameraShapeBorderRadius`) dan ffmpeg `cameraBubbleNormRect` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame. Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed, aspect lock square, `anchor: 'free'`). Export: circle/rounded = 1-frame geq mask; **rectangle = no mask** (opaque square overlay).
-- **Alasan:** FOKUS 3B/3E — corner-only terasa kasar; drag+snap+resize+3 bentuk = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
-- **Status:** aktif (MVP); border/shadow bake = follow-up
+- **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame; bubble kotak), `anchor` (`corner` preset | `free`), `shape` (`circle` | `rounded` | `rectangle`), plus chrome `shadowEnabled` / `borderEnabled` / `borderWidthPx` / `borderColor`. Preview CSS (`left`/`top` % + `borderRadius` via `cameraShapeBorderRadius` + border/box-shadow via `cameraBubbleChromeStyle`) dan ffmpeg `cameraBubbleNormRect` + `planCameraExport` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame. Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed, aspect lock square, `anchor: 'free'`). Export: circle/rounded = 1-frame geq mask; **rectangle camera = no mask** (opaque square); shadow/border = still+loop (lihat “Camera bubble border + soft shadow”).
+- **Alasan:** FOKUS 3B/3E — corner-only terasa kasar; drag+snap+resize+3 bentuk+chrome = Loom/Screen Studio; koordinat relatif = preview≡export saat window resize / resolusi export beda.
+- **Status:** aktif
 
 ## [2026-07-10] Owner merge callback (ngrok) — diizinkan
 

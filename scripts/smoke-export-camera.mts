@@ -44,6 +44,10 @@ function testCameraPlan(): void {
   assert(plan.filterComplex.includes('loop=loop=-1:size=1'), 'mask still looped')
   assert(plan.filterComplex.includes('overlay='), 'overlays bubble')
   assert(plan.filterComplex.includes('format=yuv420p'), 'forces yuv420p for libx264')
+  assert(plan.filterComplex.includes('boxblur='), 'default shadow blur')
+  assert(plan.shadowApplied === true, 'default shadow applied')
+  assert(plan.borderApplied === true, 'default border applied')
+  assert(plan.filterComplex.includes('0xE8EEF4'), 'default border color plate')
   assert(plan.overlay.w === 64, `bubble w even (got ${plan.overlay.w})`)
   assert(plan.overlay.x > 200, 'bottom-right x near right')
 
@@ -52,19 +56,32 @@ function testCameraPlan(): void {
     { width: 320, height: 180 },
   )
   assert(!off.hasCamera, 'disabled skips camera')
+  assert(!off.shadowApplied && !off.borderApplied, 'disabled skips chrome')
+
+  const bare = planCameraExport(
+    { ...style, shadowEnabled: false, borderEnabled: false },
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+  )
+  assert(bare.hasCamera, 'bare camera on')
+  assert(!bare.shadowApplied, 'shadow off')
+  assert(!bare.borderApplied, 'border off')
+  assert(!bare.filterComplex.includes('boxblur='), 'no shadow blur when off')
 
   const rectPlan = planCameraExport(
-    { ...style, shape: 'rectangle' },
+    { ...style, shape: 'rectangle', borderEnabled: true, borderWidthPx: 3 },
     { width: 320, height: 180 },
     'vbase',
     'vout',
     1,
   )
   assert(rectPlan.hasCamera, 'rectangle enabled')
-  assert(!rectPlan.filterComplex.includes('alphamerge'), 'rectangle skips alpha mask')
-  assert(!rectPlan.filterComplex.includes('geq='), 'rectangle skips geq mask')
+  // Rectangle camera video itself skips alphamerge; border plate may still use loop.
   assert(rectPlan.filterComplex.includes('overlay='), 'rectangle still overlays')
   assert(rectPlan.filterComplex.includes('format=yuv420p'), 'rectangle yuv420p')
+  assert(rectPlan.borderApplied, 'rectangle border on')
   console.log('ok camera plan')
 }
 
@@ -139,16 +156,24 @@ async function testFfmpegCameraEncode(): Promise<void> {
   assert(result.code === 0, `ffmpeg camera encode failed: ${result.stderr.slice(-600)}`)
   assert(fs.existsSync(outPath) && fs.statSync(outPath).size > 500, 'mp4 written')
 
-  // Rectangle path (no alphamerge) must also encode cleanly.
+  // Rectangle path (no camera alphamerge) must also encode cleanly.
   const rectOut = path.join(dir, 'out-rect.mp4')
   const rectPlan = planExportFilters({ width: 320, height: 180 }, 1200, {
     camera: {
-      style: { ...style, shape: 'rectangle', corner: 'top-right', sizePercent: 30 },
+      style: {
+        ...style,
+        shape: 'rectangle',
+        corner: 'top-right',
+        sizePercent: 30,
+        shadowEnabled: true,
+        borderEnabled: true,
+        borderWidthPx: 2,
+      },
       inputIndex: 1,
     },
   })
   assert(rectPlan.filterComplex != null, 'rectangle graph')
-  assert(!rectPlan.filterComplex!.includes('alphamerge'), 'rectangle encode skips mask')
+  assert(rectPlan.filterComplex!.includes('boxblur='), 'rectangle shadow blur')
   const rectResult = await runFfmpeg([
     '-y',
     '-f',
@@ -175,6 +200,43 @@ async function testFfmpegCameraEncode(): Promise<void> {
   ])
   assert(rectResult.code === 0, `ffmpeg rectangle encode failed: ${rectResult.stderr.slice(-600)}`)
   assert(fs.existsSync(rectOut) && fs.statSync(rectOut).size > 500, 'rectangle mp4 written')
+
+  // Chrome-off path still encodes (no shadow/border stills).
+  const bareOut = path.join(dir, 'out-bare.mp4')
+  const barePlan = planExportFilters({ width: 320, height: 180 }, 1200, {
+    camera: {
+      style: { ...style, shadowEnabled: false, borderEnabled: false },
+      inputIndex: 1,
+    },
+  })
+  assert(barePlan.filterComplex != null, 'bare graph')
+  assert(!barePlan.filterComplex!.includes('boxblur='), 'bare skips shadow')
+  const bareResult = await runFfmpeg([
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=gray:s=320x180:d=1.2',
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=red:s=640x480:d=1.2',
+    '-filter_complex',
+    barePlan.filterComplex!,
+    '-map',
+    `[${barePlan.outputLabel}]`,
+    '-c:v',
+    'libx264',
+    '-preset',
+    'ultrafast',
+    '-pix_fmt',
+    'yuv420p',
+    '-t',
+    '1.2',
+    bareOut,
+  ])
+  assert(bareResult.code === 0, `ffmpeg bare encode failed: ${bareResult.stderr.slice(-600)}`)
+  assert(fs.existsSync(bareOut) && fs.statSync(bareOut).size > 500, 'bare mp4 written')
   console.log('ok ffmpeg camera encode')
 }
 

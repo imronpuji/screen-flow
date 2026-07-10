@@ -646,6 +646,47 @@ export function RecordingReview({
                       ))}
                     </div>
                   </div>
+
+                  <label className="review__toggle">
+                    <input
+                      type="checkbox"
+                      checked={edit.cameraOverlay.shadowEnabled}
+                      disabled={exporting}
+                      onChange={(e) => patchCamera({ shadowEnabled: e.target.checked })}
+                    />
+                    <span>Camera soft shadow</span>
+                  </label>
+
+                  <label className="review__toggle">
+                    <input
+                      type="checkbox"
+                      checked={edit.cameraOverlay.borderEnabled}
+                      disabled={exporting}
+                      onChange={(e) => patchCamera({ borderEnabled: e.target.checked })}
+                    />
+                    <span>Camera outline</span>
+                  </label>
+
+                  {edit.cameraOverlay.borderEnabled ? (
+                    <div className="review__field">
+                      <label className="review__label" htmlFor="cam-border">
+                        Outline {edit.cameraOverlay.borderWidthPx}px
+                      </label>
+                      <input
+                        id="cam-border"
+                        className="review__range"
+                        type="range"
+                        min={1}
+                        max={6}
+                        step={1}
+                        value={edit.cameraOverlay.borderWidthPx}
+                        disabled={exporting}
+                        onChange={(e) =>
+                          patchCamera({ borderWidthPx: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </>

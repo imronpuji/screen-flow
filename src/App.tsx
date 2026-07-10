@@ -779,6 +779,58 @@ export default function App() {
                     <option value="rectangle">Rectangle</option>
                   </select>
                 </label>
+                <label className="camera-controls__toggle">
+                  <input
+                    type="checkbox"
+                    checked={cameraOverlay.shadowEnabled}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          shadowEnabled: e.target.checked,
+                        }),
+                      )
+                    }
+                  />
+                  <span>Shadow</span>
+                </label>
+                <label className="camera-controls__toggle">
+                  <input
+                    type="checkbox"
+                    checked={cameraOverlay.borderEnabled}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          borderEnabled: e.target.checked,
+                        }),
+                      )
+                    }
+                  />
+                  <span>Outline</span>
+                </label>
+                {cameraOverlay.borderEnabled ? (
+                  <label className="camera-controls__field">
+                    <span>Outline {cameraOverlay.borderWidthPx}px</span>
+                    <input
+                      type="range"
+                      min={1}
+                      max={6}
+                      value={cameraOverlay.borderWidthPx}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setCameraOverlay((prev) =>
+                          normalizeCameraOverlay({
+                            ...prev,
+                            borderWidthPx: Number(e.target.value),
+                          }),
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
               </div>
             ) : null}
             {cameraError ? (

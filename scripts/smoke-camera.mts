@@ -9,12 +9,14 @@ import {
   CAMERA_SHAPES,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
+  cameraBubbleChromeStyle,
   cameraBubbleNormRect,
   cameraBubblePosition,
   cameraShapeBorderRadius,
   cameraBubbleSizeNorm,
   clampCameraLayout,
   layoutFromCorner,
+  normalizeCameraBorderColor,
   normalizeCameraOverlay,
   resizeCameraFromHandle,
   snapCameraLayout,
@@ -44,6 +46,10 @@ function testNormalize(): void {
   assert(clamped.shape === 'rounded', 'shape')
   assert(clamped.anchor === DEFAULT_CAMERA_OVERLAY.corner, 'anchor from corner')
   assert(Number.isFinite(clamped.x) && Number.isFinite(clamped.y), 'x/y filled')
+  assert(clamped.shadowEnabled === true, 'default shadow on')
+  assert(clamped.borderEnabled === true, 'default border on')
+  assert(clamped.borderWidthPx === 2, 'default border width')
+  assert(clamped.borderColor === '#E8EEF4', 'default border color')
 
   const low = normalizeCameraOverlay({ sizePercent: 2 })
   assert(low.sizePercent === 12, 'size clamped low')
@@ -55,6 +61,17 @@ function testNormalize(): void {
 
   const badShape = normalizeCameraOverlay({ shape: 'hexagon' as never })
   assert(badShape.shape === DEFAULT_CAMERA_OVERLAY.shape, 'bad shape falls back')
+
+  const chrome = normalizeCameraOverlay({
+    shadowEnabled: false,
+    borderEnabled: true,
+    borderWidthPx: 9,
+    borderColor: '#abc',
+  })
+  assert(chrome.shadowEnabled === false, 'shadow off')
+  assert(chrome.borderWidthPx === 6, 'border width clamped high')
+  assert(chrome.borderColor === '#AABBCC', 'short hex expanded')
+  assert(normalizeCameraBorderColor('nope') === '#E8EEF4', 'bad color falls back')
 
   const free = normalizeCameraOverlay({
     enabled: true,
@@ -76,6 +93,8 @@ function testPosition(): void {
     assert(pos.borderRadius === '50%', `${corner} circle`)
     assert(typeof pos.left === 'string' && pos.left.endsWith('%'), `${corner} left`)
     assert(typeof pos.top === 'string' && pos.top.endsWith('%'), `${corner} top`)
+    assert(pos.border.includes('2px solid'), `${corner} default border`)
+    assert(pos.boxShadow.includes('rgba'), `${corner} default shadow`)
   }
   const rounded = cameraBubblePosition({
     ...DEFAULT_CAMERA_OVERLAY,
@@ -97,6 +116,14 @@ function testPosition(): void {
   assert(rectangle.borderRadius === '0', 'rectangle radius')
   assert(cameraShapeBorderRadius('rectangle') === '0', 'helper rectangle')
   assert(cameraShapeBorderRadius('circle') === '50%', 'helper circle')
+
+  const bare = cameraBubbleChromeStyle({
+    ...DEFAULT_CAMERA_OVERLAY,
+    shadowEnabled: false,
+    borderEnabled: false,
+  })
+  assert(bare.border === 'none', 'chrome border off')
+  assert(bare.boxShadow === 'none', 'chrome shadow off')
   console.log('ok position')
 }
 
@@ -246,6 +273,8 @@ function testReviewEditCamera(): void {
   assert(withCam.cameraOverlay.sizePercent === 28, 'seeded size')
   assert(withCam.cameraOverlay.shape === 'rounded', 'seeded shape')
   assert(nearly(withCam.cameraOverlay.x, CAMERA_SAFE_MARGIN), 'seeded top-left x')
+  assert(withCam.cameraOverlay.shadowEnabled === true, 'seeded default shadow')
+  assert(withCam.cameraOverlay.borderEnabled === true, 'seeded default border')
   console.log('ok review edit camera')
 }
 

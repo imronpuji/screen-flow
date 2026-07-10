@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:45] Camera bubble border + soft shadow bake (FOKUS 3E)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `shadowEnabled` / `borderEnabled` / `borderWidthPx` (1–6) / `borderColor`; `cameraBubbleChromeStyle` + position chrome; normalize hex.
+  - `shared/ffmpegCamera.ts` — export order shadow → border plate → inset camera; 1-frame still+loop+boxblur; rectangle/circle/rounded.
+  - Setup + review toggles (shadow/outline + width); Beautify presets set chrome; CSS no longer hardcodes border/shadow.
+  - Smoke camera/export-camera/beautify cover chrome on/off + real ffmpeg encode.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects hijau.
+- **Commit:** (pending)
+- **Status:** done (FOKUS 3E slice — border/shadow bake)
+- **Next:** A/V drift compensation; optional border color picker polish.
+
 ## [2026-07-10 09:35] Camera bubble rectangle shape (FOKUS 3B/3E)
 
 - **Dikerjakan:**
