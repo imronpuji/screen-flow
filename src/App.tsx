@@ -776,6 +776,7 @@ export default function App() {
                   >
                     <option value="circle">Circle</option>
                     <option value="rounded">Rounded</option>
+                    <option value="rectangle">Rectangle</option>
                   </select>
                 </label>
               </div>

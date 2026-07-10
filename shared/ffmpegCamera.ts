@@ -1,9 +1,10 @@
 /**
  * Plan ffmpeg overlay for FaceTime/webcam bubble bake into export.
- * Matches shared/camera.ts layout (relative x/y + size%, circle/rounded).
+ * Matches shared/camera.ts layout (relative x/y + size%, circle/rounded/rectangle).
  *
- * Mask uses a ONE-FRAME geq alpha → loop → alphamerge (same pattern as
+ * Circle/rounded: ONE-FRAME geq alpha → loop → alphamerge (same pattern as
  * background rounded corners) so we never run geq per video frame.
+ * Rectangle: skip mask — opaque square overlay (preview border-radius: 0).
  */
 
 import {
@@ -80,29 +81,44 @@ export function planCameraExport(
   const x = Math.max(0, Math.round(norm.x * frameW))
   const y = Math.max(0, Math.round(norm.y * frameH))
 
-  const camRaw = `${outputLabel}_raw`
-  const camMasked = `${outputLabel}_masked`
-  const maskStill = `${outputLabel}_mask`
-  const maskLoop = `${outputLabel}_maskloop`
-
-  const alphaExpr =
-    normalized.shape === 'circle'
-      ? circleAlphaExpr(255)
-      : roundedBubbleAlphaExpr(bubbleW, 255)
-
-  // Cover-fit camera into square bubble, then attach 1-frame alpha mask.
-  // fps+setsar stabilize MediaRecorder VFR WebM; final format=yuv420p avoids
-  // libx264 "Conversion failed!" after rgba/yuva overlay on some macOS builds.
-  const lines: string[] = [
+  // Cover-fit camera into square bubble. fps+setsar stabilize MediaRecorder VFR
+  // WebM; final format=yuv420p avoids libx264 "Conversion failed!" after rgba.
+  const camScaled =
     `[${cameraInputIndex}:v]fps=30,scale=${bubbleW}:${bubbleH}:force_original_aspect_ratio=increase,` +
-      `crop=${bubbleW}:${bubbleH},setsar=1,format=rgba[${camRaw}]`,
-    `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
-      `geq=r=0:g=0:b=0:a='${alphaExpr}'[${maskStill}]`,
-    `[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`,
-    `[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`,
-    `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
-      `format=yuv420p[${outputLabel}]`,
-  ]
+    `crop=${bubbleW}:${bubbleH},setsar=1`
+
+  const lines: string[] = []
+
+  if (normalized.shape === 'rectangle') {
+    // Full rectangle — no alpha mask (matches CSS border-radius: 0).
+    const camRaw = `${outputLabel}_raw`
+    lines.push(`${camScaled},format=yuv420p[${camRaw}]`)
+    lines.push(
+      `[${baseInputLabel}][${camRaw}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
+        `format=yuv420p[${outputLabel}]`,
+    )
+  } else {
+    const camRaw = `${outputLabel}_raw`
+    const camMasked = `${outputLabel}_masked`
+    const maskStill = `${outputLabel}_mask`
+    const maskLoop = `${outputLabel}_maskloop`
+    const alphaExpr =
+      normalized.shape === 'circle'
+        ? circleAlphaExpr(255)
+        : roundedBubbleAlphaExpr(bubbleW, 255)
+
+    lines.push(`${camScaled},format=rgba[${camRaw}]`)
+    lines.push(
+      `color=c=black:s=${bubbleW}x${bubbleH}:r=1:d=1,format=rgba,` +
+        `geq=r=0:g=0:b=0:a='${alphaExpr}'[${maskStill}]`,
+    )
+    lines.push(`[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`)
+    lines.push(`[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`)
+    lines.push(
+      `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
+        `format=yuv420p[${outputLabel}]`,
+    )
+  }
 
   return {
     hasCamera: true,

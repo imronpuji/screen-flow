@@ -69,7 +69,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       cornerRadiusPx: 14,
       shadowEnabled: true,
     },
-    camera: { corner: 'bottom-left', sizePercent: 20, shape: 'rounded' },
+    camera: { corner: 'bottom-left', sizePercent: 20, shape: 'rectangle' },
     exportQuality: 'high',
   },
   {

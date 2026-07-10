@@ -6,10 +6,12 @@ import {
   CAMERA_MAX_SIZE_PERCENT,
   CAMERA_MIN_SIZE_PERCENT,
   CAMERA_SAFE_MARGIN,
+  CAMERA_SHAPES,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
   cameraBubbleNormRect,
   cameraBubblePosition,
+  cameraShapeBorderRadius,
   cameraBubbleSizeNorm,
   clampCameraLayout,
   layoutFromCorner,
@@ -47,6 +49,13 @@ function testNormalize(): void {
   assert(low.sizePercent === 12, 'size clamped low')
   assert(low.enabled === false, 'default off')
 
+  const rect = normalizeCameraOverlay({ shape: 'rectangle', sizePercent: 18 })
+  assert(rect.shape === 'rectangle', 'rectangle shape kept')
+  assert(CAMERA_SHAPES.includes('rectangle'), 'CAMERA_SHAPES lists rectangle')
+
+  const badShape = normalizeCameraOverlay({ shape: 'hexagon' as never })
+  assert(badShape.shape === DEFAULT_CAMERA_OVERLAY.shape, 'bad shape falls back')
+
   const free = normalizeCameraOverlay({
     enabled: true,
     anchor: 'free',
@@ -77,6 +86,17 @@ function testPosition(): void {
   })
   assert(rounded.borderRadius === '22%', 'rounded radius')
   assert(rounded.width === '30%', 'custom size')
+
+  const rectangle = cameraBubblePosition({
+    ...DEFAULT_CAMERA_OVERLAY,
+    shape: 'rectangle',
+    sizePercent: 24,
+    anchor: 'bottom-left',
+    corner: 'bottom-left',
+  })
+  assert(rectangle.borderRadius === '0', 'rectangle radius')
+  assert(cameraShapeBorderRadius('rectangle') === '0', 'helper rectangle')
+  assert(cameraShapeBorderRadius('circle') === '50%', 'helper circle')
   console.log('ok position')
 }
 
