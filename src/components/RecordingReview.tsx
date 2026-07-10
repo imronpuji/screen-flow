@@ -33,6 +33,13 @@ import { loadBackgroundPrefs, saveBackgroundPrefs } from '../../shared/backgroun
 import { loadCursorPrefs, saveCursorPrefs } from '../../shared/cursorPrefs'
 import { loadExportPrefs, saveExportPrefs } from '../../shared/exportPrefs'
 import {
+  PROJECT_AUTOSAVE_DEBOUNCE_MS,
+  clearProjectAutosave,
+  formatAutosaveLabel,
+  loadProjectAutosave,
+  saveProjectAutosave,
+} from '../../shared/projectAutosave'
+import {
   EXPORT_QUALITY_PRESETS,
   getExportQualityPreset,
 } from '../../shared/exportQuality'
@@ -159,6 +166,7 @@ function formatBytes(bytes: number): string {
 
 export function RecordingReview({
   mediaUrl,
+  webmPath,
   cursorEvents,
   captureGeometry = null,
   cameraMediaUrl = null,
@@ -179,28 +187,42 @@ export function RecordingReview({
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [autosaveLabel, setAutosaveLabel] = useState<string | null>(() =>
+    loadProjectAutosave(webmPath, recordedDurationMs) ? 'Restored draft' : null,
+  )
   const [editHistory, setEditHistory] = useState<EditHistory<ReviewEditState>>(() => {
     const exportPrefs = loadExportPrefs()
-    return createEditHistory(
-      defaultReviewEdit(
-        recordedDurationMs,
-        {
-          ...initialCameraOverlay,
-          // Only enable in review when a camera track exists.
-          enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
-        },
-        exportPrefs.quality,
-        loadBackgroundPrefs(),
-        loadCursorPrefs(),
-        exportPrefs.format,
-      ),
+    const defaults = defaultReviewEdit(
+      recordedDurationMs,
+      {
+        ...initialCameraOverlay,
+        // Only enable in review when a camera track exists.
+        enabled: Boolean(cameraMediaUrl) && initialCameraOverlay.enabled,
+      },
+      exportPrefs.quality,
+      loadBackgroundPrefs(),
+      loadCursorPrefs(),
+      exportPrefs.format,
     )
+    const restored = loadProjectAutosave(webmPath, recordedDurationMs)
+    const initial = restored
+      ? {
+          ...restored,
+          cameraOverlay: {
+            ...restored.cameraOverlay,
+            // Only enable in review when a camera track exists.
+            enabled: Boolean(cameraMediaUrl) && restored.cameraOverlay.enabled,
+          },
+        }
+      : defaults
+    return createEditHistory(initial)
   })
   const edit = editHistory.present
   const [editorChrome, setEditorChrome] = useState<EditorChromeState>(() =>
     loadEditorPanelPrefs(),
   )
   const [timelinePrefs, setTimelinePrefs] = useState(() => loadTimelinePrefs())
+  const autosaveReadyRef = useRef(false)
 
   function setEdit(
     updater: ReviewEditState | ((prev: ReviewEditState) => ReviewEditState),
@@ -275,6 +297,21 @@ export function RecordingReview({
   useEffect(() => {
     saveTimelinePrefs(timelinePrefs)
   }, [timelinePrefs])
+
+  // Debounced project auto-save (FOKUS 5) — one slot keyed by webmPath.
+  useEffect(() => {
+    if (!webmPath || exporting) return
+    if (!autosaveReadyRef.current) {
+      autosaveReadyRef.current = true
+      return
+    }
+    setAutosaveLabel('Saving…')
+    const timer = window.setTimeout(() => {
+      const snap = saveProjectAutosave(webmPath, durationMs, edit)
+      setAutosaveLabel(snap ? formatAutosaveLabel(snap.savedAt) : null)
+    }, PROJECT_AUTOSAVE_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [edit, webmPath, durationMs, exporting])
 
   useEffect(() => {
     rippleDeleteRef.current = timelinePrefs.rippleDeleteEnabled
@@ -384,8 +421,9 @@ export function RecordingReview({
 
   const confirmDiscardNow = useCallback(() => {
     setConfirmDiscard(false)
+    clearProjectAutosave(webmPath)
     onDiscard()
-  }, [onDiscard])
+  }, [onDiscard, webmPath])
 
   function nudgeClickZoomFocus(
     index: number,
@@ -682,6 +720,12 @@ export function RecordingReview({
             {formatBytes(bytesWritten)} · {chunkCount} chunks · {cursorEventCount} cursor events ·{' '}
             {(recordedDurationMs / 1000).toFixed(1)}s captured
             {hasCameraTrack ? ' · camera track' : ''}
+            {autosaveLabel ? (
+              <>
+                {' '}
+                · <span className="review__autosave">{autosaveLabel}</span>
+              </>
+            ) : null}
           </p>
         </div>
         <div className="review__header-actions">

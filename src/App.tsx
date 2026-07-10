@@ -84,6 +84,7 @@ import {
   type ActiveToast,
   type ToastSpec,
 } from '../shared/toast'
+import { clearProjectAutosave } from '../shared/projectAutosave'
 import {
   TOOLTIPS,
   sourcesEmptyTooltip,
@@ -796,6 +797,7 @@ export default function App() {
         }
       }
       const result = await exportWebmToMp4(exportRequest)
+      clearProjectAutosave(lastWebmPath)
       clearReview()
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
 

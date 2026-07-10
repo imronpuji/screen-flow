@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:10] Project auto-save (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/projectAutosave.ts` — one-slot snapshot `{ version, webmPath, savedAt, durationMs, edit }` + normalize/load/save/clear + `formatAutosaveLabel`; debounce 800ms.
+  - `RecordingReview` — hydrate from autosave when `webmPath` matches; debounced save; clear on discard; subtitle Restored/Saving/Saved.
+  - `App` — `clearProjectAutosave` on export success before `clearReview`.
+  - Smoke `smoke:project-autosave`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:project-autosave` + edit-history/toast/shortcuts hijau.
+- **Commit:** `f919eca`
+- **Status:** done — PR #78 opened; owner merge callback attempted (ngrok tunnel offline ERR_NGROK_3200).
+- **Next:** Timeline zoom-in/out UI; visual verify on Mac; retry merge curl when tunnel up.
+
 ## [2026-07-10 14:05] Beautify toast feedback (FOKUS 4)
 
 - **Dikerjakan:**

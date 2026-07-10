@@ -46,7 +46,8 @@
     "smoke:zoom-points": "node --experimental-strip-types scripts/smoke-zoom-points.mts",
     "smoke:editor-panels": "node --experimental-strip-types scripts/smoke-editor-panels.mts",
     "smoke:toast": "node --experimental-strip-types scripts/smoke-toast.mts",
-    "smoke:export-size": "node --experimental-strip-types scripts/smoke-export-size.mts"
+    "smoke:export-size": "node --experimental-strip-types scripts/smoke-export-size.mts",
+    "smoke:project-autosave": "node --experimental-strip-types scripts/smoke-project-autosave.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

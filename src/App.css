@@ -808,6 +808,12 @@
   color: var(--ink-muted);
 }
 
+.review__autosave {
+  color: color-mix(in srgb, var(--ink-muted) 75%, transparent);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
 .review__header-actions {
   display: flex;
   flex-wrap: wrap;
