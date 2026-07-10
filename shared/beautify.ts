@@ -25,7 +25,10 @@ export interface BeautifyPreset {
   cursorAppearance: CursorAppearance
   background: BackgroundStyle
   /** Camera layout knobs (enabled left to caller — only if a track exists). */
-  camera: Pick<CameraOverlayStyle, 'corner' | 'sizePercent' | 'shape'>
+  camera: Pick<
+    CameraOverlayStyle,
+    'corner' | 'sizePercent' | 'shape' | 'shadowEnabled' | 'borderEnabled' | 'borderWidthPx'
+  >
   exportQuality: ExportQualityId
 }
 
@@ -48,7 +51,14 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       cornerRadiusPx: 16,
       shadowEnabled: true,
     },
-    camera: { corner: 'bottom-right', sizePercent: 22, shape: 'circle' },
+    camera: {
+      corner: 'bottom-right',
+      sizePercent: 22,
+      shape: 'circle',
+      shadowEnabled: true,
+      borderEnabled: true,
+      borderWidthPx: 2,
+    },
     exportQuality: 'good',
   },
   {
@@ -69,7 +79,14 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       cornerRadiusPx: 14,
       shadowEnabled: true,
     },
-    camera: { corner: 'bottom-left', sizePercent: 20, shape: 'rectangle' },
+    camera: {
+      corner: 'bottom-left',
+      sizePercent: 20,
+      shape: 'rectangle',
+      shadowEnabled: true,
+      borderEnabled: true,
+      borderWidthPx: 3,
+    },
     exportQuality: 'high',
   },
   {
@@ -90,7 +107,14 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       cornerRadiusPx: 20,
       shadowEnabled: true,
     },
-    camera: { corner: 'bottom-right', sizePercent: 28, shape: 'circle' },
+    camera: {
+      corner: 'bottom-right',
+      sizePercent: 28,
+      shape: 'circle',
+      shadowEnabled: true,
+      borderEnabled: true,
+      borderWidthPx: 3,
+    },
     exportQuality: 'draft',
   },
 ] as const
@@ -126,6 +150,9 @@ export function applyBeautifyPreset(
         enabled: hasCamera,
         sizePercent: preset.camera.sizePercent,
         shape: preset.camera.shape,
+        shadowEnabled: preset.camera.shadowEnabled,
+        borderEnabled: preset.camera.borderEnabled,
+        borderWidthPx: preset.camera.borderWidthPx,
       },
       preset.camera.corner,
     ),

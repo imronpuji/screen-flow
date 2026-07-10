@@ -344,6 +344,8 @@ export function CameraBubble({
         left: pos.left,
         width: pos.width,
         borderRadius: pos.borderRadius,
+        border: pos.border,
+        boxShadow: pos.boxShadow,
       }}
       aria-label={label}
       title={
