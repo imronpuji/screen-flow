@@ -1,6 +1,16 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 23:40] Review FaceTime layout map (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `RecordingReview` — wire `CameraLayoutMap` di section Position (click-to-place + 7/9/1/3/5); `normalizeCameraOverlay` on change; disabled saat exporting.
+  - Hint Position diperbarui (map + drag bubble).
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `9f2ac1d`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; auto-highlight klik; optional ScreenCaptureKit.
+
 ## [2026-07-10 23:05] Chrome FaceTime layout map + click-to-mute (FOKUS 3B/A)
 
 - **Dikerjakan:**
