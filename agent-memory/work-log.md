@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 22:35] Docked FaceTime monitor while recording (FOKUS 3A)
+
+- **Dikerjakan:**
+  - `src/components/CameraMonitor.tsx` — self-view docked di app chrome; mirror/shape dari overlay; Live/Muted; **tidak** force `track.enabled` (mute mid-recording aman).
+  - `App.tsx` — tampilkan monitor saat recording + ada stream; layout bubble tetap hidden di capture preview.
+  - CSS `.camera-monitor*` (circle/rounded/rect + muted dim).
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects/cursor-prefs/export-prefs hijau.
+- **Commit:** `791c2c9`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; auto-highlight klik; optional ScreenCaptureKit.
+
 ## [2026-07-10 21:30] Persist export format + quality prefs
 
 - **Dikerjakan:**
