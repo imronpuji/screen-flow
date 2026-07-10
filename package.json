@@ -23,7 +23,8 @@
     "smoke:cursor-smoothing": "node --experimental-strip-types scripts/smoke-cursor-smoothing.mts",
     "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts",
     "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts",
-    "smoke:camera": "node --experimental-strip-types scripts/smoke-camera.mts"
+    "smoke:camera": "node --experimental-strip-types scripts/smoke-camera.mts",
+    "smoke:export-camera": "node --experimental-strip-types scripts/smoke-export-camera.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

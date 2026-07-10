@@ -5,6 +5,7 @@
 
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
+import type { CameraOverlayStyle } from './camera.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
@@ -163,6 +164,13 @@ export interface ExportCursorSmoothingRequest {
   options?: CursorSmoothingOptions
 }
 
+/** Bake FaceTime/webcam bubble during ffmpeg export (matches live overlay layout). */
+export interface ExportCameraOverlayRequest {
+  /** Absolute path to session camera.webm under screen-flow temp. */
+  cameraPath: string
+  style: CameraOverlayStyle
+}
+
 /** Trim window baked into export (matches review sliders). */
 export type ExportTrimRequest = TrimRange
 
@@ -180,6 +188,8 @@ export interface ExportMp4Request {
   background?: ExportBackgroundRequest
   /** When set, ffmpeg draws smoothed cursor + click rings before encode. */
   cursorSmoothing?: ExportCursorSmoothingRequest
+  /** When set, ffmpeg overlays camera.webm as a corner bubble before encode. */
+  camera?: ExportCameraOverlayRequest
   /** When set, ffmpeg -ss/-to trims before encode (auto-zoom events re-based to trim start). */
   trim?: ExportTrimRequest
 }
@@ -196,6 +206,8 @@ export interface ExportMp4Result {
   backgroundApplied?: boolean
   /** True when cursor smoothing overlay was drawn. */
   cursorApplied?: boolean
+  /** True when FaceTime/webcam bubble was composited. */
+  cameraApplied?: boolean
   /** True when trim range was applied during encode. */
   trimApplied?: boolean
 }
