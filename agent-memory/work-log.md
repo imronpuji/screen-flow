@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - `OnboardingOverlay` 3 langkah (record → polish → export) + `localStorage` flag `screen-flow:onboarding-done`.
   - Smoke `smoke:beautify` + `smoke:onboarding`.
 - **Hasil:** `typecheck` + `build` + `lint` + smokes hijau.
-- **Commit:** (pending this push)
+- **Commit:** `9bd025e`
 - **Status:** done (polish slice 1)
 - **Next:** Keyboard shortcuts; empty-state tooltips; timeline clip markers; visual verify Retina zoom on Mac.
 
