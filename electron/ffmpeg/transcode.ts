@@ -1,10 +1,13 @@
 /**
- * Spawn system ffmpeg as a child process to transcode capture WebM → H.264 MP4.
+ * Spawn system ffmpeg as a child process to transcode capture WebM →
+ * MP4 (H.264), WebM (VP9), or GIF (palette).
  * Heavy work stays off the renderer; main owns the process lifecycle.
  *
  * Codec strategy:
- * - darwin → prefer VideoToolbox (h264_videotoolbox), fall back to libx264
- * - elsewhere → libx264 (CI/Linux agents)
+ * - mp4 / darwin → prefer VideoToolbox (h264_videotoolbox), fall back to libx264
+ * - mp4 / elsewhere → libx264
+ * - webm → libvpx-vp9 (+ libopus when camera mic present)
+ * - gif → palettegen/paletteuse + gif muxer (no audio)
  *
  * Progress: parse Duration + out_time_ms from ffmpeg stderr (best-effort %).
  * Cancel: SIGTERM the active child; export rejects with ExportCancelledError.
@@ -22,6 +25,17 @@ import {
   trimDurationMs,
   type TrimRange,
 } from '../../shared/edit.js'
+import {
+  appendGifPaletteFilters,
+  buildGifFilterFromInput,
+  exportFormatExtension,
+  getExportFormatPreset,
+  gifEncoderArgs,
+  gifOptionsForQuality,
+  normalizeExportFormat,
+  webmEncoderArgsForQuality,
+  type ExportFormatId,
+} from '../../shared/exportFormat.js'
 import {
   encoderArgsForQuality,
   libx264FallbackArgs,
@@ -86,7 +100,12 @@ export function assertUnderScreenFlowTemp(filePath: string): string {
   return resolved
 }
 
-function pickVideoEncoder(quality: ExportQualityId): { codec: string; extraArgs: string[] } {
+function pickVideoEncoder(
+  quality: ExportQualityId,
+  format: ExportFormatId,
+): { codec: string; extraArgs: string[] } {
+  if (format === 'gif') return gifEncoderArgs()
+  if (format === 'webm') return webmEncoderArgsForQuality(quality)
   return encoderArgsForQuality(quality, process.platform)
 }
 
@@ -167,8 +186,11 @@ async function transcodeOnce(
       filter?: string | null
       outputLabel?: string
     }
+    /** Container format — drives muxer flags + audio codec. */
+    format?: ExportFormatId
   } = {},
 ): Promise<{ code: number; stderr: string }> {
+  const format = normalizeExportFormat(options.format ?? 'mp4')
   const args = ['-y']
   const seekSec =
     options.trim && options.trim.startMs > 0 ? msToFfmpegSec(options.trim.startMs) : null
@@ -224,7 +246,7 @@ async function transcodeOnce(
     args.push('-t', durationLimitSec.toFixed(3))
   }
 
-  const cameraAudio = options.cameraAudio
+  const cameraAudio = format === 'gif' ? undefined : options.cameraAudio
   let filterComplex = options.filterComplex
   const audioOutLabel = cameraAudio?.outputLabel ?? 'aout'
   if (cameraAudio?.filter) {
@@ -252,19 +274,25 @@ async function transcodeOnce(
     } else {
       args.push('-map', `${cameraAudio.inputIndex}:a:0?`)
     }
-    args.push('-c:a', 'aac', '-b:a', '128k')
+    if (format === 'webm') {
+      args.push('-c:a', 'libopus', '-b:a', '96k')
+    } else {
+      args.push('-c:a', 'aac', '-b:a', '128k')
+    }
   } else {
     args.push('-an')
   }
 
+  args.push('-c:v', encoder.codec, ...encoder.extraArgs)
+
+  if (format === 'mp4') {
+    args.push('-pix_fmt', 'yuv420p', '-movflags', '+faststart')
+  } else if (format === 'webm') {
+    args.push('-pix_fmt', 'yuv420p')
+  }
+  // GIF: palette filters already emit indexed frames; no pix_fmt / movflags.
+
   args.push(
-    '-c:v',
-    encoder.codec,
-    ...encoder.extraArgs,
-    '-pix_fmt',
-    'yuv420p',
-    '-movflags',
-    '+faststart',
     // Machine-readable progress lines on stderr (out_time_ms=…).
     '-progress',
     'pipe:2',
@@ -274,6 +302,7 @@ async function transcodeOnce(
 
   let durationSec: number | undefined = options.expectedDurationSec
   let hitComplete = false
+  const formatLabel = getExportFormatPreset(format).label
 
   return runFfmpeg(args, (chunk) => {
     const maybeDuration = parseFfmpegDurationSec(chunk)
@@ -287,7 +316,7 @@ async function transcodeOnce(
         percent: 100,
         timeSec: durationSec,
         durationSec,
-        message: 'Finalizing MP4…',
+        message: `Finalizing ${formatLabel}…`,
       })
       return
     }
@@ -332,11 +361,15 @@ export function cancelExport(): { ok: true; cancelled: boolean } {
 }
 
 /**
- * Transcode a finished capture.webm into export.mp4 (same session dir by default).
- * Optionally removes the source WebM after a successful encode.
+ * Transcode a finished capture.webm into export.mp4 / .webm / .gif
+ * (same session dir by default). Optionally removes the source WebM after success.
  */
 export async function exportWebmToMp4(request: ExportMp4Request): Promise<ExportMp4Result> {
   cancelRequested = false
+
+  const format = normalizeExportFormat(request.format)
+  const formatPreset = getExportFormatPreset(format)
+  const ext = exportFormatExtension(format)
 
   const inputPath = assertUnderScreenFlowTemp(request.inputPath)
   if (!fs.existsSync(inputPath)) {
@@ -348,11 +381,15 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   }
 
   const outputPath = assertUnderScreenFlowTemp(
-    request.outputPath ?? path.join(path.dirname(inputPath), 'export.mp4'),
+    request.outputPath ?? path.join(path.dirname(inputPath), `export.${ext}`),
   )
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
 
-  emitProgress({ phase: 'starting', percent: 0, message: 'Starting ffmpeg…' })
+  emitProgress({
+    phase: 'starting',
+    percent: 0,
+    message: `Starting ${formatPreset.label} export…`,
+  })
 
   const probe = await probeVideoFile(inputPath)
   const fullDurationMs = probe.durationSec * 1000
@@ -561,9 +598,31 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
   }
 
+  // GIF needs palettegen/paletteuse — wrap effects output or build from input 0.
+  if (format === 'gif') {
+    const gifOpts = gifOptionsForQuality(request.quality)
+    if (filterComplex && outputLabel) {
+      const gif = appendGifPaletteFilters(outputLabel, gifOpts)
+      filterComplex = `${filterComplex};${gif.filter}`
+      outputLabel = gif.outputLabel
+      videoFilter = undefined
+    } else if (videoFilter) {
+      // Promote simple -vf into filter_complex so we can chain palette filters.
+      const mid = 'vpregif'
+      const gif = appendGifPaletteFilters(mid, gifOpts)
+      filterComplex = `[0:v]${videoFilter}[${mid}];${gif.filter}`
+      outputLabel = gif.outputLabel
+      videoFilter = undefined
+    } else {
+      const gif = buildGifFilterFromInput(0, gifOpts)
+      filterComplex = gif.filterComplex
+      outputLabel = gif.outputLabel
+    }
+  }
+
   try {
     const quality = normalizeExportQuality(request.quality)
-    let encoder = pickVideoEncoder(quality)
+    let encoder = pickVideoEncoder(quality, format)
     const transcodeOptions = {
       videoFilter,
       filterComplex,
@@ -572,13 +631,22 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       fullDurationMs,
       expectedDurationSec,
       extraInputs: cameraApplied ? extraInputs : [],
-      cameraAudio: cameraApplied ? cameraAudioPlan ?? undefined : undefined,
+      cameraAudio:
+        format !== 'gif' && cameraApplied
+          ? cameraAudioPlan ?? undefined
+          : undefined,
+      format,
     }
     let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 
     // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
-    // fall back to software x264 once (same quality CRF).
-    if (result.code !== 0 && encoder.codec === 'h264_videotoolbox' && !cancelRequested) {
+    // fall back to software x264 once (same quality CRF). MP4 only.
+    if (
+      result.code !== 0 &&
+      format === 'mp4' &&
+      encoder.codec === 'h264_videotoolbox' &&
+      !cancelRequested
+    ) {
       encoder = {
         codec: 'libx264',
         extraArgs: libx264FallbackArgs(quality),
@@ -600,7 +668,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
 
     if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
-      const message = 'ffmpeg produced an empty MP4'
+      const message = `ffmpeg produced an empty ${formatPreset.label}`
       emitProgress({ phase: 'error', percent: 0, message })
       throw new Error(message)
     }
@@ -634,6 +702,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       bytesWritten,
       codec: encoder.codec,
       quality,
+      format,
       autoZoomApplied,
       backgroundApplied,
       cursorApplied,

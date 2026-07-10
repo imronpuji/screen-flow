@@ -4,30 +4,56 @@
  */
 
 import path from 'node:path'
+import {
+  DEFAULT_EXPORT_FORMAT,
+  defaultExportFileName,
+  exportFormatExtension,
+  getExportFormatPreset,
+  normalizeExportFormat,
+  type ExportFormatId,
+} from '../../shared/exportFormat.js'
 
-/** ScreenFlow-YYYYMMDD-HHMMSS.mp4 */
-export function defaultExportBasename(now: Date = new Date()): string {
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  const hh = String(now.getHours()).padStart(2, '0')
-  const mm = String(now.getMinutes()).padStart(2, '0')
-  const ss = String(now.getSeconds()).padStart(2, '0')
-  return `ScreenFlow-${y}${m}${d}-${hh}${mm}${ss}.mp4`
+/** ScreenFlow-YYYYMMDD-HHMMSS.<ext> for the given format (default mp4). */
+export function defaultExportBasename(
+  now: Date = new Date(),
+  formatId: ExportFormatId | string | undefined | null = DEFAULT_EXPORT_FORMAT,
+): string {
+  return defaultExportFileName(formatId, now)
 }
 
 /** Strip path separators / nulls from a user-facing basename. */
-export function sanitizeExportBasename(name: string): string {
+export function sanitizeExportBasename(
+  name: string,
+  formatId: ExportFormatId | string | undefined | null = DEFAULT_EXPORT_FORMAT,
+): string {
+  const format = normalizeExportFormat(formatId)
   const base = path.basename(name).replace(/[\0<>:"|?*]/g, '_').trim()
   if (!base || base === '.' || base === '..') {
-    return defaultExportBasename()
+    return defaultExportBasename(new Date(), format)
   }
-  return ensureMp4Extension(base)
+  return ensureExportExtension(base, format)
 }
 
 export function ensureMp4Extension(filePath: string): string {
-  return filePath.toLowerCase().endsWith('.mp4') ? filePath : `${filePath}.mp4`
+  return ensureExportExtension(filePath, 'mp4')
 }
+
+export function ensureExportExtension(
+  filePath: string,
+  formatId: ExportFormatId | string | undefined | null,
+): string {
+  const ext = exportFormatExtension(formatId)
+  const lower = filePath.toLowerCase()
+  if (lower.endsWith(`.${ext}`)) return filePath
+  // Replace a known export extension, otherwise append.
+  const known = EXPORT_EXTENSIONS.find((e) => lower.endsWith(`.${e}`))
+  if (known) {
+    return `${filePath.slice(0, -(known.length + 1))}.${ext}`
+  }
+  return `${filePath}.${ext}`
+}
+
+const EXPORT_EXTENSIONS = ['mp4', 'webm', 'gif'] as const
 
 /**
  * Default Save As location: <Documents>/Screen Flow/<basename>.
@@ -37,19 +63,29 @@ export function resolveDocumentsDefaultPath(
   documentsDir: string,
   now: Date = new Date(),
   fileName?: string,
+  formatId: ExportFormatId | string | undefined | null = DEFAULT_EXPORT_FORMAT,
 ): string {
-  const basename = sanitizeExportBasename(fileName ?? defaultExportBasename(now))
+  const format = normalizeExportFormat(formatId)
+  const basename = sanitizeExportBasename(
+    fileName ?? defaultExportBasename(now, format),
+    format,
+  )
   return path.join(documentsDir, 'Screen Flow', basename)
 }
 
 /**
- * Validate a user-chosen absolute destination for the final MP4.
+ * Validate a user-chosen absolute destination for the final export file.
  * Does not restrict to Documents — Save As may pick any writable folder.
  */
-export function assertSafeSaveDestination(filePath: string): string {
+export function assertSafeSaveDestination(
+  filePath: string,
+  formatId: ExportFormatId | string | undefined | null = DEFAULT_EXPORT_FORMAT,
+): string {
   if (typeof filePath !== 'string' || !filePath.trim()) {
     throw new Error('Save destination path is required')
   }
+  const format = normalizeExportFormat(formatId)
+  const ext = exportFormatExtension(format)
   const resolved = path.resolve(filePath.trim())
   if (!path.isAbsolute(resolved)) {
     throw new Error('Save destination must be an absolute path')
@@ -58,8 +94,15 @@ export function assertSafeSaveDestination(filePath: string): string {
   if (!base || base === '.' || base === '..') {
     throw new Error('Save destination must include a file name')
   }
-  if (!resolved.toLowerCase().endsWith('.mp4')) {
-    throw new Error('Save destination must end with .mp4')
+  if (!resolved.toLowerCase().endsWith(`.${ext}`)) {
+    throw new Error(`Save destination must end with .${ext}`)
   }
   return resolved
+}
+
+export function saveDialogFilterForFormat(
+  formatId: ExportFormatId | string | undefined | null,
+): { name: string; extensions: string[] } {
+  const preset = getExportFormatPreset(formatId)
+  return { name: preset.dialogFilterName, extensions: [preset.extension] }
 }
