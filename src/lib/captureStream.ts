@@ -43,17 +43,20 @@ export async function openDesktopCaptureStream(sourceId: string): Promise<MediaS
   return navigator.mediaDevices.getUserMedia(constraints)
 }
 
-export async function startLiveCapture(options: {
-  sourceId: string
+function startRecorderOnStream(options: {
+  stream: MediaStream
+  videoBitsPerSecond: number
   onChunk: (data: ArrayBuffer) => Promise<void>
   onError?: (error: Error) => void
-}): Promise<LiveCaptureHandle> {
-  const stream = await openDesktopCaptureStream(options.sourceId)
+  /** When true, stop() also stops MediaStream tracks (default true). */
+  stopTracksOnEnd?: boolean
+}): LiveCaptureHandle {
   const mimeType = pickMimeType()
-  const recorder = new MediaRecorder(stream, {
+  const recorder = new MediaRecorder(options.stream, {
     mimeType,
-    videoBitsPerSecond: 8_000_000,
+    videoBitsPerSecond: options.videoBitsPerSecond,
   })
+  const stopTracksOnEnd = options.stopTracksOnEnd !== false
 
   let chain: Promise<void> = Promise.resolve()
   let stopResolve: (() => void) | null = null
@@ -79,8 +82,10 @@ export async function startLiveCapture(options: {
 
   recorder.onstop = () => {
     void chain.finally(() => {
-      for (const track of stream.getTracks()) {
-        track.stop()
+      if (stopTracksOnEnd) {
+        for (const track of options.stream.getTracks()) {
+          track.stop()
+        }
       }
       stopResolve?.()
     })
@@ -90,7 +95,7 @@ export async function startLiveCapture(options: {
   recorder.start(500)
 
   return {
-    stream,
+    stream: options.stream,
     mimeType,
     stop: async () => {
       if (recorder.state !== 'inactive') {
@@ -100,8 +105,10 @@ export async function startLiveCapture(options: {
         }
         recorder.stop()
       } else {
-        for (const track of stream.getTracks()) {
-          track.stop()
+        if (stopTracksOnEnd) {
+          for (const track of options.stream.getTracks()) {
+            track.stop()
+          }
         }
         stopResolve?.()
       }
@@ -109,4 +116,34 @@ export async function startLiveCapture(options: {
       await chain
     },
   }
+}
+
+export async function startLiveCapture(options: {
+  sourceId: string
+  onChunk: (data: ArrayBuffer) => Promise<void>
+  onError?: (error: Error) => void
+}): Promise<LiveCaptureHandle> {
+  const stream = await openDesktopCaptureStream(options.sourceId)
+  return startRecorderOnStream({
+    stream,
+    videoBitsPerSecond: 8_000_000,
+    onChunk: options.onChunk,
+    onError: options.onError,
+  })
+}
+
+/** Record an already-open webcam stream in parallel with screen capture. */
+export function startCameraCapture(options: {
+  stream: MediaStream
+  onChunk: (data: ArrayBuffer) => Promise<void>
+  onError?: (error: Error) => void
+}): LiveCaptureHandle {
+  return startRecorderOnStream({
+    stream: options.stream,
+    videoBitsPerSecond: 2_500_000,
+    onChunk: options.onChunk,
+    onError: options.onError,
+    // Keep preview stream alive until the UI stops it explicitly.
+    stopTracksOnEnd: false,
+  })
 }
