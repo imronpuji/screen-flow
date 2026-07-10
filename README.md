@@ -1,4 +1,4 @@
-# Screen Flow
+# Screen Flow Make By Imron
 
 Cinematic desktop screen recorder inspired by Screen Studio — auto-zoom, cursor smoothing, aesthetic backgrounds, MP4/GIF export.
 
