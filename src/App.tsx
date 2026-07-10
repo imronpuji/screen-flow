@@ -286,7 +286,10 @@ export default function App() {
         exportRequest.background = { style: _edit.background }
       }
       if (_edit.cursorSmoothingEnabled && lastCursorEventsPath) {
-        exportRequest.cursorSmoothing = { cursorEventsPath: lastCursorEventsPath }
+        exportRequest.cursorSmoothing = {
+          cursorEventsPath: lastCursorEventsPath,
+          appearance: _edit.cursorAppearance,
+        }
       }
       const result = await exportWebmToMp4(exportRequest)
       clearReview()

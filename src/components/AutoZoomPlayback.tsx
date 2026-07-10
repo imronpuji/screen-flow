@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CursorEvent } from '../../shared/cursor'
 import {
+  appearanceToCursorDrawOptions,
+  DEFAULT_CURSOR_APPEARANCE,
+  type CursorAppearance,
+} from '../../shared/cursorAppearance'
+import {
   buildZoomSegments,
   getZoomTransformAtTime,
   type VideoSize,
@@ -21,6 +26,7 @@ export interface AutoZoomPlaybackProps {
   cursorEvents: CursorEvent[]
   autoZoomEnabled?: boolean
   cursorSmoothingEnabled?: boolean
+  cursorAppearance?: CursorAppearance
   background?: BackgroundStyle
   trimStartMs?: number
   trimEndMs?: number
@@ -33,6 +39,7 @@ export function AutoZoomPlayback({
   cursorEvents,
   autoZoomEnabled = true,
   cursorSmoothingEnabled = true,
+  cursorAppearance = DEFAULT_CURSOR_APPEARANCE,
   background,
   trimStartMs = 0,
   trimEndMs,
@@ -51,6 +58,11 @@ export function AutoZoomPlayback({
   const [loading, setLoading] = useState(true)
 
   const effectiveEndMs = trimEndMs ?? durationMs
+  const cursorDraw = useMemo(
+    () => appearanceToCursorDrawOptions(cursorAppearance),
+    [cursorAppearance],
+  )
+  const showCursor = cursorSmoothingEnabled && cursorDraw.visible
 
   const segments = useMemo(
     () => (autoZoomEnabled ? buildZoomSegments(cursorEvents, videoSize) : []),
@@ -71,7 +83,7 @@ export function AutoZoomPlayback({
 
   const updateCursorOverlay = useCallback(
     (tMs: number) => {
-      if (!cursorSmoothingEnabled || cursorKeyframes.length === 0) {
+      if (!showCursor || cursorKeyframes.length === 0) {
         setCursorPos(null)
         setClickRings([])
         return
@@ -79,7 +91,7 @@ export function AutoZoomPlayback({
       setCursorPos(getSmoothedCursorAtTime(tMs, cursorKeyframes, videoSize))
       setClickRings(getActiveClickRings(tMs, clickRingTriggers))
     },
-    [clickRingTriggers, cursorKeyframes, cursorSmoothingEnabled, videoSize],
+    [clickRingTriggers, cursorKeyframes, showCursor, videoSize],
   )
 
   useEffect(() => {
@@ -186,6 +198,11 @@ export function AutoZoomPlayback({
     [background],
   )
 
+  const cursorStyleClass =
+    cursorDraw.style === 'crosshair'
+      ? 'cursor-overlay__pointer cursor-overlay__pointer--crosshair'
+      : 'cursor-overlay__dot'
+
   const stage = (
     <div
       className="zoom-playback__stage"
@@ -208,8 +225,19 @@ export function AutoZoomPlayback({
         }}
         onCanPlay={() => setLoading(false)}
       />
-      {cursorSmoothingEnabled && cursorPos ? (
+      {showCursor && cursorPos ? (
         <div className="cursor-overlay" aria-hidden="true">
+          {cursorDraw.spotlightEnabled ? (
+            <span
+              className="cursor-overlay__spotlight"
+              style={{
+                left: `${cursorPos.x * 100}%`,
+                top: `${cursorPos.y * 100}%`,
+                width: `${cursorDraw.spotlightPx}px`,
+                height: `${cursorDraw.spotlightPx}px`,
+              }}
+            />
+          ) : null}
           {clickRings.map((ring, i) => (
             <span
               key={`${ring.x}-${ring.y}-${i}`}
@@ -217,16 +245,20 @@ export function AutoZoomPlayback({
               style={{
                 left: `${ring.x * 100}%`,
                 top: `${ring.y * 100}%`,
+                width: `${Math.round((36 * cursorDraw.ringBasePx) / 44)}px`,
+                height: `${Math.round((36 * cursorDraw.ringBasePx) / 44)}px`,
                 transform: `translate(-50%, -50%) scale(${ring.scale})`,
                 opacity: ring.opacity,
               }}
             />
           ))}
           <span
-            className="cursor-overlay__dot"
+            className={cursorStyleClass}
             style={{
               left: `${cursorPos.x * 100}%`,
               top: `${cursorPos.y * 100}%`,
+              width: `${cursorDraw.dotSizePx}px`,
+              height: `${cursorDraw.dotSizePx}px`,
             }}
           />
         </div>
@@ -298,7 +330,11 @@ export function AutoZoomPlayback({
           {autoZoomEnabled
             ? `${segments.length} zoom · ${clickCount} click${clickCount === 1 ? '' : 's'}`
             : 'Auto-zoom off'}
-          {cursorSmoothingEnabled ? ' · cursor on' : ''}
+          {showCursor
+            ? ` · cursor ${cursorDraw.style}`
+            : cursorSmoothingEnabled
+              ? ' · cursor hidden'
+              : ''}
           {backgroundFrame ? ' · background on' : ''}
         </span>
       </div>
