@@ -5,6 +5,7 @@
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
+import type { CameraDriftCompensation } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
@@ -37,6 +38,8 @@ export interface ExportEffectsRequest {
     style: CameraOverlayStyle
     /** ffmpeg input index for camera (default 1). */
     inputIndex?: number
+    /** Screen↔camera drift compensation (setpts on camera input). */
+    drift?: Pick<CameraDriftCompensation, 'offsetMs' | 'ptsRate'> | null
   }
 }
 
@@ -147,6 +150,7 @@ export function planExportFilters(
           preCameraLabel,
           'vout',
           cameraInputIndex,
+          effects.camera.drift,
         )
       : null
 

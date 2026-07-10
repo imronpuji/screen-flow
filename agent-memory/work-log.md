@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:50] Camera A/V drift compensation (FOKUS 3A)
+
+- **Dikerjakan:**
+  - `shared/cameraSync.ts` — first-chunk meta, `computeCameraDrift`, setpts expr, review time map.
+  - Session: track first screen/camera chunk → write `camera-sync.json`; IPC `cameraSyncPath` + `cameraSync`.
+  - Export: probe camera duration + sync meta → `setpts` in `planCameraExport`; review seek uses start lag.
+  - Smoke `smoke:camera-sync`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-sync/camera/export-camera/beautify/export-effects hijau.
+- **Commit:** `dc791b3`
+- **Status:** done (FOKUS 3A slice — drift compensation)
+- **Next:** Optional border color picker polish; mid-recording camera toggle; visual verify on Mac.
+
 ## [2026-07-10 09:45] Camera bubble border + soft shadow bake (FOKUS 3E)
 
 - **Dikerjakan:**

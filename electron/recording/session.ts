@@ -24,6 +24,11 @@ import type {
   StartRecordingResult,
   StopRecordingResult,
 } from '../../shared/ipc.js'
+import {
+  CAMERA_SYNC_FILENAME,
+  createEmptyCameraSyncMeta,
+  type CameraSyncMeta,
+} from '../../shared/cameraSync.js'
 import { startCursorSampler, stopCursorSampler } from './cursorSampler.js'
 
 const idleStatus = (): RecordingStatus => ({
@@ -40,6 +45,7 @@ const idleStatus = (): RecordingStatus => ({
   cursorEventsPath: null,
   cursorEventCount: 0,
   captureGeometryPath: null,
+  cameraSyncPath: null,
 })
 
 let status: RecordingStatus = idleStatus()
@@ -48,6 +54,8 @@ let cameraWriteStream: fs.WriteStream | null = null
 /** Serialize chunk writes so IPC handlers don't interleave on the same stream. */
 let writeQueue: Promise<void> = Promise.resolve()
 let cameraWriteQueue: Promise<void> = Promise.resolve()
+/** First-chunk wall offsets for screen↔camera drift compensation. */
+let syncMeta: CameraSyncMeta | null = null
 
 function writeCaptureGeometry(sessionDir: string, geometry: CaptureGeometry): string {
   const geometryPath = path.join(sessionDir, CAPTURE_GEOMETRY_FILENAME)
@@ -131,6 +139,7 @@ export async function startRecording(
 
   const startedAt = Date.now()
   const cursorSampler = startCursorSampler({ sessionDir, startedAt })
+  syncMeta = createEmptyCameraSyncMeta(startedAt)
 
   status = {
     state: 'recording',
@@ -146,6 +155,7 @@ export async function startRecording(
     cursorEventsPath: cursorSampler.eventsPath,
     cursorEventCount: 0,
     captureGeometryPath,
+    cameraSyncPath: null,
   }
 
   return { ok: true, status: getRecordingStatus() }
@@ -172,6 +182,12 @@ export async function appendRecordingChunk(
     if (!stream || !status.cameraOutputPath) {
       throw new Error('Camera track not enabled for this session')
     }
+    if (syncMeta && syncMeta.cameraFirstChunkMs == null && status.startedAt != null) {
+      syncMeta = {
+        ...syncMeta,
+        cameraFirstChunkMs: Math.max(0, Date.now() - status.startedAt),
+      }
+    }
     const queueRef = { current: cameraWriteQueue }
     await appendToStream(stream, queueRef, buffer)
     cameraWriteQueue = queueRef.current
@@ -191,6 +207,12 @@ export async function appendRecordingChunk(
   const stream = writeStream
   if (!stream) {
     throw new Error('Write stream missing')
+  }
+  if (syncMeta && syncMeta.screenFirstChunkMs == null && status.startedAt != null) {
+    syncMeta = {
+      ...syncMeta,
+      screenFirstChunkMs: Math.max(0, Date.now() - status.startedAt),
+    }
   }
   const queueRef = { current: writeQueue }
   await appendToStream(stream, queueRef, buffer)
@@ -232,6 +254,7 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   const cameraBytesWritten = status.cameraBytesWritten
   const cameraChunkCount = status.cameraChunkCount
   const captureGeometryPath = status.captureGeometryPath
+  const sessionDir = status.sessionDir
 
   const cursorStats = await stopCursorSampler()
 
@@ -242,10 +265,22 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   await closeStream(writeStream)
   await closeStream(cameraWriteStream)
 
+  let cameraSyncPath: string | null = null
+  let finalMeta: CameraSyncMeta | null = null
+  if (syncMeta && sessionDir && cameraChunkCount > 0) {
+    finalMeta = {
+      ...syncMeta,
+      wallDurationMs: durationMs,
+    }
+    cameraSyncPath = path.join(sessionDir, CAMERA_SYNC_FILENAME)
+    fs.writeFileSync(cameraSyncPath, JSON.stringify(finalMeta, null, 2), 'utf8')
+  }
+
   writeStream = null
   cameraWriteStream = null
   writeQueue = Promise.resolve()
   cameraWriteQueue = Promise.resolve()
+  syncMeta = null
   status = idleStatus()
 
   return {
@@ -261,6 +296,8 @@ export async function stopRecording(): Promise<StopRecordingResult> {
     cursorEventsPath: cursorStats.eventsPath,
     cursorEventCount: cursorStats.eventCount,
     captureGeometryPath,
+    cameraSyncPath: cameraChunkCount > 0 ? cameraSyncPath : null,
+    cameraSync: cameraChunkCount > 0 ? finalMeta : null,
   }
 }
 

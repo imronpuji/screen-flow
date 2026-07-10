@@ -25,6 +25,7 @@ import {
   type CameraOverlayStyle,
   type CameraShape,
 } from '../../shared/camera'
+import type { CameraSyncMeta } from '../../shared/cameraSync'
 import {
   isEditableTarget,
   matchShortcut,
@@ -52,6 +53,8 @@ export interface RecordingReviewProps {
   captureGeometry?: CaptureGeometry | null
   /** Recorded camera.webm playback URL (null if no camera track). */
   cameraMediaUrl?: string | null
+  /** First-chunk wall sync for review bubble seek (matches export drift). */
+  cameraSync?: CameraSyncMeta | null
   /** Layout captured at record time; editable in review before export. */
   initialCameraOverlay?: CameraOverlayStyle
   durationMs: number
@@ -76,6 +79,7 @@ export function RecordingReview({
   cursorEvents,
   captureGeometry = null,
   cameraMediaUrl = null,
+  cameraSync = null,
   initialCameraOverlay = DEFAULT_CAMERA_OVERLAY,
   durationMs: recordedDurationMs,
   bytesWritten,
@@ -243,6 +247,7 @@ export function RecordingReview({
             cursorAppearance={edit.cursorAppearance}
             background={edit.background}
             cameraMediaUrl={cameraMediaUrl}
+            cameraSync={cameraSync}
             cameraOverlay={edit.cameraOverlay}
             onCameraLayoutChange={(next) =>
               setEdit((prev) => ({

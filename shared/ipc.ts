@@ -7,6 +7,7 @@ import type { CaptureGeometry } from './cursorCoords.js'
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
+import type { CameraSyncMeta } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
@@ -107,6 +108,8 @@ export interface RecordingStatus {
   cursorEventCount: number
   /** capture-geometry.json for Retina/multi-monitor cursor→frame mapping. */
   captureGeometryPath: string | null
+  /** camera-sync.json with first-chunk wall offsets (null when idle / no camera). */
+  cameraSyncPath: string | null
 }
 
 export interface StartRecordingRequest {
@@ -137,6 +140,10 @@ export interface StopRecordingResult {
   cursorEventCount: number
   /** Display DIP geometry written at session start (null if unavailable). */
   captureGeometryPath: string | null
+  /** camera-sync.json path (null if camera off or no chunks). */
+  cameraSyncPath: string | null
+  /** Parsed sync meta for review playback offset (null if no camera). */
+  cameraSync: CameraSyncMeta | null
 }
 
 /** Which MediaRecorder stream a chunk belongs to. */
@@ -190,6 +197,11 @@ export interface ExportCameraOverlayRequest {
   /** Absolute path to session camera.webm under screen-flow temp. */
   cameraPath: string
   style: CameraOverlayStyle
+  /**
+   * Optional path to camera-sync.json (first-chunk wall offsets).
+   * When omitted, export probes sibling camera-sync.json next to cameraPath.
+   */
+  syncPath?: string
 }
 
 /** Trim window baked into export (matches review sliders). */

@@ -18,6 +18,10 @@ import {
   type CameraOverlayStyle,
   type CameraShape,
 } from './camera.js'
+import {
+  cameraDriftSetptsExpr,
+  type CameraDriftCompensation,
+} from './cameraSync.js'
 import { evenDimension } from './ffmpegZoom.js'
 
 export interface VideoSize {
@@ -37,6 +41,8 @@ export interface CameraFilterPlan {
   shadowApplied: boolean
   /** True when a border plate is composited under the inset camera. */
   borderApplied: boolean
+  /** True when setpts drift compensation was injected. */
+  driftApplied: boolean
 }
 
 /** Soft-shadow blur radius in px (applied once on a still, then looped). */
@@ -84,6 +90,7 @@ export function cameraBorderFfmpegColor(hex: string): string {
 /**
  * Build filter_complex that composites camera input onto the base video label.
  * `cameraInputIndex` is the ffmpeg input index (usually 1 when screen is 0).
+ * Optional `drift` injects setpts before scale so start lag / duration skew match screen.
  */
 export function planCameraExport(
   style: CameraOverlayStyle,
@@ -91,6 +98,7 @@ export function planCameraExport(
   baseInputLabel = 'vbase',
   outputLabel = 'vout',
   cameraInputIndex = 1,
+  drift?: Pick<CameraDriftCompensation, 'offsetMs' | 'ptsRate'> | null,
 ): CameraFilterPlan {
   const normalized = normalizeCameraOverlay(style)
   const empty: CameraFilterPlan = {
@@ -101,6 +109,7 @@ export function planCameraExport(
     overlay: { x: 0, y: 0, w: 0, h: 0 },
     shadowApplied: false,
     borderApplied: false,
+    driftApplied: false,
   }
 
   if (!normalized.enabled) return empty
@@ -128,10 +137,14 @@ export function planCameraExport(
   const camX = borderApplied ? x + Math.round((bubbleW - innerW) / 2) : x
   const camY = borderApplied ? y + Math.round((bubbleH - innerH) / 2) : y
 
+  const setpts = drift ? cameraDriftSetptsExpr(drift) : null
+  const driftApplied = setpts != null
+  const ptsPrefix = setpts ? `setpts=${setpts},` : ''
+
   // Cover-fit camera into (possibly inset) bubble. fps+setsar stabilize MediaRecorder
   // VFR WebM; final format=yuv420p avoids libx264 "Conversion failed!" after rgba.
   const camScaled =
-    `[${cameraInputIndex}:v]fps=30,scale=${innerW}:${innerH}:force_original_aspect_ratio=increase,` +
+    `[${cameraInputIndex}:v]${ptsPrefix}fps=30,scale=${innerW}:${innerH}:force_original_aspect_ratio=increase,` +
     `crop=${innerW}:${innerH},setsar=1`
 
   const lines: string[] = []
@@ -246,5 +259,6 @@ export function planCameraExport(
     overlay: { x, y, w: bubbleW, h: bubbleH },
     shadowApplied,
     borderApplied,
+    driftApplied,
   }
 }

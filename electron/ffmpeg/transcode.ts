@@ -31,6 +31,8 @@ import {
 import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
 import { readCaptureGeometryBeside } from '../recording/readCaptureGeometry.js'
+import { resolveCameraSyncMeta } from '../recording/readCameraSync.js'
+import { computeCameraDrift } from '../../shared/cameraSync.js'
 import { probeVideoFile } from './probe.js'
 import {
   clampPercent,
@@ -400,9 +402,30 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     if (!fs.existsSync(cameraPath) || fs.statSync(cameraPath).size === 0) {
       throw new Error('Camera WebM is missing or empty')
     }
+    const syncPath =
+      request.camera.syncPath != null
+        ? assertUnderScreenFlowTemp(request.camera.syncPath)
+        : null
+    const syncMeta = resolveCameraSyncMeta(cameraPath, syncPath)
+    let cameraDrift = computeCameraDrift({
+      screenDurationMs: fullDurationMs,
+      cameraDurationMs: fullDurationMs,
+      sync: syncMeta,
+    })
+    try {
+      const cameraProbe = await probeVideoFile(cameraPath)
+      cameraDrift = computeCameraDrift({
+        screenDurationMs: fullDurationMs,
+        cameraDurationMs: cameraProbe.durationSec * 1000,
+        sync: syncMeta,
+      })
+    } catch {
+      /* keep first-chunk offset only if camera probe fails */
+    }
     effects.camera = {
       style: request.camera.style,
       inputIndex: 1,
+      drift: cameraDrift,
     }
     extraInputs = [cameraPath]
   }

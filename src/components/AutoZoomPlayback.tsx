@@ -28,6 +28,11 @@ import {
   DEFAULT_CAMERA_OVERLAY,
   type CameraOverlayStyle,
 } from '../../shared/camera'
+import type { CameraSyncMeta } from '../../shared/cameraSync'
+import {
+  cameraStartLagMs,
+  screenTimeToCameraTimeSec,
+} from '../../shared/cameraSync'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 import {
   isEditableTarget,
@@ -54,6 +59,8 @@ export interface AutoZoomPlaybackProps {
   /** Recorded camera.webm URL; bubble stays outside zoom (matches export). */
   cameraMediaUrl?: string | null
   cameraOverlay?: CameraOverlayStyle
+  /** First-chunk sync meta — offsets review bubble seek to match export. */
+  cameraSync?: CameraSyncMeta | null
   /** Persist drag/snap layout from the review bubble (relative 0–1 coords). */
   onCameraLayoutChange?: (next: CameraOverlayStyle) => void
   trimStartMs?: number
@@ -73,6 +80,7 @@ export function AutoZoomPlayback({
   background,
   cameraMediaUrl = null,
   cameraOverlay = DEFAULT_CAMERA_OVERLAY,
+  cameraSync = null,
   onCameraLayoutChange,
   trimStartMs = 0,
   trimEndMs,
@@ -287,10 +295,15 @@ export function AutoZoomPlayback({
   const showCamera =
     Boolean(cameraMediaUrl) && cameraOverlay.enabled
 
+  const cameraTimeSec = screenTimeToCameraTimeSec(currentMs / 1000, {
+    offsetMs: cameraStartLagMs(cameraSync),
+    ptsRate: 1,
+  })
+
   const cameraBubble = showCamera ? (
     <CameraBubble
       mediaUrl={cameraMediaUrl}
-      currentTimeSec={currentMs / 1000}
+      currentTimeSec={cameraTimeSec}
       playing={playing}
       mirrored={false}
       style={cameraOverlay}

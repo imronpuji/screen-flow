@@ -48,6 +48,7 @@ const idleRecording: RecordingStatus = {
   cursorEventsPath: null,
   cursorEventCount: 0,
   captureGeometryPath: null,
+  cameraSyncPath: null,
 }
 
 /** Prefer preload bridge; fall back so Vite preview still works without Electron. */
