@@ -29,6 +29,7 @@ import {
   matchCameraSizePreset,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
+  resetCameraLayout,
   type CameraOverlayStyle,
   type CameraShape,
 } from '../../shared/camera'
@@ -626,7 +627,7 @@ export function RecordingReview({
                     </div>
                     <p className="review__hint">
                       Drag to move (magnetic snap to corners &amp; edges) · arrows nudge ·
-                      +/- resize · corner handles resize
+                      +/- resize · 1/2/3 size · 0 or double-click reset · corner handles resize
                       {edit.cameraOverlay.lockAspect
                         ? ' with aspect lock'
                         : ' freely (unlocked)'}
@@ -677,7 +678,13 @@ export function RecordingReview({
                               active ? ' review__preset--active' : ''
                             }`}
                             disabled={exporting}
-                            title={`${preset.label} · ${preset.sizePercent}%`}
+                            title={`${preset.label} · ${preset.sizePercent}% (key ${
+                              preset.id === 'small'
+                                ? '1'
+                                : preset.id === 'medium'
+                                  ? '2'
+                                  : '3'
+                            })`}
                             onClick={() =>
                               setEdit((prev) => ({
                                 ...prev,
@@ -692,6 +699,20 @@ export function RecordingReview({
                           </button>
                         )
                       })}
+                      <button
+                        type="button"
+                        className="review__preset"
+                        disabled={exporting}
+                        title="Reset to bottom-right · medium (key 0 or double-click)"
+                        onClick={() =>
+                          setEdit((prev) => ({
+                            ...prev,
+                            cameraOverlay: resetCameraLayout(prev.cameraOverlay),
+                          }))
+                        }
+                      >
+                        <span className="review__preset-label">Reset</span>
+                      </button>
                     </div>
                   </div>
 
