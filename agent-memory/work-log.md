@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 06:05] Post-record Review & Edit UI + fix preview playback
+
+- **Dikerjakan:** `screenflow-media://` custom protocol (fix file:// blocked dari http dev); mode `review` penuh dengan `RecordingReview` (preview besar, play/scrub, trim in/out, toggle auto-zoom); `AutoZoomPlayback` timeline + error states; `requestData()` sebelum MediaRecorder stop.
+- **Hasil:** `typecheck` + `build` + `lint` hijau.
+- **Status:** done
+- **Next:** Bake trim ke ffmpeg export; cursor smoothing; background padding.
+
 ## [2026-07-10 05:58] Bake auto-zoom ke ffmpeg export
 
 - **Dikerjakan:** `shared/ffmpegZoom.ts` (crop rect, sendcmd keyframes @ 30fps, filter plan); `electron/ffmpeg/probe.ts` (ffprobe dimensi/durasi); extend IPC `ExportMp4Request.autoZoom`; transcode spawn `sendcmd,crop@z,scale`; UI pass `cursorEventsPath` saat export; smoke `smoke:export-autozoom`.

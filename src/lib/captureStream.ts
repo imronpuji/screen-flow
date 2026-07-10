@@ -94,6 +94,10 @@ export async function startLiveCapture(options: {
     mimeType,
     stop: async () => {
       if (recorder.state !== 'inactive') {
+        // Flush final cluster before stop so WebM is playable immediately.
+        if (recorder.state === 'recording') {
+          recorder.requestData()
+        }
         recorder.stop()
       } else {
         for (const track of stream.getTracks()) {

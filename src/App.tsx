@@ -6,6 +6,7 @@ import type {
   PermissionStatus,
   RecordingStatus,
 } from '../shared/ipc'
+import type { ReviewEditState } from '../shared/edit'
 import { startLiveCapture, type LiveCaptureHandle } from './lib/captureStream'
 import {
   appendRecordingChunk,
@@ -24,9 +25,11 @@ import {
   startRecording,
   stopRecording,
 } from './lib/runtime'
-import { AutoZoomPlayback } from './components/AutoZoomPlayback'
+import { RecordingReview } from './components/RecordingReview'
 import type { CursorEvent } from '../shared/cursor'
 import './App.css'
+
+type AppMode = 'setup' | 'recording' | 'review'
 
 const idleRecording: RecordingStatus = {
   state: 'idle',
@@ -52,6 +55,7 @@ export default function App() {
   const [sources, setSources] = useState<CaptureSource[]>([])
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null)
   const [recording, setRecording] = useState<RecordingStatus>(idleRecording)
+  const [mode, setMode] = useState<AppMode>('setup')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
@@ -59,17 +63,19 @@ export default function App() {
   const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
+  const [reviewDurationMs, setReviewDurationMs] = useState(0)
+  const [reviewBytesWritten, setReviewBytesWritten] = useState(0)
+  const [reviewChunkCount, setReviewChunkCount] = useState(0)
+  const [reviewCursorEventCount, setReviewCursorEventCount] = useState(0)
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState<ExportProgressEvent | null>(null)
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
 
   const inElectron = isElectronBridgeAvailable()
-  const isRecording = recording.state === 'recording'
+  const isRecording = mode === 'recording' || recording.state === 'recording'
   const canRecord =
-    inElectron && !busy && Boolean(selectedSourceId) && permission?.screen !== 'denied'
-  const canExport =
-    inElectron && !busy && !isRecording && !exporting && Boolean(lastWebmPath)
+    inElectron && !busy && mode !== 'review' && Boolean(selectedSourceId) && permission?.screen !== 'denied'
 
   useEffect(() => {
     return onExportProgress((event) => {
@@ -91,6 +97,9 @@ export default function App() {
         setInfo(nextInfo)
         setPermission(nextPermission)
         setRecording(nextRecording)
+        if (nextRecording.state === 'recording') {
+          setMode('recording')
+        }
 
         if (isElectronBridgeAvailable()) {
           const nextSources = await fetchCaptureSources({ thumbnails: true })
@@ -122,6 +131,20 @@ export default function App() {
       captureRef.current = null
     }
   }, [])
+
+  function clearReview() {
+    setMode('setup')
+    setLastWebmPath(null)
+    setLastCursorEventsPath(null)
+    setPlaybackUrl(null)
+    setPlaybackCursorEvents([])
+    setReviewDurationMs(0)
+    setReviewBytesWritten(0)
+    setReviewChunkCount(0)
+    setReviewCursorEventCount(0)
+    setLastSummary(null)
+    setError(null)
+  }
 
   async function refreshSources() {
     setBusy(true)
@@ -171,39 +194,37 @@ export default function App() {
         setRecording(result.status)
         setLastWebmPath(result.outputPath)
         setLastCursorEventsPath(result.cursorEventsPath)
-        setPlaybackUrl(null)
-        setPlaybackCursorEvents([])
+        setReviewDurationMs(result.durationMs)
+        setReviewBytesWritten(result.bytesWritten)
+        setReviewChunkCount(result.chunkCount)
+        setReviewCursorEventCount(result.cursorEventCount)
 
-        if (result.outputPath) {
-          try {
-            const [media, cursor] = await Promise.all([
-              getMediaUrl({ filePath: result.outputPath }),
-              result.cursorEventsPath
-                ? readCursorEvents({ eventsPath: result.cursorEventsPath })
-                : Promise.resolve({ ok: true as const, events: [] as CursorEvent[] }),
-            ])
-            setPlaybackUrl(media.url)
-            setPlaybackCursorEvents(cursor.events)
-          } catch (loadErr) {
-            setError(
-              loadErr instanceof Error ? loadErr.message : 'Failed to load playback preview',
-            )
-          }
+        if (!result.outputPath) {
+          setMode('setup')
+          setLastSummary(`Session ${(result.durationMs / 1000).toFixed(1)}s with no video data.`)
+          return
         }
 
-        const size = formatBytes(result.bytesWritten)
-        const secs = (result.durationMs / 1000).toFixed(1)
-        setLastSummary(
-          result.outputPath
-            ? `Saved ${size} (${result.chunkCount} chunks, ${result.cursorEventCount} cursor events) in ${secs}s → ${result.outputPath}`
-            : `Session ${secs}s with no chunks written.`,
-        )
+        try {
+          const [media, cursor] = await Promise.all([
+            getMediaUrl({ filePath: result.outputPath }),
+            result.cursorEventsPath
+              ? readCursorEvents({ eventsPath: result.cursorEventsPath })
+              : Promise.resolve({ ok: true as const, events: [] as CursorEvent[] }),
+          ])
+          setPlaybackUrl(media.url)
+          setPlaybackCursorEvents(cursor.events)
+          setMode('review')
+          setLastSummary(null)
+        } catch (loadErr) {
+          setMode('setup')
+          setError(
+            loadErr instanceof Error ? loadErr.message : 'Failed to load recording preview',
+          )
+        }
       } else {
-        setLastSummary(null)
-        setLastWebmPath(null)
-        setLastCursorEventsPath(null)
-        setPlaybackUrl(null)
-        setPlaybackCursorEvents([])
+        clearReview()
+        setMode('recording')
         const started = await startRecording({ sourceId: selectedSourceId! })
         setRecording(started.status)
 
@@ -211,13 +232,13 @@ export default function App() {
           const handle = await startLiveCapture({
             sourceId: selectedSourceId!,
             onChunk: async (data) => {
-              const result = await appendRecordingChunk({ data })
+              const chunkResult = await appendRecordingChunk({ data })
               setRecording((prev) =>
                 prev.state === 'recording'
                   ? {
                       ...prev,
-                      bytesWritten: result.bytesWritten,
-                      chunkCount: result.chunkCount,
+                      bytesWritten: chunkResult.bytesWritten,
+                      chunkCount: chunkResult.chunkCount,
                     }
                   : prev,
               )
@@ -227,13 +248,13 @@ export default function App() {
           captureRef.current = handle
           bindPreview(handle.stream)
         } catch (captureErr) {
-          // Roll back main session if getUserMedia / MediaRecorder fails.
           try {
             await stopRecording()
           } catch {
             /* ignore */
           }
           setRecording(idleRecording)
+          setMode('setup')
           throw captureErr
         }
       }
@@ -244,7 +265,7 @@ export default function App() {
     }
   }
 
-  async function onExportMp4() {
+  async function onExportMp4(_edit: ReviewEditState) {
     if (!lastWebmPath) return
     setExporting(true)
     setExportProgress({ phase: 'starting', percent: 0 })
@@ -254,24 +275,20 @@ export default function App() {
         inputPath: lastWebmPath,
         cleanupTemp: true,
       }
-      if (lastCursorEventsPath) {
+      if (_edit.autoZoomEnabled && lastCursorEventsPath) {
         exportRequest.autoZoom = { cursorEventsPath: lastCursorEventsPath }
       }
       const result = await exportWebmToMp4(exportRequest)
-      setLastWebmPath(null)
-      setLastCursorEventsPath(null)
-      setPlaybackUrl(null)
-      setPlaybackCursorEvents([])
+      clearReview()
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
 
-      // Offer Save As → Documents/Screen Flow (user can cancel and keep temp path).
       const saved = await saveExport({
         sourcePath: result.outputPath,
         cleanupSource: true,
       })
       if (saved.cancelled) {
         setLastSummary(
-          `Exported MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath} (not saved to Documents)`,
+          `Exported MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
         )
       } else {
         setLastSummary(
@@ -301,6 +318,50 @@ export default function App() {
   }
 
   const selected = sources.find((s) => s.id === selectedSourceId) ?? null
+
+  if (mode === 'review' && playbackUrl && lastWebmPath) {
+    return (
+      <div className="shell shell--review">
+        <div className="shell__atmosphere" aria-hidden="true" />
+        <header className="shell__top">
+          <p className="shell__brand">Screen Flow</p>
+          <p className="shell__meta">
+            {info
+              ? `${info.runtime} · ${info.platform} · v${info.version}`
+              : 'connecting…'}
+          </p>
+        </header>
+        <main className="shell__review-stage">
+          {error ? (
+            <p className="shell__status shell__status--warn shell__status--banner" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <RecordingReview
+            key={playbackUrl}
+            mediaUrl={playbackUrl}
+            webmPath={lastWebmPath}
+            cursorEvents={playbackCursorEvents}
+            cursorEventsPath={lastCursorEventsPath}
+            durationMs={reviewDurationMs}
+            bytesWritten={reviewBytesWritten}
+            chunkCount={reviewChunkCount}
+            cursorEventCount={reviewCursorEventCount}
+            exporting={exporting}
+            exportProgress={exportProgress}
+            onExport={(edit) => void onExportMp4(edit)}
+            onCancelExport={() => void onCancelExport()}
+            onDiscard={clearReview}
+          />
+        </main>
+        {lastSummary ? (
+          <p className="shell__status shell__status--footer" role="status">
+            {lastSummary}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className="shell">
@@ -335,36 +396,12 @@ export default function App() {
             <button
               type="button"
               className="btn btn--ghost"
-              disabled={!canExport}
-              onClick={() => void onExportMp4()}
-            >
-              {exporting ? 'Exporting…' : 'Export MP4'}
-            </button>
-            {exporting ? (
-              <button
-                type="button"
-                className="btn btn--danger"
-                onClick={() => void onCancelExport()}
-              >
-                Cancel export
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn btn--ghost"
-              disabled={!inElectron || busy || isRecording || exporting}
+              disabled={!inElectron || busy || isRecording}
               onClick={() => void refreshSources()}
             >
               Refresh sources
             </button>
           </div>
-          {exporting && exportProgress ? (
-            <p className="shell__status" role="status">
-              Export {exportProgress.phase}
-              {exportProgress.percent > 0 ? ` · ${exportProgress.percent}%` : ''}
-              {exportProgress.message ? ` — ${exportProgress.message}` : ''}
-            </p>
-          ) : null}
           {permission ? (
             <p
               className={
@@ -399,7 +436,7 @@ export default function App() {
           <div className="preview-frame">
             <div className="preview-frame__glow" />
             <p className="preview-frame__label">
-              {isRecording ? 'Live preview' : 'Sources'}
+              {isRecording ? 'Live preview' : 'Pick a source'}
             </p>
             <video
               ref={previewRef}
@@ -411,12 +448,7 @@ export default function App() {
               autoPlay
             />
             {!isRecording ? (
-              playbackUrl ? (
-                <AutoZoomPlayback
-                  mediaUrl={playbackUrl}
-                  cursorEvents={playbackCursorEvents}
-                />
-              ) : !inElectron ? (
+              !inElectron ? (
                 <p className="preview-frame__hint">
                   Open via Electron to list displays with desktopCapturer.
                 </p>
@@ -435,7 +467,7 @@ export default function App() {
                           className={
                             active ? 'source-item source-item--active' : 'source-item'
                           }
-                          disabled={busy || exporting}
+                          disabled={busy}
                           onClick={() => setSelectedSourceId(source.id)}
                         >
                           {source.thumbnailDataUrl ? (

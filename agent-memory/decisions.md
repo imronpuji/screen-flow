@@ -68,6 +68,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User mendapat file permanen di Documents tanpa path traversal ke temp via IPC; dialog di main (bukan renderer); CI tetap bisa uji naming/copy tanpa Electron dialog.
 - **Status:** aktif
 
+## [2026-07-10] Media playback protocol
+
+- **Keputusan:** Temp WebM/MP4 diputar via custom `screenflow-media://play?path=…` (protocol.handle + net.fetch), bukan `file://` langsung di renderer.
+- **Alasan:** Halaman dev `http://localhost:5173` memblokir `file://` pada `<video>` (cross-origin); custom protocol aman karena path guard tetap di main.
+- **Status:** aktif
+
 ## [2026-07-10] Auto-zoom export bake (ffmpeg sendcmd)
 
 - **Keputusan:** Export MP4 memanggil `planAutoZoomExport` → sample `getZoomTransformAtTime` @ ~30fps → tulis `zoom-sendcmd.txt` → ffmpeg `-vf "sendcmd=…,crop@z=…,scale=W:H"`. IPC `ExportMp4Request.autoZoom.cursorEventsPath`. UI meneruskan path JSONL dari stop recording.

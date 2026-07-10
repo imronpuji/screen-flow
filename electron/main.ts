@@ -2,6 +2,10 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
+import {
+  installScreenFlowMediaProtocol,
+  registerScreenFlowMediaScheme,
+} from './protocol/mediaProtocol.js'
 import { saveExportedMp4 } from './ffmpeg/saveExport.js'
 import {
   cancelExport,
@@ -30,6 +34,8 @@ import {
 } from '../shared/ipc.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+registerScreenFlowMediaScheme()
 
 // In packaged builds, dist-electron/ sits next to dist/.
 const isDev = !app.isPackaged
@@ -159,7 +165,8 @@ function broadcastExportProgress(): void {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await installScreenFlowMediaProtocol()
   registerIpc()
   broadcastExportProgress()
   createWindow()

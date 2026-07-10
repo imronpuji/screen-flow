@@ -23,7 +23,7 @@ export const IPC_CHANNELS = {
   EXPORT_SAVE: 'export:save',
   /** Read cursor JSONL from a session temp path (for auto-zoom preview). */
   RECORDING_READ_CURSOR_EVENTS: 'recording:read-cursor-events',
-  /** Return a file:// URL for a temp capture file (WebM/MP4 playback). */
+  /** Return a screenflow-media:// URL for a temp capture file (WebM/MP4 playback). */
   RECORDING_GET_MEDIA_URL: 'recording:get-media-url',
 } as const
 
