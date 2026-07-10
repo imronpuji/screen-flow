@@ -9,6 +9,7 @@ import {
   cutGapInKeepRanges,
   defaultKeepRanges,
   deleteKeepRangeAtPlayhead,
+  deleteKeepRangeWithRipple,
   discardedKeepWindows,
   findKeepRangeIndex,
   isInsideKeepRange,
@@ -78,6 +79,25 @@ function testDeleteSegment(): void {
   console.log('ok delete segment')
 }
 
+function testRippleDelete(): void {
+  const split = splitKeepRangesAtPlayhead(defaultKeepRanges(FULL), 4000, FULL)!
+  const triple = splitKeepRangesAtPlayhead(split, 6000, FULL)!
+  assert(triple != null && triple.length === 3, 'three razor segments')
+  const noRipple = deleteKeepRangeWithRipple(triple, 5000, FULL, false)
+  assert(noRipple != null && noRipple.ranges.length === 2, 'non-ripple keeps edit points')
+  assert(noRipple!.ranges[0]!.endMs === 4000, 'left intact')
+  assert(noRipple!.ranges[1]!.startMs === 6000, 'right intact')
+  const rippleFirst = deleteKeepRangeWithRipple(triple, 2000, FULL, true)
+  assert(rippleFirst != null && rippleFirst.ranges.length === 1, 'ripple merges survivors')
+  assert(rippleFirst!.ranges[0]!.startMs === 4000, 'ripple from first delete')
+  assert(rippleFirst!.ranges[0]!.endMs === FULL, 'ripple to end')
+  assert(rippleFirst!.playheadMs === 4000, 'ripple playhead snap')
+  const rippleLast = deleteKeepRangeWithRipple(triple, 8000, FULL, true)
+  assert(rippleLast != null && rippleLast.ranges.length === 1, 'ripple delete last')
+  assert(rippleLast!.ranges[0]!.endMs === 6000, 'ripple trims end')
+  console.log('ok ripple delete')
+}
+
 function testApplyTrim(): void {
   const one = applyTrimToKeepRanges(defaultKeepRanges(FULL), { startMs: 500, endMs: 8000 }, FULL)
   assert(one.length === 1 && one[0]!.startMs === 500, 'single replace')
@@ -100,6 +120,7 @@ testDefault()
 testSplitAdjacent()
 testCutGapConcat()
 testDeleteSegment()
+testRippleDelete()
 testApplyTrim()
 testSplitTooClose()
 testGapSkipPlayback()

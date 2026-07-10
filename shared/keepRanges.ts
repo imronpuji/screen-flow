@@ -154,6 +154,41 @@ export function deleteKeepRangeAtPlayhead(
   return normalizeKeepRanges(next, fullDurationMs)
 }
 
+export interface DeleteKeepRangeResult {
+  ranges: KeepRange[]
+  /** When set, UI should move playhead here after delete (ripple / invalid snap). */
+  playheadMs?: number
+}
+
+/**
+ * Delete the keep range under the playhead.
+ * When `rippleDelete` is true, merge touching survivors so the timeline closes up.
+ */
+export function deleteKeepRangeWithRipple(
+  ranges: KeepRange[],
+  playheadMs: number,
+  fullDurationMs: number,
+  rippleDelete: boolean,
+): DeleteKeepRangeResult | null {
+  const normalized = normalizeKeepRanges(ranges, fullDurationMs)
+  if (normalized.length <= 1) return null
+  const idx = findKeepRangeIndex(normalized, playheadMs)
+  if (idx < 0) return null
+  const deleted = normalized[idx]!
+  const without = [...normalized.slice(0, idx), ...normalized.slice(idx + 1)]
+  const next = rippleDelete
+    ? mergeAdjacentKeepRanges(without, fullDurationMs)
+    : normalizeKeepRanges(without, fullDurationMs)
+  const playheadSnap = snapPlayheadIntoKeepRanges(next, playheadMs, fullDurationMs)
+  const playheadMsOut =
+    rippleDelete || playheadSnap !== playheadMs
+      ? rippleDelete
+        ? snapPlayheadIntoKeepRanges(next, deleted.startMs, fullDurationMs)
+        : playheadSnap
+      : undefined
+  return { ranges: next, playheadMs: playheadMsOut }
+}
+
 /**
  * Discard a middle window [fromMs, toMs] inside keep ranges,
  * leaving remnants with a gap — jump-cut on export concat.

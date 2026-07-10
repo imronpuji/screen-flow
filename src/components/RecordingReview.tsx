@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ExportProgressEvent } from '../../shared/ipc'
 import type { CursorEvent } from '../../shared/cursor'
 import {
@@ -79,7 +79,7 @@ import {
 import {
   applyTrimToKeepRanges,
   canSplitKeepRangesAtPlayhead,
-  deleteKeepRangeAtPlayhead,
+  deleteKeepRangeWithRipple,
   findKeepRangeIndex,
   normalizeKeepRanges,
   splitKeepRangesAtPlayhead,
@@ -112,6 +112,7 @@ import {
   type EditorPanelId,
 } from '../../shared/editorPanels'
 import { loadEditorPanelPrefs, saveEditorPanelPrefs } from '../../shared/editorPanelPrefs'
+import { loadTimelinePrefs, saveTimelinePrefs } from '../../shared/timelinePrefs'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import { CameraLayoutMap } from './CameraLayoutMap'
 import { EditorPanel } from './EditorPanel'
@@ -192,6 +193,7 @@ export function RecordingReview({
   const [editorChrome, setEditorChrome] = useState<EditorChromeState>(() =>
     loadEditorPanelPrefs(),
   )
+  const [timelinePrefs, setTimelinePrefs] = useState(() => loadTimelinePrefs())
 
   function setEdit(
     updater: ReviewEditState | ((prev: ReviewEditState) => ReviewEditState),
@@ -228,6 +230,7 @@ export function RecordingReview({
   const editRef = useRef(edit)
   const playheadMsRef = useRef(0)
   const durationMsRef = useRef(durationMs)
+  const rippleDeleteRef = useRef(timelinePrefs.rippleDeleteEnabled)
   const onCameraOverlayChangeRef = useRef(onCameraOverlayChange)
 
   useEffect(() => {
@@ -248,6 +251,14 @@ export function RecordingReview({
   useEffect(() => {
     saveEditorPanelPrefs(editorChrome)
   }, [editorChrome])
+
+  useEffect(() => {
+    saveTimelinePrefs(timelinePrefs)
+  }, [timelinePrefs])
+
+  useEffect(() => {
+    rippleDeleteRef.current = timelinePrefs.rippleDeleteEnabled
+  }, [timelinePrefs.rippleDeleteEnabled])
 
   const zoomSegments = useMemo(
     () =>
@@ -323,6 +334,24 @@ export function RecordingReview({
       ),
     }))
   }
+
+  const deleteSegmentAtPlayhead = useCallback(() => {
+    if (exporting) return
+    const ph = playheadMsRef.current
+    const full = durationMsRef.current
+    const ranges = normalizeKeepRanges(editRef.current.keepRanges, full)
+    const result = deleteKeepRangeWithRipple(
+      ranges,
+      ph,
+      full,
+      rippleDeleteRef.current,
+    )
+    if (!result) return
+    setEdit((prev) => withKeepRanges(prev, result.ranges, full))
+    if (result.playheadMs != null) {
+      setPlayheadMs(result.playheadMs)
+    }
+  }, [exporting])
 
   function nudgeClickZoomFocus(
     index: number,
@@ -461,18 +490,7 @@ export function RecordingReview({
       }
       if (action === 'delete-segment') {
         event.preventDefault()
-        const ph = playheadMsRef.current
-        const full = durationMsRef.current
-        setEdit((prev) => {
-          const ranges = normalizeKeepRanges(prev.keepRanges, full)
-          // Prefer deleting the segment under the playhead; if only one range,
-          // cut a gap using mark-style outer trim is not available — no-op.
-          const deleted = deleteKeepRangeAtPlayhead(ranges, ph, full)
-          if (deleted) return withKeepRanges(prev, deleted, full)
-          // Single range: if playhead is inside, split then delete the shorter side? No —
-          // use cutGap between previous razor points only. Fallback: no-op.
-          return prev
-        })
+        deleteSegmentAtPlayhead()
         return
       }
       if (action === 'discard') {
@@ -482,7 +500,7 @@ export function RecordingReview({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [exporting, hasCameraTrack, onCancelExport, onDiscard, onExport])
+  }, [deleteSegmentAtPlayhead, exporting, hasCameraTrack, onCancelExport, onDiscard, onExport])
 
   function patchCamera(partial: Partial<CameraOverlayStyle>) {
     setEdit((prev) => ({
@@ -1779,6 +1797,30 @@ export function RecordingReview({
           </div>
 
           <div className="review__field review__field--compact">
+            <Tooltip copy={TOOLTIPS['trim-ripple-delete']}>
+              <label className="review__toggle">
+                <input
+                  type="checkbox"
+                  checked={timelinePrefs.rippleDeleteEnabled}
+                  disabled={exporting}
+                  onChange={(e) =>
+                    setTimelinePrefs((prev) => ({
+                      ...prev,
+                      rippleDeleteEnabled: e.target.checked,
+                    }))
+                  }
+                />
+                <span>Ripple delete</span>
+              </label>
+            </Tooltip>
+            <p className="review__hint">
+              {timelinePrefs.rippleDeleteEnabled
+                ? 'Delete merges touching clips so the timeline closes up.'
+                : 'Delete keeps razor edit points separate for fine cuts.'}
+            </p>
+          </div>
+
+          <div className="review__field review__field--compact">
             <span className="review__label" id="trim-cut-label">
               Cut at playhead · {formatTimeMs(playheadMs)}
             </span>
@@ -1884,17 +1926,7 @@ export function RecordingReview({
                   type="button"
                   className="review__preset"
                   disabled={exporting || durationMs <= 0 || !canDeleteSegment}
-                  onClick={() =>
-                    setEdit((prev) => {
-                      const next = deleteKeepRangeAtPlayhead(
-                        prev.keepRanges,
-                        playheadMs,
-                        durationMs,
-                      )
-                      if (!next) return prev
-                      return withKeepRanges(prev, next, durationMs)
-                    })
-                  }
+                  onClick={deleteSegmentAtPlayhead}
                 >
                   <span className="review__preset-label">Delete seg</span>
                 </button>
