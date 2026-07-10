@@ -57,6 +57,7 @@ import {
   stopRecording,
 } from './lib/runtime'
 import { CameraBubble } from './components/CameraBubble'
+import { CameraMonitor } from './components/CameraMonitor'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
 import { EmptyHint, Tooltip } from './components/Tooltip'
@@ -1340,6 +1341,20 @@ export default function App() {
               <p className="shell__status" role="status">
                 {micNote}
               </p>
+            ) : null}
+            {/*
+              Docked self-view in app chrome while recording. Kept out of the
+              capture preview so the layout-positioned bubble is not burned into
+              screen WebM (export composites camera.webm once). Does not touch
+              track.enabled — mid-recording mute stays authoritative.
+            */}
+            {isRecording && cameraStream ? (
+              <CameraMonitor
+                stream={cameraStream}
+                live={cameraLive}
+                mirrored={cameraOverlay.mirrored}
+                shape={cameraOverlay.shape}
+              />
             ) : null}
           </div>
           {isRecording ? (
