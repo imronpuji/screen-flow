@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 24:00] Auto-highlight clicks (polish / item 6+11)
+
+- **Dikerjakan:**
+  - `CursorAppearance.clickHighlightEnabled` (default **on**; legacy prefs tanpa key → on).
+  - `getActiveClickHighlights` — soft pulse ~700ms, lebih besar dari outline ring.
+  - Preview `.cursor-overlay__highlight` + export `drawbox@hl` (preview ≡ export).
+  - Review toggle “Auto-highlight clicks”; Beautify Tutorial/Demo/Social menyalakan; persist via cursor prefs.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke cursor-smoothing/appearance/prefs/beautify/export-effects hijau.
+- **Commit:** `8b10c97`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional ScreenCaptureKit.
+
 ## [2026-07-10 23:40] Review FaceTime layout map (FOKUS 3B)
 
 - **Dikerjakan:**
