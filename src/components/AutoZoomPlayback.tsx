@@ -54,6 +54,8 @@ export interface AutoZoomPlaybackProps {
   /** Recorded camera.webm URL; bubble stays outside zoom (matches export). */
   cameraMediaUrl?: string | null
   cameraOverlay?: CameraOverlayStyle
+  /** Persist drag/snap layout from the review bubble (relative 0–1 coords). */
+  onCameraLayoutChange?: (next: CameraOverlayStyle) => void
   trimStartMs?: number
   trimEndMs?: number
   onDurationMs?: (ms: number) => void
@@ -71,6 +73,7 @@ export function AutoZoomPlayback({
   background,
   cameraMediaUrl = null,
   cameraOverlay = DEFAULT_CAMERA_OVERLAY,
+  onCameraLayoutChange,
   trimStartMs = 0,
   trimEndMs,
   onDurationMs,
@@ -292,6 +295,12 @@ export function AutoZoomPlayback({
       mirrored={false}
       style={cameraOverlay}
       label="Camera overlay"
+      onLayoutChange={onCameraLayoutChange}
+      frameAspect={
+        videoSize.width > 0 && videoSize.height > 0
+          ? videoSize.width / videoSize.height
+          : undefined
+      }
     />
   ) : null
 

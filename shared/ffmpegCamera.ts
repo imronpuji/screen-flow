@@ -1,6 +1,6 @@
 /**
  * Plan ffmpeg overlay for FaceTime/webcam bubble bake into export.
- * Matches shared/camera.ts layout (corner, size%, circle/rounded).
+ * Matches shared/camera.ts layout (relative x/y + size%, circle/rounded).
  *
  * Mask uses a ONE-FRAME geq alpha → loop → alphamerge (same pattern as
  * background rounded corners) so we never run geq per video frame.

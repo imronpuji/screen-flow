@@ -20,8 +20,8 @@ import {
 import {
   CAMERA_CORNERS,
   DEFAULT_CAMERA_OVERLAY,
+  applyCameraCornerPreset,
   normalizeCameraOverlay,
-  type CameraCorner,
   type CameraOverlayStyle,
   type CameraShape,
 } from '../../shared/camera'
@@ -244,6 +244,12 @@ export function RecordingReview({
             background={edit.background}
             cameraMediaUrl={cameraMediaUrl}
             cameraOverlay={edit.cameraOverlay}
+            onCameraLayoutChange={(next) =>
+              setEdit((prev) => ({
+                ...prev,
+                cameraOverlay: normalizeCameraOverlay(next),
+              }))
+            }
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             onDurationMs={onDurationMs}
@@ -560,24 +566,38 @@ export function RecordingReview({
               {edit.cameraOverlay.enabled ? (
                 <>
                   <div className="review__field">
-                    <label className="review__label" htmlFor="cam-corner">
-                      Corner
-                    </label>
-                    <select
-                      id="cam-corner"
-                      className="review__select"
-                      value={edit.cameraOverlay.corner}
-                      disabled={exporting}
-                      onChange={(e) =>
-                        patchCamera({ corner: e.target.value as CameraCorner })
-                      }
-                    >
+                    <span className="review__label">Position</span>
+                    <div className="review__presets" role="group" aria-label="Camera corner presets">
                       {CAMERA_CORNERS.map((corner) => (
-                        <option key={corner} value={corner}>
-                          {corner.replace('-', ' ')}
-                        </option>
+                        <button
+                          key={corner}
+                          type="button"
+                          className={`review__preset${
+                            edit.cameraOverlay.anchor === corner
+                              ? ' review__preset--active'
+                              : ''
+                          }`}
+                          disabled={exporting}
+                          onClick={() =>
+                            setEdit((prev) => ({
+                              ...prev,
+                              cameraOverlay: applyCameraCornerPreset(
+                                prev.cameraOverlay,
+                                corner,
+                              ),
+                            }))
+                          }
+                        >
+                          <span className="review__preset-label">
+                            {corner.replace('-', ' ')}
+                          </span>
+                        </button>
                       ))}
-                    </select>
+                    </div>
+                    <p className="review__hint">
+                      Drag the bubble on the preview — snaps to corners &amp; edges
+                      {edit.cameraOverlay.anchor === 'free' ? ' (custom)' : ''}.
+                    </p>
                   </div>
 
                   <div className="review__field">

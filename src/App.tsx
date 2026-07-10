@@ -10,6 +10,7 @@ import type { ReviewEditState } from '../shared/edit'
 import {
   CAMERA_CORNERS,
   DEFAULT_CAMERA_OVERLAY,
+  applyCameraCornerPreset,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
 } from '../shared/camera'
@@ -719,14 +720,18 @@ export default function App() {
                 <label className="camera-controls__field">
                   <span>Corner</span>
                   <select
-                    value={cameraOverlay.corner}
+                    value={
+                      cameraOverlay.anchor === 'free'
+                        ? cameraOverlay.corner
+                        : cameraOverlay.anchor
+                    }
                     disabled={busy}
                     onChange={(e) =>
                       setCameraOverlay((prev) =>
-                        normalizeCameraOverlay({
-                          ...prev,
-                          corner: e.target.value as CameraOverlayStyle['corner'],
-                        }),
+                        applyCameraCornerPreset(
+                          prev,
+                          e.target.value as CameraOverlayStyle['corner'],
+                        ),
                       )
                     }
                   >
@@ -821,7 +826,11 @@ export default function App() {
                 Camera recording
               </div>
             ) : (
-              <CameraBubble stream={cameraStream} style={cameraOverlay} />
+              <CameraBubble
+                stream={cameraStream}
+                style={cameraOverlay}
+                onLayoutChange={(next) => setCameraOverlay(normalizeCameraOverlay(next))}
+              />
             )}
             {!isRecording ? (
               sources.length === 0 ? (
