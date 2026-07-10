@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Save As (`savePath` / `saveExport`) multi-ext; review format picker; IPC `format` on export + save.
   - Smoke `smoke:export-format` (+ live ffmpeg gif/webm) + save/quality/beautify updated.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke export-format/save/quality/beautify/export-effects/camera*/export-camera/camera-sync hijau.
-- **Commit:** (pending)
+- **Commit:** `97c2548` (feature) / `109c17b` (memory)
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; optional persist export format prefs; auto-highlight klik.
 
