@@ -611,13 +611,13 @@ function testPlaceAtPoint(): void {
   }
   assert(matchCameraSnapTarget(dragged) === 'bottom-right', 'drag path ends at BR snap')
 
-  // Layout-map snap guides use the same 8 targets as live bubble (centers of snap rects).
+  // Layout-map snap guides: always visible when interactive; click → applyCameraSnapPreset.
   const mapGuides = cameraSnapTargets(
     dragged.sizePercent,
     CAMERA_DEFAULT_ASPECT,
     dragged.heightPercent,
   )
-  assert(mapGuides.length === 8, 'map drag shows 8 snap guide dots')
+  assert(mapGuides.length === 8, 'map shows 8 snap guide dots')
   assert(
     mapGuides.every((t) => typeof t.x === 'number' && typeof t.y === 'number'),
     'map guide targets have coords',
@@ -633,6 +633,17 @@ function testPlaceAtPoint(): void {
     assert(cx > 0 && cx < 1 && cy > 0 && cy < 1, `guide center in frame (${t.id})`)
   }
   assert(matchCameraSnapTarget(dragged) === 'bottom-right', 'active guide = BR while snapped')
+
+  // Click a guide = exact preset (not magnetic place-at-point).
+  const fromGuide = applyCameraSnapPreset(base, 'top-left')
+  assert(matchCameraSnapTarget(fromGuide) === 'top-left', 'guide click TL')
+  assert(fromGuide.anchor === 'top-left', 'guide click TL anchor')
+  const edgeGuide = applyCameraSnapPreset(fromGuide, 'right-center')
+  assert(matchCameraSnapTarget(edgeGuide) === 'right-center', 'guide click right edge')
+  for (const id of CAMERA_SNAP_PRESETS) {
+    const hit = applyCameraSnapPreset(base, id)
+    assert(matchCameraSnapTarget(hit) === id, `guide click snaps ${id}`)
+  }
 
   // Scroll-wheel resize on map uses the same nudgeCameraSize helper.
   const beforeSize = dragged.sizePercent
