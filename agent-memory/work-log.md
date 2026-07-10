@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Setup + Review — Reset button next to S/M/L; hint mentions 1/2/3 + reset.
   - Smoke `smoke:camera` covers digit map + reset keeps chrome/device.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
-- **Commit:** `6498079` (feature) / (memory, pending)
+- **Commit:** `6498079` (feature) / `3fbd84d` (memory)
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; background presets polish atau zoom add-at-playhead.
 
