@@ -1286,6 +1286,11 @@
   cursor: grab;
 }
 
+.camera-bubble--interactive:focus-visible {
+  outline: 2px solid rgba(61, 214, 198, 0.7);
+  outline-offset: 2px;
+}
+
 .camera-bubble--dragging {
   cursor: grabbing;
   outline: 2px solid rgba(61, 214, 198, 0.45);

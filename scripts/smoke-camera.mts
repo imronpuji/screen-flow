@@ -25,8 +25,11 @@ import {
   matchCameraSnapTarget,
   normalizeCameraBorderColor,
   normalizeCameraOverlay,
+  nudgeCameraLayout,
   resizeCameraFromHandle,
   snapCameraLayout,
+  CAMERA_NUDGE_STEP,
+  CAMERA_NUDGE_STEP_SHIFT,
 } from '../shared/camera.ts'
 import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
 
@@ -368,6 +371,31 @@ function testResizeHandles(): void {
   console.log('ok resize handles')
 }
 
+function testNudge(): void {
+  const start = normalizeCameraOverlay({
+    enabled: true,
+    corner: 'bottom-right',
+    sizePercent: 22,
+    shape: 'circle',
+  })
+  const left = nudgeCameraLayout(start, 'left')
+  assert(left.anchor === 'free', 'nudge → free')
+  assert(nearly(left.x, start.x - CAMERA_NUDGE_STEP), 'nudge left step')
+  assert(nearly(left.y, start.y), 'nudge left keeps y')
+
+  const upShift = nudgeCameraLayout(start, 'up', { shift: true })
+  assert(nearly(upShift.y, start.y - CAMERA_NUDGE_STEP_SHIFT), 'shift nudge up')
+
+  // From top-left corner, nudge up/left should clamp at safe margin.
+  const corner = applyCameraCornerPreset({}, 'top-left')
+  const clamped = nudgeCameraLayout(corner, 'up')
+  assert(nearly(clamped.y, CAMERA_SAFE_MARGIN), 'nudge clamps top')
+  const clampedL = nudgeCameraLayout(corner, 'left')
+  assert(nearly(clampedL.x, CAMERA_SAFE_MARGIN), 'nudge clamps left')
+
+  console.log('ok nudge')
+}
+
 function testReviewEditCamera(): void {
   const plain = defaultReviewEdit(5000)
   assert(plain.cameraOverlay.enabled === false, 'default review camera off')
@@ -399,5 +427,6 @@ testPosition()
 testNormRect()
 testSnapAndPresets()
 testResizeHandles()
+testNudge()
 testReviewEditCamera()
 console.log('smoke-camera: all ok')
