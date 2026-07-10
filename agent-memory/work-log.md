@@ -8,7 +8,7 @@ Entri terbaru di ATAS.
   - Export: replace output `-to endMs` with `-t duration` after `-ss`; omit duration limit on full exports (EOF) to avoid VFR WebM overshoot → libx264 "Conversion failed!" / exit 234.
   - Harden `planCameraExport`: `fps=30`, `setsar=1`, `format=yuv420p` after overlay; `repeatlast=1`.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/export-effects/export-trim hijau.
-- **Commit:** (pending)
+- **Commit:** `2fe2c1e`
 - **Status:** done
 - **Next:** Empty-state tooltips; timeline markers; visual verify Retina zoom on Mac.
 
