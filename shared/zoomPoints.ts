@@ -13,7 +13,18 @@ export interface ZoomPointOverride {
   enabled: boolean
   /** Peak scale override; omit to keep the segment default (usually 1.6). */
   peakScale?: number
+  /** Optional focus override (0–1); omit to keep click-derived focus. */
+  focusX?: number
+  focusY?: number
 }
+
+/** Cardinal direction for focus nudge (frame coords, origin top-left). */
+export type ZoomFocusNudgeDirection = 'left' | 'right' | 'up' | 'down'
+
+/** Default focus nudge step as fraction of frame (2%). */
+export const ZOOM_FOCUS_NUDGE_STEP = 0.02
+/** Shift-held focus nudge step (8%). */
+export const ZOOM_FOCUS_NUDGE_STEP_SHIFT = 0.08
 
 /** User-added zoom (Add at playhead) — independent of click-derived segments. */
 export interface ManualZoomPoint {
@@ -50,6 +61,38 @@ export function clampZoomPeakScale(scale: number): number {
 function clamp01(value: number, fallback = 0.5): number {
   if (!Number.isFinite(value)) return fallback
   return Math.max(0, Math.min(1, value))
+}
+
+/**
+ * Nudge a zoom focus point within the frame (0–1), clamped.
+ * Matches camera-style fine control: small step, Shift = larger.
+ */
+export function nudgeZoomFocus(
+  focusX: number,
+  focusY: number,
+  direction: ZoomFocusNudgeDirection,
+  options: { shift?: boolean } = {},
+): { focusX: number; focusY: number } {
+  const step = options.shift
+    ? ZOOM_FOCUS_NUDGE_STEP_SHIFT
+    : ZOOM_FOCUS_NUDGE_STEP
+  let x = clamp01(focusX)
+  let y = clamp01(focusY)
+  switch (direction) {
+    case 'left':
+      x = clamp01(x - step)
+      break
+    case 'right':
+      x = clamp01(x + step)
+      break
+    case 'up':
+      y = clamp01(y - step)
+      break
+    case 'down':
+      y = clamp01(y + step)
+      break
+  }
+  return { focusX: x, focusY: y }
 }
 
 /** Stable-enough id for a session (no crypto needed). */
@@ -163,6 +206,19 @@ export function countEnabledManualZoomPoints(
   return n
 }
 
+function cleanOverride(item: ZoomPointOverride): ZoomPointOverride {
+  const cleaned: ZoomPointOverride = {
+    index: item.index,
+    enabled: item.enabled !== false,
+  }
+  if (item.peakScale != null) {
+    cleaned.peakScale = clampZoomPeakScale(item.peakScale)
+  }
+  if (item.focusX != null) cleaned.focusX = clamp01(item.focusX)
+  if (item.focusY != null) cleaned.focusY = clamp01(item.focusY)
+  return cleaned
+}
+
 function overrideMap(
   overrides: ZoomPointOverride[] | null | undefined,
 ): Map<number, ZoomPointOverride> {
@@ -170,20 +226,14 @@ function overrideMap(
   if (!overrides) return map
   for (const item of overrides) {
     if (!Number.isInteger(item.index) || item.index < 0) continue
-    map.set(item.index, {
-      index: item.index,
-      enabled: item.enabled !== false,
-      ...(item.peakScale != null
-        ? { peakScale: clampZoomPeakScale(item.peakScale) }
-        : {}),
-    })
+    map.set(item.index, cleanOverride(item))
   }
   return map
 }
 
 /**
  * Apply per-point edits onto auto-built segments.
- * Disabled points are dropped; enabled points may get a custom peakScale.
+ * Disabled points are dropped; enabled points may get custom peakScale / focus.
  */
 export function applyZoomPointOverrides(
   segments: ZoomSegment[],
@@ -196,11 +246,16 @@ export function applyZoomPointOverrides(
     const seg = segments[i]!
     const ov = map.get(i)
     if (ov && !ov.enabled) continue
-    if (ov?.peakScale != null) {
-      next.push({ ...seg, peakScale: ov.peakScale })
-    } else {
+    if (!ov) {
       next.push(seg)
+      continue
     }
+    next.push({
+      ...seg,
+      ...(ov.peakScale != null ? { peakScale: ov.peakScale } : {}),
+      ...(ov.focusX != null ? { focusX: ov.focusX } : {}),
+      ...(ov.focusY != null ? { focusY: ov.focusY } : {}),
+    })
   }
   return next
 }
@@ -210,13 +265,7 @@ export function upsertZoomPointOverride(
   overrides: ZoomPointOverride[],
   next: ZoomPointOverride,
 ): ZoomPointOverride[] {
-  const cleaned: ZoomPointOverride = {
-    index: next.index,
-    enabled: next.enabled !== false,
-    ...(next.peakScale != null
-      ? { peakScale: clampZoomPeakScale(next.peakScale) }
-      : {}),
-  }
+  const cleaned = cleanOverride(next)
   const idx = overrides.findIndex((o) => o.index === cleaned.index)
   if (idx < 0) return [...overrides, cleaned]
   const copy = overrides.slice()
@@ -242,6 +291,19 @@ export function resolveZoomPointPeakScale(
   const ov = overrides?.find((o) => o.index === index)
   if (ov?.peakScale != null) return clampZoomPeakScale(ov.peakScale)
   return segment.peakScale
+}
+
+/** Resolve focus for a segment (override or click-derived default). */
+export function resolveZoomPointFocus(
+  segment: ZoomSegment,
+  index: number,
+  overrides: ZoomPointOverride[] | null | undefined,
+): { focusX: number; focusY: number } {
+  const ov = overrides?.find((o) => o.index === index)
+  return {
+    focusX: ov?.focusX != null ? clamp01(ov.focusX) : clamp01(segment.focusX),
+    focusY: ov?.focusY != null ? clamp01(ov.focusY) : clamp01(segment.focusY),
+  }
 }
 
 export function countEnabledZoomPoints(

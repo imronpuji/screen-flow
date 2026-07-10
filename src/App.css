@@ -901,6 +901,31 @@
   opacity: 0.55;
 }
 
+.review__focus-nudge {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.review__focus-pad {
+  display: grid;
+  grid-template-areas:
+    '. up .'
+    'left . right'
+    '. down .';
+  grid-template-columns: repeat(3, 1.75rem);
+  grid-template-rows: repeat(3, 1.55rem);
+  gap: 0.15rem;
+  width: fit-content;
+}
+
+.review__focus-btn {
+  font-size: 0.75rem;
+  padding: 0;
+  min-width: 0;
+  line-height: 1;
+}
+
 .review__field {
   display: flex;
   flex-direction: column;
