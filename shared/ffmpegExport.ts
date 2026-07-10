@@ -95,7 +95,7 @@ export function planExportFilters(
   const backgroundStyle = effects.background
   const backgroundPlan =
     backgroundStyle != null
-      ? planBackgroundExport(backgroundStyle, videoSize, 'vzoom', 'vbg')
+      ? planBackgroundExport(backgroundStyle, videoSize, 'vzoom', 'vbg', durationMs)
       : null
 
   if (backgroundPlan?.hasBackground) {

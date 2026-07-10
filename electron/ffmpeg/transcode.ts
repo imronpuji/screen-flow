@@ -178,8 +178,12 @@ async function transcodeOnce(
   // After input -ss, limit OUTPUT length with -t (duration), not -to (absolute end).
   // Using -to endMs after a seek asks ffmpeg for endMs seconds of output and can
   // overrun the remaining source → libx264 "Conversion failed!" (exit 234).
-  // Full exports (start≈0, end≈source length): omit -t and read to EOF so VFR
-  // WebM duration probe mismatch cannot overshoot past the last frame.
+  //
+  // Full plain exports can read to EOF. Effects graphs often include infinite lavfi
+  // sources (gradients / loop=-1); without a duration cap those never EOF and the
+  // UI sits at 100% while ffmpeg cooks the CPU. Prefer shortest=1 in filters, and
+  // still pass a padded -t as a hard ceiling.
+  let durationLimitSec: number | null = null
   if (options.trim) {
     const startMs = options.trim.startMs
     const endMs = options.trim.endMs
@@ -187,8 +191,26 @@ async function transcodeOnce(
     const fullMs = options.fullDurationMs
     const shortenedEnd = fullMs != null && endMs < fullMs - 100
     if ((startMs > 50 || shortenedEnd) && Number.isFinite(durSec) && durSec > 0.08) {
-      args.push('-t', Math.max(0.05, durSec - 0.05).toFixed(3))
+      durationLimitSec = Math.max(0.05, durSec - 0.05)
     }
+  }
+  if (
+    durationLimitSec == null &&
+    options.filterComplex &&
+    options.expectedDurationSec != null &&
+    options.expectedDurationSec > 0
+  ) {
+    durationLimitSec = options.expectedDurationSec + 0.25
+  } else if (
+    durationLimitSec == null &&
+    options.filterComplex &&
+    options.fullDurationMs != null &&
+    options.fullDurationMs > 0
+  ) {
+    durationLimitSec = options.fullDurationMs / 1000 + 0.25
+  }
+  if (durationLimitSec != null && Number.isFinite(durationLimitSec) && durationLimitSec > 0) {
+    args.push('-t', durationLimitSec.toFixed(3))
   }
   args.push('-an')
   if (options.filterComplex) {
@@ -213,11 +235,23 @@ async function transcodeOnce(
   )
 
   let durationSec: number | undefined = options.expectedDurationSec
+  let hitComplete = false
 
   return runFfmpeg(args, (chunk) => {
     const maybeDuration = parseFfmpegDurationSec(chunk)
     if (maybeDuration != null && maybeDuration > 0 && durationSec == null) {
       durationSec = maybeDuration
+    }
+    if (/progress=end/.test(chunk)) {
+      hitComplete = true
+      emitProgress({
+        phase: 'encoding',
+        percent: 100,
+        timeSec: durationSec,
+        durationSec,
+        message: 'Finalizing MP4…',
+      })
+      return
     }
     const timeSec = parseFfmpegTimeSec(chunk)
     if (timeSec == null) return
@@ -229,9 +263,13 @@ async function transcodeOnce(
 
     emitProgress({
       phase: 'encoding',
-      percent,
+      percent: hitComplete ? 100 : percent,
       timeSec,
       durationSec,
+      message:
+        percent >= 100 || hitComplete
+          ? 'Finalizing encode…'
+          : undefined,
     })
   })
 }
@@ -283,7 +321,8 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
 
   let trimRange: TrimRange | undefined
   let trimApplied = false
-  let expectedDurationSec: number | undefined
+  // Always seed progress + runaway-graph -t from the probed duration (trim may narrow it).
+  let expectedDurationSec: number | undefined = probe.durationSec
 
   if (request.trim) {
     trimRange = normalizeTrim(request.trim, fullDurationMs)

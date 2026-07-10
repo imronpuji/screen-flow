@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Background export must EOF (shortest=1)
+
+- **Keputusan:** `gradients` + `loop=-1` adalah sumber infinite. Overlay background wajib `shortest=1`; `gradients` di-trim ke `durationMs` export. Transcode effects graph juga dapat `-t` padded dari probe duration sebagai hard ceiling. Tanpa ini, full export (tanpa `-t`) hang di 100% sambil CPU panas.
+- **Alasan:** Bug laporan user — progress 100% tapi tidak selesai; smoke sebelumnya lolos karena selalu pakai `-t 1.5`.
+- **Status:** aktif
+
 ## [2026-07-10] Camera layout: relative coords + drag snap
 
 - **Keputusan:** Layout bubble disimpan sebagai `x`/`y` relatif (0–1, origin top-left frame), `sizePercent` (lebar % frame; bubble kotak), `anchor` (`corner` preset | `free`), `shape`. Preview CSS (`left`/`top` %) dan ffmpeg `cameraBubbleNormRect` memakai angka yang sama. Safe margin **3%** tiap sumbu; size **12–40%** lebar frame. Snap targets: 4 pojok + 4 tengah tepi (`CAMERA_SNAP_THRESHOLD` ≈ 4.5%). Corner preset → `applyCameraCornerPreset` mengisi ulang x/y. Resize corner handles → `resizeCameraFromHandle` (pojok lawan fixed, aspect lock square, `anchor: 'free'`).
