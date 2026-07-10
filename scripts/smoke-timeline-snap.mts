@@ -14,6 +14,7 @@ import {
   collectTimelineSnapTargets,
   dedupeTimelineSnapTargets,
   magneticSnapThresholdMs,
+  snapKeepEdgeMagnetically,
   snapPlayheadMagnetically,
 } from '../dist-electron/shared/timelineSnap.js'
 import type { TimelineMarker } from '../dist-electron/shared/timelineMarkers.js'
@@ -118,6 +119,34 @@ function testDedupe(): void {
   console.log('ok dedupe')
 }
 
+function testKeepEdgeSnap(): void {
+  const targets = collectTimelineSnapTargets({
+    durationMs: 10_000,
+    keepRanges: [
+      { startMs: 0, endMs: 4000 },
+      { startMs: 6000, endMs: 10_000 },
+    ],
+    markers: [{ id: 'c1', kind: 'click', tMs: 2500, label: 'Click' }],
+  })
+  // Dragging keep-0-end near 2500 should snap to click, not stick to itself.
+  const nearClick = snapKeepEdgeMagnetically(2480, targets, ['keep-0-end'], 120)
+  assert(nearClick.snapped && nearClick.ms === 2500, 'edge snaps to click')
+
+  // Near own edge id excluded → no self-stick at 4000 when proposing 4000±ε
+  // with only that target nearby after exclude… use a lone target case:
+  const selfOnly = snapKeepEdgeMagnetically(
+    4010,
+    [{ tMs: 4000, kind: 'keep-edge', id: 'keep-0-end' }],
+    ['keep-0-end'],
+    120,
+  )
+  assert(!selfOnly.snapped && selfOnly.ms === 4010, 'excludes self edge')
+
+  const toNeighbor = snapKeepEdgeMagnetically(5920, targets, ['keep-0-end'], 120)
+  assert(toNeighbor.snapped && toNeighbor.ms === 6000, 'snap to neighbor start')
+  console.log('ok keep-edge snap')
+}
+
 function testPrefs(): void {
   assert(DEFAULT_TIMELINE_PREFS.magneticSnapEnabled === true, 'default on')
   assert(
@@ -155,6 +184,7 @@ function main(): void {
   testThreshold()
   testCollectAndSnap()
   testDedupe()
+  testKeepEdgeSnap()
   testPrefs()
   console.log('smoke:timeline-snap ok')
 }

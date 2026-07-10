@@ -53,6 +53,7 @@ import {
 import {
   discardedKeepWindows,
   normalizeKeepRanges,
+  resizeKeepRangeEdge,
   resolveKeepPlaybackMs,
   snapPlayheadIntoKeepRanges,
   type KeepRange,
@@ -60,6 +61,7 @@ import {
 import {
   collectTimelineSnapTargets,
   magneticSnapThresholdMs,
+  snapKeepEdgeMagnetically,
   snapPlayheadMagnetically,
 } from '../../shared/timelineSnap'
 import { CameraBubble } from './CameraBubble'
@@ -102,6 +104,11 @@ export interface AutoZoomPlaybackProps {
    */
   keepRanges?: KeepRange[]
   /**
+   * Drag-resize keep-clip edges on the scrubber (FOKUS 5). When set, keep
+   * spans show start/end handles; magnetic snap uses the same edit points.
+   */
+  onKeepRangesChange?: (ranges: KeepRange[]) => void
+  /**
    * When true, scrubber seeks stick to nearby edit points (FOKUS 5 magnetic
    * timeline). Keyboard frame-step and internal gap-skip seeks stay free.
    */
@@ -129,6 +136,7 @@ export function AutoZoomPlayback({
   trimStartMs = 0,
   trimEndMs,
   keepRanges,
+  onKeepRangesChange,
   magneticSnapEnabled = true,
   onDurationMs,
   onTimeMs,
@@ -137,6 +145,11 @@ export function AutoZoomPlayback({
   const currentMsRef = useRef(0)
   const markersTrackRef = useRef<HTMLDivElement | null>(null)
   const cameraRangeDragRef = useRef<{
+    rangeIndex: number
+    edge: 'start' | 'end'
+    pointerId: number
+  } | null>(null)
+  const keepRangeDragRef = useRef<{
     rangeIndex: number
     edge: 'start' | 'end'
     pointerId: number
@@ -314,6 +327,96 @@ export function AutoZoomPlayback({
       event.preventDefault()
       event.stopPropagation()
       cameraRangeDragRef.current = null
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+    },
+    [],
+  )
+
+  const applyKeepRangeEdgeAtClientX = useCallback(
+    (clientX: number, rangeIndex: number, edge: 'start' | 'end') => {
+      if (!onKeepRangesChange || durationMs <= 0) return
+      const track = markersTrackRef.current
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+      let tMs = ratio * durationMs
+      const ranges = keepRangesRef.current
+      if (!ranges || ranges.length === 0) return
+
+      if (magneticSnapEnabled) {
+        const targets = collectTimelineSnapTargets({
+          durationMs,
+          trimStartMs,
+          trimEndMs: effectiveEndMs,
+          keepRanges: ranges,
+          markers: timelineMarkers,
+        })
+        const snapped = snapKeepEdgeMagnetically(
+          tMs,
+          targets,
+          [`keep-${rangeIndex}-${edge === 'start' ? 'start' : 'end'}`],
+          magneticSnapThresholdMs(durationMs),
+        )
+        tMs = snapped.ms
+      }
+
+      const next = resizeKeepRangeEdge(ranges, rangeIndex, edge, tMs, durationMs)
+      onKeepRangesChange(next)
+    },
+    [
+      durationMs,
+      effectiveEndMs,
+      magneticSnapEnabled,
+      onKeepRangesChange,
+      timelineMarkers,
+      trimStartMs,
+    ],
+  )
+
+  const onKeepRangeEdgePointerDown = useCallback(
+    (
+      event: ReactPointerEvent<HTMLSpanElement>,
+      rangeIndex: number,
+      edge: 'start' | 'end',
+    ) => {
+      if (!onKeepRangesChange || Boolean(loadError)) return
+      event.preventDefault()
+      event.stopPropagation()
+      const target = event.currentTarget
+      target.setPointerCapture(event.pointerId)
+      keepRangeDragRef.current = {
+        rangeIndex,
+        edge,
+        pointerId: event.pointerId,
+      }
+      applyKeepRangeEdgeAtClientX(event.clientX, rangeIndex, edge)
+    },
+    [applyKeepRangeEdgeAtClientX, loadError, onKeepRangesChange],
+  )
+
+  const onKeepRangeEdgePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const drag = keepRangeDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      applyKeepRangeEdgeAtClientX(event.clientX, drag.rangeIndex, drag.edge)
+    },
+    [applyKeepRangeEdgeAtClientX],
+  )
+
+  const onKeepRangeEdgePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const drag = keepRangeDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      keepRangeDragRef.current = null
       try {
         event.currentTarget.releasePointerCapture(event.pointerId)
       } catch {
@@ -828,6 +931,68 @@ export function AutoZoomPlayback({
                       disabled={Boolean(loadError)}
                       onClick={() => onScrub(marker.tMs)}
                     />
+                  )
+                })
+              : null}
+            {durationMs > 0 &&
+            onKeepRangesChange &&
+            normalizedKeepRanges &&
+            normalizedKeepRanges.length > 0
+              ? normalizedKeepRanges.map((range, index) => {
+                  const left = markerPercent(range.startMs, durationMs)
+                  const width = Math.max(
+                    0.4,
+                    markerPercent(range.endMs, durationMs) - left,
+                  )
+                  const label =
+                    normalizedKeepRanges.length > 1
+                      ? `Keep ${index + 1}`
+                      : 'Keep clip'
+                  return (
+                    <div
+                      key={`keep-${index}-${range.startMs}-${range.endMs}`}
+                      role="listitem"
+                      className="zoom-playback__marker zoom-playback__marker--keep zoom-playback__marker--keep-editable"
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      title={`${label} · drag edges to trim · ${formatTimeMs(range.startMs)}–${formatTimeMs(range.endMs)}`}
+                    >
+                      <button
+                        type="button"
+                        className="zoom-playback__marker-body"
+                        aria-label={`${label} ${formatTimeMs(range.startMs)} to ${formatTimeMs(range.endMs)}`}
+                        onClick={() => onScrub(range.startMs)}
+                      />
+                      <span
+                        className="zoom-playback__marker-handle zoom-playback__marker-handle--start zoom-playback__marker-handle--keep"
+                        role="slider"
+                        aria-label={`${label} start`}
+                        aria-valuemin={0}
+                        aria-valuemax={durationMs}
+                        aria-valuenow={range.startMs}
+                        tabIndex={-1}
+                        onPointerDown={(e) =>
+                          onKeepRangeEdgePointerDown(e, index, 'start')
+                        }
+                        onPointerMove={onKeepRangeEdgePointerMove}
+                        onPointerUp={onKeepRangeEdgePointerUp}
+                        onPointerCancel={onKeepRangeEdgePointerUp}
+                      />
+                      <span
+                        className="zoom-playback__marker-handle zoom-playback__marker-handle--end zoom-playback__marker-handle--keep"
+                        role="slider"
+                        aria-label={`${label} end`}
+                        aria-valuemin={0}
+                        aria-valuemax={durationMs}
+                        aria-valuenow={range.endMs}
+                        tabIndex={-1}
+                        onPointerDown={(e) =>
+                          onKeepRangeEdgePointerDown(e, index, 'end')
+                        }
+                        onPointerMove={onKeepRangeEdgePointerMove}
+                        onPointerUp={onKeepRangeEdgePointerUp}
+                        onPointerCancel={onKeepRangeEdgePointerUp}
+                      />
+                    </div>
                   )
                 })
               : null}

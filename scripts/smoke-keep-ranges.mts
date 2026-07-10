@@ -16,6 +16,7 @@ import {
   mergeAdjacentKeepRanges,
   normalizeKeepRanges,
   outerTrimFromKeepRanges,
+  resizeKeepRangeEdge,
   resolveKeepPlaybackMs,
   snapPlayheadIntoKeepRanges,
   splitKeepRangesAtPlayhead,
@@ -116,6 +117,30 @@ function testSplitTooClose(): void {
   console.log('ok split too close')
 }
 
+function testResizeEdge(): void {
+  const one = resizeKeepRangeEdge(defaultKeepRanges(FULL), 0, 'start', 500, FULL)
+  assert(one.length === 1 && one[0]!.startMs === 500, 'trim start')
+  const end = resizeKeepRangeEdge(one, 0, 'end', 8000, FULL)
+  assert(end[0]!.endMs === 8000, 'trim end')
+
+  const gapped = cutGapInKeepRanges(defaultKeepRanges(FULL), 3000, 6000, FULL)!
+  const growLeft = resizeKeepRangeEdge(gapped, 0, 'end', 4500, FULL)
+  // Cannot cross into gap past next.start (6000) — clamp to neighbor.
+  assert(growLeft[0]!.endMs === 4500, 'grow left into gap')
+  assert(growLeft[1]!.startMs === 6000, 'right untouched')
+
+  const towardNeighbor = resizeKeepRangeEdge(gapped, 0, 'end', 7000, FULL)
+  assert(towardNeighbor[0]!.endMs === 6000, 'clamp to next start')
+  assert(towardNeighbor.length === 2, 'no merge on touch')
+
+  const shrinkMin = resizeKeepRangeEdge(gapped, 0, 'end', 50, FULL)
+  assert(shrinkMin[0]!.endMs === gapped[0]!.startMs + MIN_KEEP_MS, 'min length')
+
+  const badIdx = resizeKeepRangeEdge(gapped, 9, 'start', 100, FULL)
+  assert(badIdx.length === 2 && badIdx[0]!.endMs === 3000, 'bad index no-op')
+  console.log('ok resize edge')
+}
+
 testDefault()
 testSplitAdjacent()
 testCutGapConcat()
@@ -123,6 +148,7 @@ testDeleteSegment()
 testRippleDelete()
 testApplyTrim()
 testSplitTooClose()
+testResizeEdge()
 testGapSkipPlayback()
 console.log('smoke-keep-ranges: all ok')
 

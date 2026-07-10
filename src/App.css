@@ -633,6 +633,16 @@
   z-index: 1;
 }
 
+.zoom-playback__marker--keep {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  z-index: 0;
+}
+
+.zoom-playback__marker--keep-editable {
+  z-index: 1;
+}
+
 .zoom-playback__marker-body {
   position: absolute;
   inset: 0;
@@ -656,6 +666,10 @@
   z-index: 3;
 }
 
+.zoom-playback__marker-handle--keep {
+  background: color-mix(in srgb, var(--accent) 88%, #1a1a1a);
+}
+
 .zoom-playback__marker-handle--start {
   left: -3px;
 }
@@ -667,6 +681,11 @@
 .zoom-playback__marker-handle:hover,
 .zoom-playback__marker-handle:active {
   background: #f0a05a;
+}
+
+.zoom-playback__marker-handle--keep:hover,
+.zoom-playback__marker-handle--keep:active {
+  background: var(--accent);
 }
 
 .zoom-playback__marker--click {

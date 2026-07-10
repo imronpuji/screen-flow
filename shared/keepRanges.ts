@@ -325,6 +325,40 @@ export function resolveKeepPlaybackMs(
   return { ms: last.endMs, shouldPause: true }
 }
 
+/**
+ * Drag-resize one keep-range edge (FOKUS 5 clip-edge snap).
+ * Clamps to neighbors so gaps stay valid; never merges touching clips
+ * (razor edit points stay until ripple-delete / export merge).
+ */
+export function resizeKeepRangeEdge(
+  ranges: KeepRange[],
+  index: number,
+  edge: 'start' | 'end',
+  tMs: number,
+  fullDurationMs: number,
+): KeepRange[] {
+  const duration = Math.max(0, fullDurationMs)
+  const normalized = normalizeKeepRanges(ranges, duration)
+  if (index < 0 || index >= normalized.length) return normalized
+
+  const next = normalized.map((r) => ({ ...r }))
+  const cur = next[index]!
+  const prevEnd = index > 0 ? next[index - 1]!.endMs : 0
+  const nextStart = index < next.length - 1 ? next[index + 1]!.startMs : duration
+  const t = Math.max(0, Math.min(tMs, duration))
+
+  if (edge === 'start') {
+    const maxStart = Math.max(prevEnd, cur.endMs - MIN_KEEP_MS)
+    cur.startMs = Math.max(prevEnd, Math.min(t, maxStart))
+  } else {
+    const minEnd = Math.min(nextStart, cur.startMs + MIN_KEEP_MS)
+    cur.endMs = Math.min(nextStart, Math.max(t, minEnd))
+  }
+
+  // Re-normalize for clamp/order only — touching neighbors stay separate.
+  return normalizeKeepRanges(next, duration)
+}
+
 /** Apply a single-window trim edit onto keep-ranges (replaces with one range). */
 export function keepRangesFromTrim(trim: KeepRange, fullDurationMs: number): KeepRange[] {
   return normalizeKeepRanges([trim], fullDurationMs)

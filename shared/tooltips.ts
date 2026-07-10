@@ -153,8 +153,8 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   },
   'trim-magnetic-snap': {
     id: 'trim-magnetic-snap',
-    title: 'Magnetic snap · Stick playhead to edit points',
-    body: 'When on, scrubbing snaps to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing.',
+    title: 'Magnetic snap · Stick playhead & clip edges to edit points',
+    body: 'When on, scrubbing and keep-clip edge drags snap to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing and free edge drag.',
   },
 }
 
