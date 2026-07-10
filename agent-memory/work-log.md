@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:45] Camera mid-edge snap polish (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `CAMERA_EDGE_TARGETS` / `CAMERA_SNAP_PRESETS`, `applyCameraSnapPreset`, `matchCameraSnapTarget`, `cameraSnapPresetLabel`.
+  - `CameraBubble` — live magnetic snap saat drag + guide dots (8 target) via portal; outline `--snapped`.
+  - Review: 8 tombol posisi (4 pojok + 4 tepi); Setup: Position select mencakup edge mids + Custom.
+  - Smoke camera covers edge snap + preset match.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects/camera-sync hijau.
+- **Commit:** `ff6f3ab` (feature) / `875b622` (lint+memory)
+- **Status:** done (FOKUS 3B slice — mid-edge snap polish)
+- **Next:** Visual verify on Mac; multi-segment camera if MediaRecorder restart needed; optional opacity/mirror toggle.
+
 ## [2026-07-10 09:40] Camera outline color picker (FOKUS 3E)
 
 - **Dikerjakan:**

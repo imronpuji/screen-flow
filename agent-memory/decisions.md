@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera mid-edge snap polish (FOKUS 3B)
+
+- **Keputusan:** Snap targets tetap 4 pojok + 4 edge mid. Drag memakai **magnetic snap live** (`snapCameraLayout` tiap pointermove) + guide dots di frame. Preset cepat via `applyCameraSnapPreset` untuk semua 8 target; edge mid → `anchor: 'free'` + x/y target; `matchCameraSnapTarget` (ε≈1.2%) untuk highlight tombol aktif. Corner preset tetap lewat `applyCameraCornerPreset` (wrapper).
+- **Alasan:** Snap hanya di pointer-up terasa kasar; edge mid tanpa tombol sulit ditemukan; guide dots = feedback Loom/Screen Studio.
+- **Status:** aktif
+
 ## [2026-07-10] Camera outline color presets (FOKUS 3E)
 
 - **Keputusan:** Outline color memakai `borderColor` (#RRGGBB) yang sudah ada di `CameraOverlayStyle`. UI menambah `CAMERA_BORDER_COLOR_PRESETS` (6 swatch) + native color picker; Beautify mengisi warna per preset (Tutorial frost `#E8EEF4`, Demo teal `#3DD6C6`, Social amber `#F0A05A`). Preview CSS dan ffmpeg `cameraBorderFfmpegColor` tetap satu sumber data.
