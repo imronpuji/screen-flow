@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Export format picker (MP4 / WebM / GIF)
+
+- **Keputusan:** `ReviewEditState.exportFormat` (`mp4` | `webm` | `gif`, default **mp4**) + `ExportMp4Request.format`. Satu pipeline effects (zoom→bg→cursor→camera) lalu encode per format: **MP4** = H.264 (+ AAC mic) seperti sebelumnya; **WebM** = `libvpx-vp9` CRF (draft 40 / good 32 / high 28) + `libopus` bila mic; **GIF** = `palettegen`/`paletteuse` (fps+maxWidth dari quality: 8/480 · 12/720 · 15/1080), **tanpa audio**. Save As memakai ekstensi + dialog filter yang sama. Beautify **tidak** mengubah format.
+- **Alasan:** README/innovation menjanjikan GIF/WebM; orang awam butuh share web/Slack tanpa handoff ffmpeg manual; quality presets tetap satu sumber.
+- **Status:** aktif
+
 ## [2026-07-10] Background export gradient fidelity (preview ≡ CSS)
 
 - **Keputusan:** Setiap `BackgroundPreset` membawa `exportGradient` (sumber tunggal dengan `css`): multi-stop `colors[]` (2–8 → lavfi `nb_colors`), `angleDeg` (CSS 0°=up, clockwise → `cssAngleToGradientLine` ke tepi frame), dan optional `accents[]` (soft radial wash: 1-frame `geq` → `loop` → `overlay`, pola sama shadow). `buildGradientsLavfi` memakai `type=linear` + `speed=0.00001` (static; default lavfi 0.01 berputar). Endpoint gradient **selalu ≥0** (lavfi menolak x/y < −1).
