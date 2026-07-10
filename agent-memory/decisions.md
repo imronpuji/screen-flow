@@ -86,6 +86,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
 - **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
+## [2026-07-10] Kamera FaceTime — parallel WebM + shared wall-clock
+
+- **Keputusan:** Webcam direkam sebagai `camera.webm` terpisah di session temp (bukan dibakar ke screen WebM). `StartRecordingRequest.includeCamera` membuka writer kedua; `AppendChunkRequest.track: 'screen' | 'camera'`. Screen & camera memakai `startedAt` wall-clock yang sama (ms sejak epoch session) untuk sinkronisasi nanti — tidak mengandalkan urutan frame. Layout bubble di `shared/camera.ts` (corner, sizePercent, shape) dipakai preview sekarang dan ffmpeg overlay nanti via `cameraBubbleNormRect`.
+- **Alasan:** Mirror pola cursor-as-data: kamera bisa di-toggle/posisi/ukuran ulang saat export; drift antar stream lebih mudah dikoreksi dengan timestamp bersama; CI Linux tetap typecheck tanpa hardware kamera.
+- **Status:** aktif (capture + live bubble); ffmpeg composite = follow-up
+
 ## [2026-07-10] Background rounded/shadow via 1-frame alpha mask
 
 - **Keputusan:** Rounded corners + soft shadow di export memakai still 1-frame: `color=r=1:d=1` → `geq` alpha rounded-rect → `loop=loop=-1:size=1` → `alphamerge` ke card. Shadow = still hitam rounded + `boxblur` sekali lalu loop + overlay di bawah card. Plain path (radius 0, shadow off) tetap `gradients` + `scale` + `overlay` tanpa geq.

@@ -41,6 +41,9 @@ const idleRecording: RecordingStatus = {
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cameraOutputPath: null,
+  cameraBytesWritten: 0,
+  cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
 }
