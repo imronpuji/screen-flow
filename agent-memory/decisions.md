@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Persist cursor appearance prefs
+
+- **Keputusan:** `CursorAppearance` (style, sizeScale, spotlightEnabled) disimpan di renderer `localStorage` (`screen-flow:cursor-appearance`) lewat `shared/cursorPrefs.ts` + `normalizeCursorAppearance`. Review hydrate via `defaultReviewEdit(..., cursorAppearance)`; save on every `edit.cursorAppearance` change (Beautify ikut). Pola sama FaceTime `cameraPrefs` / background prefs.
+- **Alasan:** Style/size/spotlight sering di-set sekali; orang awam tidak mau ulang tiap rekaman; preview≡export tetap satu sumber data di review state.
+- **Status:** aktif
+
 ## [2026-07-10] Persist aesthetic background prefs
 
 - **Keputusan:** Seluruh `BackgroundStyle` (enabled, presetId, paddingPercent, cornerRadiusPx, shadowEnabled) disimpan di renderer `localStorage` (`screen-flow:background-style`) lewat `shared/backgroundPrefs.ts` + `normalizeBackgroundStyle`. Review hydrate via `defaultReviewEdit(..., background)`; save on every `edit.background` change (Beautify / frame layout / sliders ikut). Pola sama FaceTime `cameraPrefs`.
