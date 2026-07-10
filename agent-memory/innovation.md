@@ -18,15 +18,14 @@
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight — preview + export bake
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask) + **frame layout presets (Compact/Standard/Wide/Flat)**
-- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge**; background frame layouts done
+- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit**; background frame layouts done
 
 ## Nanti
 
 - [x] Preset background — color swatches + **frame layout presets** (Compact/Standard/Wide/Flat) + corner radius slider
 - [ ] Export GIF / WebM
-- [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + free drag/snap + **mid-edge magnetic snap + 8 position presets** + corner resize + circle/rounded/rectangle shapes + border/shadow bake + outline color picker + mirror + opacity + A/V drift compensation + mid-recording mute/unmute (activeRanges) + **timeline active-range markers** + **mic on same camera MediaRecorder (export AAC)** + **persist prefs + review→setup sync** + **free aspect unlock (rectangle/rounded)** + **arrow-key nudge** + **size nudge (+/-) + S/M/L + keys 1/2/3 + layout reset (0/dblclick)** + **`[`/`]` snap cycle + `C` shape cycle** + **hot-plug devicechange + soft inactive on track end**; visual verify on Mac still open
-- [x] One-click beautify — Tutorial / Product demo / Social presets (review)
-- [~] First-run onboarding — 3-step overlay + localStorage done flag
+- [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + free drag/snap + **mid-edge magnetic snap + 8 position presets** + corner resize + circle/rounded/rectangle shapes + border/shadow bake + outline color picker + mirror + opacity + A/V drift compensation + mid-recording mute/unmute (activeRanges) + **timeline active-range markers** + **review edit mute windows** + **mic on same camera MediaRecorder (export AAC)** + **persist prefs + review→setup sync** + **free aspect unlock (rectangle/rounded)** + **arrow-key nudge** + **size nudge (+/-) + S/M/L + keys 1/2/3 + layout reset (0/dblclick)** + **`[`/`]` snap cycle + `C` shape cycle** + **hot-plug devicechange + soft inactive on track end**; visual verify on Mac still open
+- [x] One-click beautify — Tutorial / Product demo / Social presets (review)- [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik
 - [x] Keyboard shortcuts — setup R/Space; review Space/E/B/arrows/Esc; exporting Esc
 - [x] Empty-state tooltips — catalog + hover tips + empty source/camera hints

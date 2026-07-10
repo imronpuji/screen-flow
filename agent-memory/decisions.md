@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera active-range edit in review (FOKUS 3A)
+
+- **Keputusan:** Review boleh mengedit FaceTime `activeRanges` lewat `ReviewEditState.cameraActiveRangesOverride` (`null` = warisi `camera-sync.json`). UI: **Hide/Show from playhead** (`toggleCameraActiveAtWallMs`), **Remove** window, **Always on** (`[]`), **Reset** (`null`). Empty `[]` = always-on legacy; fully muted = sentinel `CAMERA_ACTIVE_RANGES_NEVER` (`[{0,0}]`) → `isCameraActiveAtMs` false + `cameraOverlayEnableExpr` → `'0'`. Preview memakai wall time (`screenTimelineMsToWallMs`) supaya selaras export. Export: `ExportCameraOverlayRequest.activeRangesOverride` + `cameraOverlayEnableExpr(..., { trimStartMs })` supaya enable tetap benar setelah input `-ss` trim.
+- **Alasan:** FOKUS 3 — orang awam perlu trim mute windows setelah rekaman tanpa re-record; preview ≡ export lewat data ranges yang sama.
+- **Status:** aktif
+
 ## [2026-07-10] Camera active-range timeline markers
 
 - **Keputusan:** Mid-recording FaceTime `activeRanges` ditampilkan sebagai span marker `kind: 'camera'` di scrubber review. Wall ms → screen timeline lewat `wallMsToScreenTimelineMs` (= `wall − screenFirstChunkMs`, sama origin dengan `cameraOverlayEnableExpr`). Open range ditutup di `wallDurationMs`. Seek = start range. Empty ranges → **tidak** ada marker (legacy always-on tetap bersih). Warna amber `#F0A05A` (beda dari zoom accent teal).
