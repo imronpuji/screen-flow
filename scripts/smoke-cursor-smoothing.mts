@@ -1,10 +1,11 @@
 /**
- * Smoke checks for cursor smoothing + click ring engine (no Electron).
+ * Smoke checks for cursor smoothing + click ring + auto-highlight engine (no Electron).
  */
 import type { CursorEvent } from '../shared/cursor.ts'
 import {
   buildClickRings,
   buildCursorKeyframes,
+  getActiveClickHighlights,
   getActiveClickRings,
   getSmoothedCursorAtTime,
 } from '../dist-electron/shared/cursorSmoothing.js'
@@ -62,7 +63,32 @@ function testClickRings(): void {
   console.log('ok click rings')
 }
 
+function testClickHighlights(): void {
+  const events: CursorEvent[] = [
+    { t: 500, x: 960, y: 540, kind: 'click', button: 0 },
+  ]
+  const videoSize = { width: 1920, height: 1080 }
+  const rings = buildClickRings(events, videoSize)
+
+  const start = getActiveClickHighlights(500, rings)
+  assert(start.length === 1, 'highlight active at click')
+  assert(start[0]!.opacity > 0.4, 'highlight soft but visible at start')
+
+  const mid = getActiveClickHighlights(750, rings)
+  assert(mid.length === 1, 'highlight still pulsing')
+  assert(mid[0]!.scale > start[0]!.scale, 'highlight expands')
+
+  // Longer than ring (450ms) — still alive at t=1000.
+  const late = getActiveClickHighlights(1000, rings)
+  assert(late.length === 1, 'highlight outlives outline ring')
+
+  const done = getActiveClickHighlights(1300, rings)
+  assert(done.length === 0, 'highlight finished (~700ms)')
+  console.log('ok click highlights')
+}
+
 testKeyframes()
 testSmoothing()
 testClickRings()
+testClickHighlights()
 console.log('smoke:cursor-smoothing ok')

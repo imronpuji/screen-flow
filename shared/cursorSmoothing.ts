@@ -38,11 +38,16 @@ export interface ActiveClickRing {
   opacity: number
 }
 
+/** Soft filled auto-highlight pulse (same fields as ring; longer / larger animation). */
+export type ActiveClickHighlight = ActiveClickRing
+
 export interface CursorSmoothingOptions {
   /** Time window (ms) for weighted averaging — reduces jitter. */
   smoothingWindowMs?: number
   /** Click ring animation length (ms). */
   ringDurationMs?: number
+  /** Soft auto-highlight pulse length (ms). */
+  highlightDurationMs?: number
   /**
    * Captured display geometry (DIP). When set, positions use screen→frame mapping.
    * When omitted, assumes cursor x/y are already video pixels.
@@ -55,6 +60,7 @@ const DEFAULT_OPTIONS: Required<Omit<CursorSmoothingOptions, 'geometry'>> & {
 } = {
   smoothingWindowMs: 48,
   ringDurationMs: 450,
+  highlightDurationMs: 700,
   geometry: undefined,
 }
 
@@ -205,6 +211,34 @@ export function getActiveClickRings(
         y: ring.y,
         scale: 0.45 + eased * 1.35,
         opacity: Math.max(0, 1 - eased * 1.1),
+      }
+    })
+}
+
+/**
+ * Soft filled auto-highlight pulses at click points (Screen Studio cue).
+ * Longer + larger than the outline ring; same trigger list from buildClickRings.
+ */
+export function getActiveClickHighlights(
+  tMs: number,
+  rings: ClickRing[],
+  options: CursorSmoothingOptions = {},
+): ActiveClickHighlight[] {
+  const opts = { ...DEFAULT_OPTIONS, ...options }
+  const duration = opts.highlightDurationMs
+
+  return rings
+    .filter((ring) => tMs >= ring.tMs && tMs < ring.tMs + duration)
+    .map((ring) => {
+      const u = (tMs - ring.tMs) / duration
+      const eased = easeCubicInOut(u)
+      return {
+        x: ring.x,
+        y: ring.y,
+        // Expand from ~55% → ~160% of base highlight diameter.
+        scale: 0.55 + eased * 1.05,
+        // Soft fade — stays readable mid-pulse then dissolves.
+        opacity: Math.max(0, 0.55 * (1 - eased * 1.05)),
       }
     })
 }

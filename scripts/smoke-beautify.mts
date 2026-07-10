@@ -54,6 +54,7 @@ function testApplyCameraLayout(): void {
   assert(next.cameraOverlay.opacity === 0.92, 'social soft opacity')
   assert(next.cursorAppearance.style === 'crosshair', 'social crosshair')
   assert(next.cursorAppearance.spotlightEnabled === true, 'social spotlight')
+  assert(next.cursorAppearance.clickHighlightEnabled === true, 'social click highlight')
   assert(next.exportQuality === 'draft', 'social draft')
   console.log('ok apply camera layout')
 }
@@ -72,6 +73,7 @@ function testTutorialSpotlight(): void {
   const base = defaultReviewEdit(3_000)
   const next = applyBeautifyPreset(base, 'tutorial')
   assert(next.cursorAppearance.spotlightEnabled === true, 'tutorial spotlight')
+  assert(next.cursorAppearance.clickHighlightEnabled === true, 'tutorial click highlight')
   assert(next.cursorAppearance.sizeScale === 1.35, 'tutorial size')
   assert(next.background.presetId === 'aurora', 'tutorial aurora')
   console.log('ok tutorial')

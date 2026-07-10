@@ -12,6 +12,11 @@ export interface CursorAppearance {
   sizeScale: number
   /** Soft spotlight around the cursor (preview + export glow). */
   spotlightEnabled: boolean
+  /**
+   * Soft filled pulse at click points (Screen Studio-style auto-highlight).
+   * Distinct from the outline click ring — larger, longer, accent fill.
+   */
+  clickHighlightEnabled: boolean
 }
 
 export interface CursorStyleOption {
@@ -29,11 +34,15 @@ export const DEFAULT_CURSOR_APPEARANCE: CursorAppearance = {
   style: 'dot',
   sizeScale: 1,
   spotlightEnabled: false,
+  /** On by default — signature Screen Studio click cue. */
+  clickHighlightEnabled: true,
 }
 
 export const BASE_CURSOR_DOT_PX = 14
 export const BASE_CURSOR_RING_PX = 44
 export const BASE_CURSOR_SPOTLIGHT_PX = 72
+/** Soft auto-highlight diameter before scale animation. */
+export const BASE_CURSOR_HIGHLIGHT_PX = 96
 
 const MIN_SCALE = 0.5
 const MAX_SCALE = 3
@@ -51,6 +60,8 @@ export function normalizeCursorAppearance(
     style: style === 'crosshair' || style === 'hidden' || style === 'dot' ? style : 'dot',
     sizeScale: clampCursorSizeScale(appearance?.sizeScale ?? 1),
     spotlightEnabled: Boolean(appearance?.spotlightEnabled),
+    // Missing field → default on (legacy prefs without the key still get highlight).
+    clickHighlightEnabled: appearance?.clickHighlightEnabled !== false,
   }
 }
 
@@ -74,6 +85,11 @@ export function resolveCursorSpotlightPx(appearance: CursorAppearance): number {
   return Math.max(24, Math.round(BASE_CURSOR_SPOTLIGHT_PX * scale))
 }
 
+export function resolveCursorHighlightPx(appearance: CursorAppearance): number {
+  const scale = clampCursorSizeScale(appearance.sizeScale)
+  return Math.max(40, Math.round(BASE_CURSOR_HIGHLIGHT_PX * scale))
+}
+
 /** Export drawbox options derived from appearance (shared by preview sizing). */
 export function appearanceToCursorDrawOptions(appearance: CursorAppearance): {
   visible: boolean
@@ -82,6 +98,8 @@ export function appearanceToCursorDrawOptions(appearance: CursorAppearance): {
   ringBasePx: number
   spotlightPx: number
   spotlightEnabled: boolean
+  highlightPx: number
+  clickHighlightEnabled: boolean
 } {
   const normalized = normalizeCursorAppearance(appearance)
   return {
@@ -91,5 +109,7 @@ export function appearanceToCursorDrawOptions(appearance: CursorAppearance): {
     ringBasePx: resolveCursorRingBasePx(normalized),
     spotlightPx: resolveCursorSpotlightPx(normalized),
     spotlightEnabled: normalized.spotlightEnabled,
+    highlightPx: resolveCursorHighlightPx(normalized),
+    clickHighlightEnabled: normalized.clickHighlightEnabled,
   }
 }

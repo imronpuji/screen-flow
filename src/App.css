@@ -539,6 +539,21 @@
   pointer-events: none;
 }
 
+.cursor-overlay__highlight {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(61, 214, 198, 0.55) 0%,
+    rgba(61, 214, 198, 0.22) 40%,
+    rgba(61, 214, 198, 0.06) 68%,
+    rgba(61, 214, 198, 0) 78%
+  );
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
 .cursor-overlay__ring {
   position: absolute;
   width: 36px;
