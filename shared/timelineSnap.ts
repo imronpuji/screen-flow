@@ -190,3 +190,18 @@ export function snapPlayheadMagnetically(
     distanceMs: bestDist,
   }
 }
+
+/**
+ * Snap a dragged keep-clip edge to nearby edit points (FOKUS 5).
+ * Excludes the edge being dragged so it does not stick to itself.
+ */
+export function snapKeepEdgeMagnetically(
+  proposedMs: number,
+  targets: TimelineSnapTarget[],
+  excludeIds: readonly string[],
+  thresholdMs: number = DEFAULT_MAGNETIC_SNAP_THRESHOLD_MS,
+): MagneticSnapResult {
+  const exclude = new Set(excludeIds)
+  const filtered = targets.filter((t) => !t.id || !exclude.has(t.id))
+  return snapPlayheadMagnetically(proposedMs, filtered, thresholdMs)
+}

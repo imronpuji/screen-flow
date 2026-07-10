@@ -2,9 +2,15 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Keep-clip edge drag + magnetic snap (FOKUS 5)
+
+- **Keputusan:** Keep-range spans di scrubber punya handle start/end (accent). Drag memanggil `resizeKeepRangeEdge(ranges, index, edge, tMs, durationMs)` — clamp ke tetangga + `MIN_KEEP_MS` (100), **tanpa** merge on touch (razor edit points tetap). Saat **Magnetic snap** on, proposed time di-snap lewat `snapKeepEdgeMagnetically` (exclude id `keep-{i}-start|end` supaya tidak self-stick) ke target yang sama dengan playhead snap. UI: `onKeepRangesChange` → `withKeepRanges` (preview ≡ export concat).
+- **Alasan:** FOKUS 5 — clip-edge drag snap masih open setelah magnetic playhead; orang awam trim visual di timeline, power user dapat sticky join ke zoom/click/camera/neighbor.
+- **Status:** aktif
+
 ## [2026-07-10] Magnetic timeline snap (FOKUS 5)
 
-- **Keputusan:** Scrub playhead memakai `shared/timelineSnap.ts` (`collectTimelineSnapTargets` + `snapPlayheadMagnetically`) saat toggle **Magnetic snap** on (`timelinePrefs.magneticSnapEnabled`, default **on**, persist `screen-flow:timeline-prefs`). Target: clip start/end, trim in/out, keep-range edges, zoom peak/span, click ticks, camera range edges. Threshold ~1.2% durasi (clamp 80–250ms). Hanya scrubber/marker seek (`seekToMs(..., { magnetic: true })`); keyboard frame-step + gap-skip playback tetap free. Tie → target lebih awal.
+- **Keputusan:** Scrub playhead memakai `shared/timelineSnap.ts` (`collectTimelineSnapTargets` + `snapPlayheadMagnetically`) saat toggle **Magnetic snap** on (`timelinePrefs.magneticSnapEnabled`, default **on**, persist `screen-flow:timeline-prefs`). Target: clip start/end, trim in/out, keep-range edges, zoom peak/span, click ticks, camera range edges. Threshold ~1.2% durasi (clamp 80–250ms). Hanya scrubber/marker seek (`seekToMs(..., { magnetic: true })`); keyboard frame-step + gap-skip playback tetap free. Tie → target lebih awal. **Keep-clip edge drag** memakai target yang sama via `snapKeepEdgeMagnetically` (lihat keputusan terpisah).
 - **Alasan:** FOKUS 5 — orang awam sering miss edit point saat scrub; sticky snap ala NLE tanpa mengganggu ←/→ frame-accurate. Toggle off untuk free scrub.
 - **Status:** aktif
 

@@ -709,6 +709,10 @@ export function RecordingReview({
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             keepRanges={keepRanges}
+            onKeepRangesChange={(ranges) => {
+              if (exporting) return
+              setEdit((prev) => withKeepRanges(prev, ranges, durationMsRef.current))
+            }}
             magneticSnapEnabled={timelinePrefs.magneticSnapEnabled}
             onDurationMs={onDurationMs}
             onTimeMs={setPlayheadMs}
@@ -1840,7 +1844,7 @@ export function RecordingReview({
             </Tooltip>
             <p className="review__hint">
               {timelinePrefs.magneticSnapEnabled
-                ? 'Scrub sticks to keep edges, trim, zooms, clicks, and camera windows.'
+                ? 'Scrub & keep-clip edges stick to edit points (trim, zooms, clicks, camera).'
                 : 'Free scrub — playhead ignores nearby edit points.'}
             </p>
           </div>
@@ -1974,6 +1978,7 @@ export function RecordingReview({
                 ))}
               </ul>
               <p className="review__hint">
+                Drag accent keep-clip edges on the timeline to trim (magnetic when snap is on).
                 Gaps are skipped on preview playback and export (ffmpeg concat). Split (X) then
                 Delete to cut the middle.
               </p>
