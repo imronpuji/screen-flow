@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera active-range timeline markers
+
+- **Keputusan:** Mid-recording FaceTime `activeRanges` ditampilkan sebagai span marker `kind: 'camera'` di scrubber review. Wall ms → screen timeline lewat `wallMsToScreenTimelineMs` (= `wall − screenFirstChunkMs`, sama origin dengan `cameraOverlayEnableExpr`). Open range ditutup di `wallDurationMs`. Seek = start range. Empty ranges → **tidak** ada marker (legacy always-on tetap bersih). Warna amber `#F0A05A` (beda dari zoom accent teal).
+- **Alasan:** FOKUS 3 — orang awam perlu melihat kapan kamera on/off saat mute mid-recording; preview≡export memakai data ranges yang sama.
+- **Status:** aktif
+
 ## [2026-07-10] Camera hot-plug + soft inactive (FOKUS 3A)
 
 - **Keputusan:** `navigator.mediaDevices` `devicechange` memanggil `refreshCameraDevices({ reopenIfLost })`: `pickCameraDeviceId` mempertahankan device terpilih bila masih ada, else fallback device pertama. Kalau kamera armed di setup dan device hilang → reopen ke fallback; kalau tidak ada device → matikan overlay + status lembut `CAMERA_INACTIVE_STATUS` ("Camera inactive — device disconnected."). Video track `ended` (unplug / Continuity drop) memakai handler yang sama: saat recording → mute tracks + close `activeRanges` (tanpa stop MediaRecorder); saat setup → disable preview. Stop sengaja memakai `cameraIntentionalStopRef` supaya `ended` dari `track.stop()` tidak salah dianggap unplug.
@@ -338,8 +344,8 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 ## [2026-07-10] Timeline clip markers (review scrubber)
 
-- **Keputusan:** `shared/timelineMarkers.ts` membangun marker murni dari zoom segments (span start→end, seek = peakMs) + click/down ticks (capped). UI track di atas scrubber: zoom bars + click ticks + trim shade; klik marker → seek. Smoke `smoke:timeline-markers`.
-- **Alasan:** Roadmap #9 — orang awam melihat di mana zoom/klik terjadi dan lompat ke situ tanpa scrub buta; pure helpers CI-friendly.
+- **Keputusan:** `shared/timelineMarkers.ts` membangun marker murni dari zoom segments (span start→end, seek = peakMs) + click/down ticks (capped) + **camera active-range spans** (wall→screen, seek = start; empty = omit). UI track di atas scrubber: zoom bars + amber camera bars + click ticks + trim shade; klik marker → seek. Smoke `smoke:timeline-markers`.
+- **Alasan:** Roadmap #9 — orang awam melihat di mana zoom/klik/kamera-on terjadi dan lompat ke situ tanpa scrub buta; pure helpers CI-friendly.
 - **Status:** aktif
 
 ## [2026-07-10] Empty-state tooltips (catalog + hover)

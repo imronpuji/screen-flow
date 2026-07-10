@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:20] Camera active-range timeline markers (FOKUS 3A/B editor)
+
+- **Dikerjakan:**
+  - `shared/timelineMarkers.ts` — kind `camera`; `wallMsToScreenTimelineMs`; `buildCameraActiveRangeMarkers` (close open ranges, map wall→screen via `screenFirstChunkMs`); wired into `buildTimelineMarkers`.
+  - Review scrubber — amber camera spans (seek = range start); empty ranges → no markers (legacy always-on).
+  - Smoke `smoke:timeline-markers` covers wall map + open-range close + includeCamera flag.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke timeline-markers/camera*/beautify/export-effects/zoom-points hijau.
+- **Commit:** `9250606`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional persist background prefs; camera range edit in review (trim mute windows).
+
 ## [2026-07-10 14:05] Camera hot-plug + soft inactive (FOKUS 3A)
 
 - **Dikerjakan:**
