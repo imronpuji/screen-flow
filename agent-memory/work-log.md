@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Setup + review toggles (shadow/outline + width); Beautify presets set chrome; CSS no longer hardcodes border/shadow.
   - Smoke camera/export-camera/beautify cover chrome on/off + real ffmpeg encode.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects hijau.
-- **Commit:** (pending)
+- **Commit:** `06547c0`
 - **Status:** done (FOKUS 3E slice — border/shadow bake)
 - **Next:** A/V drift compensation; optional border color picker polish.
 
