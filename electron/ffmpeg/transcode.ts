@@ -408,7 +408,11 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   const exportDurationMs = trimRange ? trimDurationMs(trimRange) : fullDurationMs
   const effects: Parameters<typeof planExportFilters>[2] = {}
 
-  if (request.autoZoom?.cursorEventsPath && cursorEvents.length > 0) {
+  if (
+    request.autoZoom?.cursorEventsPath &&
+    (cursorEvents.length > 0 ||
+      (request.autoZoom.manualZoomPoints?.length ?? 0) > 0)
+  ) {
     effects.autoZoom = {
       events: cursorEvents,
       options: {
@@ -416,6 +420,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         ...(geometry ? { geometry } : {}),
       },
       zoomOverrides: request.autoZoom.zoomOverrides,
+      manualZoomPoints: request.autoZoom.manualZoomPoints,
     }
   }
   if (request.background?.style) {

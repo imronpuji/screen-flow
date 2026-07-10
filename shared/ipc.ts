@@ -13,7 +13,7 @@ import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
 import type { ExportQualityId } from './exportQuality.js'
-import type { ZoomPointOverride } from './zoomPoints.js'
+import type { ManualZoomPoint, ZoomPointOverride } from './zoomPoints.js'
 
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:get-info',
@@ -196,6 +196,8 @@ export interface ExportAutoZoomRequest {
   options?: AutoZoomOptions
   /** Per-click enable/disable + peak scale (matches review editor). */
   zoomOverrides?: ZoomPointOverride[]
+  /** User-added zooms at playhead (merged with click segments). */
+  manualZoomPoints?: ManualZoomPoint[]
 }
 
 /** Bake aesthetic background frame during ffmpeg export (matches preview). */

@@ -13,6 +13,8 @@ import {
 import type { CursorEvent } from './cursor.js'
 import {
   applyZoomPointOverrides,
+  mergeZoomSegments,
+  type ManualZoomPoint,
   type ZoomPointOverride,
 } from './zoomPoints.js'
 
@@ -120,7 +122,7 @@ export interface AutoZoomFilterPlan {
 
 /**
  * Plan ffmpeg filters for baking auto-zoom into export.
- * Returns identity filter when there are no click segments.
+ * Returns identity filter when there are no click / manual segments.
  */
 export function planAutoZoomExport(
   events: CursorEvent[],
@@ -129,10 +131,14 @@ export function planAutoZoomExport(
   autoZoomOptions: AutoZoomOptions = {},
   sendCmdOptions: ZoomSendCmdOptions = {},
   zoomOverrides?: ZoomPointOverride[] | null,
+  manualZoomPoints?: ManualZoomPoint[] | null,
 ): AutoZoomFilterPlan {
-  const segments = applyZoomPointOverrides(
-    buildZoomSegments(events, videoSize, autoZoomOptions),
-    zoomOverrides,
+  const segments = mergeZoomSegments(
+    applyZoomPointOverrides(
+      buildZoomSegments(events, videoSize, autoZoomOptions),
+      zoomOverrides,
+    ),
+    manualZoomPoints,
   )
   const filterName = sendCmdOptions.filterName ?? 'z'
   const { width, height } = videoSize

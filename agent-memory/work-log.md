@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 12:15] Add zoom at playhead (Z) — editor follow-up
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — `ManualZoomPoint`, `createManualZoomPoint`, `manualZoomToSegment`, `mergeZoomSegments`, upsert/remove/count helpers.
+  - `shared/edit.ts` + beautify — `manualZoomPoints[]` di review state (beautify preserves).
+  - Preview + export — merge manuals setelah click overrides; IPC `manualZoomPoints`; transcode allows manual-only (no click events).
+  - Review UI — “Add at playhead” + list Manual N (enable/scale/remove); focus follows smoothed cursor (else center).
+  - Shortcut **Z** (`add-zoom`) di review.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/shortcuts/beautify/export-effects/export-autozoom/camera* hijau.
+- **Commit:** (pending)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; focus nudge on zoom points; background presets polish.
+
 ## [2026-07-10 12:00] Camera snap cycle [ ] + shape cycle C (FOKUS 3B)
 
 - **Dikerjakan:**

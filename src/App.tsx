@@ -634,6 +634,10 @@ export default function App() {
             _edit.zoomPointOverrides.length > 0
               ? _edit.zoomPointOverrides
               : undefined,
+          manualZoomPoints:
+            _edit.manualZoomPoints.length > 0
+              ? _edit.manualZoomPoints
+              : undefined,
         }
       }
       if (_edit.background.enabled) {

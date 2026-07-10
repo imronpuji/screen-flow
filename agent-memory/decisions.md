@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Add zoom at playhead (manual zoom points)
+
+- **Keputusan:** User bisa menambah zoom di playhead lewat tombol **Add at playhead** atau shortcut **Z**. Disimpan sebagai `ManualZoomPoint[]` di `ReviewEditState` (id, peakMs, focusX/Y 0–1, peakScale, enabled) — **terpisah** dari `zoomPointOverrides` (index click-segment). Timing sama default auto-zoom (in 400 / hold 800 / out 500); `startMs = max(0, peakMs − zoomInMs)`. Focus = smoothed cursor di `peakMs`, fallback center (0.5, 0.5). Preview + export memakai `mergeZoomSegments(autoAfterOverrides, manuals)` (sort by startMs; overlap → latest start wins di `getZoomTransformAtTime`). Beautify **tidak** menghapus manuals. Master `autoZoomEnabled=false` menonaktifkan click + manual di preview/export.
+- **Alasan:** Orang awam sering butuh zoom di momen tanpa klik; index-based overrides tidak cukup untuk titik baru; preview≡export lewat data yang sama.
+- **Status:** aktif (mengisi follow-up “add-at-playhead”; focus nudge masih open)
+
 ## [2026-07-10] Camera snap cycle [ ] + shape cycle C (FOKUS 3B)
 
 - **Keputusan:** Saat bubble focused: **`]`** / **`[`** → `cycleCameraSnapPreset` next/prev lewat `CAMERA_SNAP_CYCLE_ORDER` (clockwise: TL→top→TR→right→BR→bottom→BL→left). Layout custom memakai nearest target lalu step sekali. **`C`** → `cycleCameraShape` (circle→rounded→rectangle); Shift+C mundur. Circle memaksa `lockAspect` + height=size; rounded/rectangle mempertahankan lockAspect/height.
