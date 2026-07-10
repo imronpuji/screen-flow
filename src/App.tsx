@@ -56,6 +56,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
+  const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
   const [exporting, setExporting] = useState(false)
@@ -169,6 +170,7 @@ export default function App() {
         const result = await stopRecording()
         setRecording(result.status)
         setLastWebmPath(result.outputPath)
+        setLastCursorEventsPath(result.cursorEventsPath)
         setPlaybackUrl(null)
         setPlaybackCursorEvents([])
 
@@ -199,6 +201,7 @@ export default function App() {
       } else {
         setLastSummary(null)
         setLastWebmPath(null)
+        setLastCursorEventsPath(null)
         setPlaybackUrl(null)
         setPlaybackCursorEvents([])
         const started = await startRecording({ sourceId: selectedSourceId! })
@@ -247,11 +250,16 @@ export default function App() {
     setExportProgress({ phase: 'starting', percent: 0 })
     setError(null)
     try {
-      const result = await exportWebmToMp4({
+      const exportRequest: Parameters<typeof exportWebmToMp4>[0] = {
         inputPath: lastWebmPath,
         cleanupTemp: true,
-      })
+      }
+      if (lastCursorEventsPath) {
+        exportRequest.autoZoom = { cursorEventsPath: lastCursorEventsPath }
+      }
+      const result = await exportWebmToMp4(exportRequest)
       setLastWebmPath(null)
+      setLastCursorEventsPath(null)
       setPlaybackUrl(null)
       setPlaybackCursorEvents([])
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
@@ -263,11 +271,11 @@ export default function App() {
       })
       if (saved.cancelled) {
         setLastSummary(
-          `Exported MP4 (${result.codec}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath} (not saved to Documents)`,
+          `Exported MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath} (not saved to Documents)`,
         )
       } else {
         setLastSummary(
-          `Saved MP4 (${result.codec}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+          `Saved MP4 (${result.codec}${result.autoZoomApplied ? ', auto-zoom baked' : ''}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
         )
       }
       setExportProgress({ phase: 'done', percent: 100 })

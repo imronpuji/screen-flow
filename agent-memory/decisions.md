@@ -68,11 +68,17 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User mendapat file permanen di Documents tanpa path traversal ke temp via IPC; dialog di main (bukan renderer); CI tetap bisa uji naming/copy tanpa Electron dialog.
 - **Status:** aktif
 
+## [2026-07-10] Auto-zoom export bake (ffmpeg sendcmd)
+
+- **Keputusan:** Export MP4 memanggil `planAutoZoomExport` → sample `getZoomTransformAtTime` @ ~30fps → tulis `zoom-sendcmd.txt` → ffmpeg `-vf "sendcmd=…,crop@z=…,scale=W:H"`. IPC `ExportMp4Request.autoZoom.cursorEventsPath`. UI meneruskan path JSONL dari stop recording.
+- **Alasan:** Hasil export cocok dengan preview CSS; sendcmd + crop = satu pass ffmpeg (progress/cancel tetap jalan); keyframe sampling menghindari ekspresi cubic rumit di ffmpeg.
+- **Status:** aktif (MVP); refine easing/step size & segment overlap later
+
 ## [2026-07-10] Auto-zoom preview engine
 
-- **Keputusan:** `shared/autozoom.ts` membangun zoom segments dari click/down di JSONL (cubic ease-in/out, peak 1.6×, hold 800ms). Renderer memuat events via IPC `recording:read-cursor-events` + `recording:get-media-url` (file:// guard temp); `AutoZoomPlayback` menerapkan CSS `transform-origin` + `scale` pada `timeupdate`. Export ffmpeg belum membakar zoom.
+- **Keputusan:** `shared/autozoom.ts` membangun zoom segments dari click/down di JSONL (cubic ease-in/out, peak 1.6×, hold 800ms). Renderer memuat events via IPC `recording:read-cursor-events` + `recording:get-media-url` (file:// guard temp); `AutoZoomPlayback` menerapkan CSS `transform-origin` + `scale` pada `timeupdate`.
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
-- **Status:** aktif (preview); export bake = follow-up
+- **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
 ## [2026-07-10] Cursor event capture (JSONL)
 

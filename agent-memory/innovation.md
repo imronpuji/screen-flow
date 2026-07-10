@@ -15,7 +15,7 @@
 ## Signature (Screen Studio-like)
 
 - [x] Cursor event capture (posisi + klik) — JSONL per session via uIOhook + poll fallback
-- [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview playback
+- [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake
 - [ ] Cursor smoothing + efek klik
 - [ ] Background gradient, padding, rounded corners, shadow
 - [ ] Timeline editor

@@ -2,12 +2,19 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 05:58] Bake auto-zoom ke ffmpeg export
+
+- **Dikerjakan:** `shared/ffmpegZoom.ts` (crop rect, sendcmd keyframes @ 30fps, filter plan); `electron/ffmpeg/probe.ts` (ffprobe dimensi/durasi); extend IPC `ExportMp4Request.autoZoom`; transcode spawn `sendcmd,crop@z,scale`; UI pass `cursorEventsPath` saat export; smoke `smoke:export-autozoom`.
+- **Hasil:** `typecheck` + `build` + `lint` + semua smoke hijau (termasuk lavfi encode dengan sendcmd).
+- **Status:** done (export MVP)
+- **Next:** Cursor smoothing + click ring; background padding/gradient preview; timeline trim.
+
 ## [2026-07-10 05:46] Auto-zoom engine + playback preview
 
 - **Dikerjakan:** `shared/autozoom.ts` (parse JSONL, build zoom segments, cubic easing); IPC `recording:read-cursor-events` + `recording:get-media-url`; komponen `AutoZoomPlayback` dengan CSS zoom pada klik; smoke `smoke:autozoom`.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke autozoom/cursor hijau.
 - **Status:** done (preview MVP)
-- **Next:** Bake auto-zoom ke ffmpeg export; cursor smoothing + click ring; background padding preview.
+- **Next:** Cursor smoothing + click ring; background padding preview.
 
 ## [2026-07-10 05:05] Cursor event capture → JSONL
 
