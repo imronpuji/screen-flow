@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:33] Timeline zoom-in/out (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/timelineZoom.ts` — discrete 1×–8× steps, viewport resolve/pan/follow, `viewportPercent` / `viewportSpanPercent` / `clientXToTimelineMs`.
+  - `timelinePrefs.timelineZoom` persist; magnetic snap threshold scales with **visible** window.
+  - `AutoZoomPlayback` — scrubber viewport remaps markers/keep/gaps; − / Fit / + controls; Ctrl/⌘+scroll zoom, Shift+scroll pan.
+  - Review Timeline panel + shortcuts `=`/`-`/`0`; tooltip `trim-timeline-zoom`.
+  - Smoke `smoke:timeline-zoom` (+ shortcuts/tooltips/snap prefs).
+- **Hasil:** `typecheck` + `build` + `lint` + smoke timeline-zoom/snap/shortcuts/tooltips/keep-ranges/project-autosave/edit-history hijau.
+- **Commit:** `c305cbb`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional zoom-event drag on timeline; FaceTime polish after editor solid.
+
 ## [2026-07-10 14:10] Project auto-save (FOKUS 5)
 
 - **Dikerjakan:**

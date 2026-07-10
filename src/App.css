@@ -725,6 +725,28 @@
   accent-color: var(--accent);
 }
 
+.zoom-playback__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.zoom-playback__zoom-btn {
+  min-width: 1.75rem;
+  padding-inline: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.zoom-playback__zoom-label {
+  min-width: 2.6rem;
+  padding-inline: 0.35rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+}
+
 .zoom-playback__status {
   position: absolute;
   inset: 0;

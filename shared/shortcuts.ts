@@ -23,6 +23,9 @@ export type ShortcutAction =
   | 'cut-before'
   | 'split-segment'
   | 'delete-segment'
+  | 'timeline-zoom-in'
+  | 'timeline-zoom-out'
+  | 'timeline-zoom-fit'
 
 export interface ShortcutBinding {
   id: ShortcutAction
@@ -135,6 +138,24 @@ export const SHORTCUTS: readonly ShortcutBinding[] = [
     contexts: ['review'],
     description: 'Delete keep-range under playhead',
   },
+  {
+    id: 'timeline-zoom-in',
+    keys: '=',
+    contexts: ['review'],
+    description: 'Zoom timeline in',
+  },
+  {
+    id: 'timeline-zoom-out',
+    keys: '-',
+    contexts: ['review'],
+    description: 'Zoom timeline out',
+  },
+  {
+    id: 'timeline-zoom-fit',
+    keys: '0',
+    contexts: ['review'],
+    description: 'Fit timeline (1×)',
+  },
 ] as const
 
 export const SCRUB_STEP_MS = 1000
@@ -230,6 +251,10 @@ export function matchShortcut(
   // X = razor split into multi-segment keep-ranges (S stays keep-before).
   if (lower === 'x') return 'split-segment'
   if (key === 'Delete' || key === 'Backspace') return 'delete-segment'
+  // Timeline scrubber zoom (= / + zoom in, - zoom out, 0 fit).
+  if (key === '=' || key === '+') return 'timeline-zoom-in'
+  if (key === '-' || key === '_') return 'timeline-zoom-out'
+  if (key === '0') return 'timeline-zoom-fit'
   if (key === 'Escape') return 'discard'
   return null
 }
