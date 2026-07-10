@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera A/V drift compensation (FOKUS 3A)
+
+- **Keputusan:** Screen & camera tetap share `startedAt`. Main mencatat **first-chunk wall offset** per track (`screenFirstChunkMs` / `cameraFirstChunkMs`) dan menulis `camera-sync.json` saat stop. Export: `ffprobe` durasi kedua WebM → `computeCameraDrift` → `setpts` di awal filter kamera (`PTS*rate+offset/TB`). Review: `screenTimeToCameraTimeSec` memakai offset yang sama (ptsRate=1 di preview). Stretch hanya jika |rate−1| ≥ 0.5% dan rate ∈ [0.9, 1.1]; start lag diabaikan bila &lt; 40ms, di-clamp ±5s.
+- **Alasan:** MediaRecorder kamera sering start belakangan + VFR beda → bubble desync di akhir clip; jangan andalkan frame count.
+- **Status:** aktif
+
 ## [2026-07-10] Camera bubble border + soft shadow (preview ≡ export)
 
 - **Keputusan:** `CameraOverlayStyle` menambah `shadowEnabled`, `borderEnabled`, `borderWidthPx` (1–6), `borderColor` (`#RRGGBB`). Preview memakai `cameraBubbleChromeStyle` / `cameraBubblePosition` (CSS border + box-shadow). Export (`planCameraExport`): urutan **shadow → border plate → camera inset**. Shadow = still hitam berbentuk bubble → pad → `boxblur` sekali → loop → overlay (pola sama background). Border = still warna outline berbentuk bubble (loop) di ukuran penuh; video kamera di-scale ke `bubble − 2×borderWidth` dan di-center supaya cincin outline terlihat. Default: shadow on, border 2px `#E8EEF4`.
