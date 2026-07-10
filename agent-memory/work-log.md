@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Review: **Space** play/pause, **←/→** scrub (Shift=5s), **E** export, **B** Beautify, **Esc** discard / cancel export.
   - UI hints (`kbd`) + onboarding copy mentions shortcuts; smoke `smoke:shortcuts`.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke shortcuts/onboarding/beautify hijau.
-- **Commit:** (pending)
+- **Commit:** `73152d3`
 - **Status:** done (polish slice 2)
 - **Next:** Empty-state tooltips; timeline clip markers; visual verify Retina zoom on Mac.
 
