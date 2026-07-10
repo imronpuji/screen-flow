@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 20:15] Persist cursor appearance prefs
+
+- **Dikerjakan:**
+  - `shared/cursorPrefs.ts` — load/save/clear `CursorAppearance` via `localStorage` key `screen-flow:cursor-appearance` (normalize on read/write).
+  - `defaultReviewEdit` — optional `cursorAppearance` arg; review hydrates from prefs.
+  - `RecordingReview` — persist on every `edit.cursorAppearance` change (incl. Beautify).
+  - Smoke `smoke:cursor-prefs`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke cursor-prefs/cursor-appearance/background-prefs/beautify/camera*/export-effects/export-camera/camera-sync/timeline-markers hijau.
+- **Commit:** `4671657`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; background gradient fidelity export vs CSS.
+
 ## [2026-07-10 19:35] Persist aesthetic background prefs
 
 - **Dikerjakan:**

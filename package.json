@@ -22,6 +22,7 @@
     "smoke:export-trim": "node --experimental-strip-types scripts/smoke-export-trim.mts",
     "smoke:cursor-smoothing": "node --experimental-strip-types scripts/smoke-cursor-smoothing.mts",
     "smoke:cursor-appearance": "node --experimental-strip-types scripts/smoke-cursor-appearance.mts",
+    "smoke:cursor-prefs": "node --experimental-strip-types scripts/smoke-cursor-prefs.mts",
     "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts",
     "smoke:background-prefs": "node --experimental-strip-types scripts/smoke-background-prefs.mts",
     "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts",

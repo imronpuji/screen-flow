@@ -4,7 +4,7 @@ import type { CameraOverlayStyle } from './camera.js'
 import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from './camera.js'
 import type { CameraActiveRange } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
-import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
+import { DEFAULT_CURSOR_APPEARANCE, normalizeCursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { ExportQualityId } from './exportQuality.js'
 import { DEFAULT_EXPORT_QUALITY, normalizeExportQuality } from './exportQuality.js'
@@ -75,6 +75,7 @@ export function defaultReviewEdit(
   cameraOverlay?: Partial<CameraOverlayStyle> | null,
   exportQuality?: ExportQualityId | null,
   background?: BackgroundStyle | null,
+  cursorAppearance?: CursorAppearance | null,
 ): ReviewEditState {
   return {
     trimStartMs: 0,
@@ -83,7 +84,11 @@ export function defaultReviewEdit(
     zoomPointOverrides: [],
     manualZoomPoints: [],
     cursorSmoothingEnabled: true,
-    cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
+    cursorAppearance: normalizeCursorAppearance(
+      cursorAppearance
+        ? { ...DEFAULT_CURSOR_APPEARANCE, ...cursorAppearance }
+        : { ...DEFAULT_CURSOR_APPEARANCE },
+    ),
     background: normalizeBackgroundStyle(
       background ? { ...DEFAULT_BACKGROUND_STYLE, ...background } : { ...DEFAULT_BACKGROUND_STYLE },
     ),

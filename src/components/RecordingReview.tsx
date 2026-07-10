@@ -19,6 +19,7 @@ import {
   matchBackgroundFrameLayout,
 } from '../../shared/background'
 import { loadBackgroundPrefs, saveBackgroundPrefs } from '../../shared/backgroundPrefs'
+import { loadCursorPrefs, saveCursorPrefs } from '../../shared/cursorPrefs'
 import {
   EXPORT_QUALITY_PRESETS,
   getExportQualityPreset,
@@ -140,6 +141,7 @@ export function RecordingReview({
       },
       undefined,
       loadBackgroundPrefs(),
+      loadCursorPrefs(),
     ),
   )
 
@@ -151,6 +153,10 @@ export function RecordingReview({
   useEffect(() => {
     saveBackgroundPrefs(edit.background)
   }, [edit.background])
+
+  useEffect(() => {
+    saveCursorPrefs(edit.cursorAppearance)
+  }, [edit.cursorAppearance])
 
   const zoomSegments = useMemo(
     () =>
