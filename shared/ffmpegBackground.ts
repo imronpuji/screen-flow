@@ -2,6 +2,11 @@
  * Plan ffmpeg filter graph for baking aesthetic background into export.
  * Matches preview padding + gradient presets from shared/background.ts.
  *
+ * Gradient fidelity (preview ≡ export):
+ * - Multi-stop linear via lavfi `gradients` (`nb_colors` + CSS angle → x0/y0/x1/y1).
+ * - Soft radial accents (aurora/sunset) as 1-frame geq → loop → overlay.
+ * - `speed` pinned to the lavfi minimum so the bake stays static (no rotation drift).
+ *
  * Rounded corners + soft shadow use a ONE-FRAME alpha mask (color → geq → loop),
  * never geq/boxblur on every video frame. That keeps export ~realtime while
  * matching the CSS preview card look.
@@ -10,6 +15,8 @@
 import {
   getBackgroundPreset,
   normalizeBackgroundStyle,
+  type BackgroundExportAccent,
+  type BackgroundExportGradient,
   type BackgroundStyle,
 } from './background.js'
 import { evenDimension } from './ffmpegZoom.js'
@@ -17,15 +24,6 @@ import { evenDimension } from './ffmpegZoom.js'
 export interface VideoSize {
   width: number
   height: number
-}
-
-/** ffmpeg gradients filter stops per preset (linear approx of CSS preview). */
-const PRESET_GRADIENT_STOPS: Record<string, { c0: string; c1: string }> = {
-  midnight: { c0: '0x0f1c2e', c1: '0x243b55' },
-  aurora: { c0: '0x0b1620', c1: '0x122433' },
-  sunset: { c0: '0x1a1020', c1: '0x2a1838' },
-  slate: { c0: '0x1c2128', c1: '0x2a313c' },
-  minimal: { c0: '0x12161c', c1: '0x0c0f14' },
 }
 
 export interface BackgroundCardLayout {
@@ -48,8 +46,140 @@ export interface BackgroundFilterPlan {
   outputLabel: string
 }
 
-function gradientColors(presetId: string): { c0: string; c1: string } {
-  return PRESET_GRADIENT_STOPS[presetId] ?? PRESET_GRADIENT_STOPS.aurora!
+export interface GradientLineEndpoints {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/**
+ * Map CSS `linear-gradient` angle (0° = up, clockwise) to lavfi line endpoints
+ * on the frame edges through the center. Endpoints stay in-bounds — lavfi
+ * `gradients` rejects x/y < -1 ("Numerical result out of range").
+ */
+export function cssAngleToGradientLine(
+  angleDeg: number,
+  frameW: number,
+  frameH: number,
+): GradientLineEndpoints {
+  const rad = (angleDeg * Math.PI) / 180
+  // CSS: 0° points up (−Y); angles increase clockwise.
+  const dx = Math.sin(rad)
+  const dy = -Math.cos(rad)
+  const cx = frameW / 2
+  const cy = frameH / 2
+
+  /** Distance from center to the frame edge along unit direction (sx, sy). */
+  const tToEdge = (sx: number, sy: number): number => {
+    let t = Number.POSITIVE_INFINITY
+    if (sx > 1e-9) t = Math.min(t, (frameW - cx) / sx)
+    if (sx < -1e-9) t = Math.min(t, (0 - cx) / sx)
+    if (sy > 1e-9) t = Math.min(t, (frameH - cy) / sy)
+    if (sy < -1e-9) t = Math.min(t, (0 - cy) / sy)
+    return Number.isFinite(t) ? t : 0
+  }
+
+  const t1 = tToEdge(dx, dy)
+  const t0 = tToEdge(-dx, -dy)
+  const clampX = (v: number) => Math.max(0, Math.min(frameW, Math.round(v)))
+  const clampY = (v: number) => Math.max(0, Math.min(frameH, Math.round(v)))
+  return {
+    x0: clampX(cx - dx * t0),
+    y0: clampY(cy - dy * t0),
+    x1: clampX(cx + dx * t1),
+    y1: clampY(cy + dy * t1),
+  }
+}
+
+/** Clamp stop count to lavfi `gradients` limits (2–8). */
+export function clampGradientStopCount(count: number): number {
+  return Math.max(2, Math.min(8, Math.round(count)))
+}
+
+/**
+ * Build the lavfi `gradients=…` source string for a preset export spec.
+ * Colors come from `BackgroundPreset.exportGradient` (same table as CSS).
+ */
+export function buildGradientsLavfi(
+  spec: BackgroundExportGradient,
+  frameW: number,
+  frameH: number,
+  /** Optional trim/setpts tail (e.g. `,trim=duration=1.5,setpts=PTS-STARTPTS`). */
+  durationTail = '',
+): string {
+  const colors = spec.colors.slice(0, 8)
+  const n = clampGradientStopCount(colors.length)
+  const stops = colors.slice(0, n)
+  while (stops.length < n) stops.push(stops[stops.length - 1] ?? '000000')
+  const colorArgs = stops.map((hex, i) => `c${i}=0x${hex.replace(/^#/, '')}`).join(':')
+  const { x0, y0, x1, y1 } = cssAngleToGradientLine(spec.angleDeg, frameW, frameH)
+  // speed min keeps the pattern static across long encodes (default 0.01 rotates).
+  return (
+    `gradients=s=${frameW}x${frameH}:type=linear:nb_colors=${n}:${colorArgs}:` +
+    `x0=${x0}:y0=${y0}:x1=${x1}:y1=${y1}:speed=0.00001${durationTail}`
+  )
+}
+
+/** Soft radial accent alpha: peak at center, quadratic falloff to 0 at radius. */
+export function radialAccentAlphaExpr(
+  cxPx: number,
+  cyPx: number,
+  radiusPx: number,
+  peakAlpha: number,
+): string {
+  const r = Math.max(1, Math.round(radiusPx))
+  const a = Math.max(0, Math.min(255, Math.round(peakAlpha)))
+  const cx = Math.round(cxPx)
+  const cy = Math.round(cyPx)
+  // Commas stay inside single quotes (caller wraps a='…') so filter_complex won't split.
+  return (
+    `if(gte(hypot(X-${cx},Y-${cy}),${r}),0,` +
+    `${a}*pow(1-hypot(X-${cx},Y-${cy})/${r},2))`
+  )
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace(/^#/, '').replace(/^0x/i, '')
+  const n = Number.parseInt(h.length === 6 ? h : '000000', 16)
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
+}
+
+/**
+ * Append 1-frame soft radial accent overlays onto `baseLabel`.
+ * Returns the final label after all accents (or `baseLabel` when none).
+ */
+export function appendRadialAccentOverlays(
+  lines: string[],
+  accents: readonly BackgroundExportAccent[] | undefined,
+  frameW: number,
+  frameH: number,
+  baseLabel: string,
+  labelPrefix: string,
+): string {
+  if (!accents || accents.length === 0) return baseLabel
+  const minSide = Math.min(frameW, frameH)
+  let current = baseLabel
+  accents.forEach((accent, index) => {
+    const { r, g, b } = hexToRgb(accent.color)
+    const cx = accent.cx * frameW
+    const cy = accent.cy * frameH
+    const radius = accent.radiusFrac * minSide
+    const alpha = radialAccentAlphaExpr(cx, cy, radius, accent.alpha)
+    const src = `${labelPrefix}_acc${index}src`
+    const loop = `${labelPrefix}_acc${index}`
+    const next = `${labelPrefix}_acc${index}out`
+    lines.push(
+      `color=c=black:s=${frameW}x${frameH}:r=1:d=1,format=rgba,` +
+        `geq=r=${r}:g=${g}:b=${b}:a='${alpha}'[${src}]`,
+    )
+    lines.push(`[${src}]loop=loop=-1:size=1[${loop}]`)
+    lines.push(
+      `[${current}][${loop}]overlay=0:0:format=auto:shortest=1[${next}]`,
+    )
+    current = next
+  })
+  return current
 }
 
 /** Map padding % (preview) → centered card dimensions inside the frame. */
@@ -134,13 +264,12 @@ export function planBackgroundExport(
 
   const layout = computeBackgroundCardLayout(normalized, videoSize)
   const preset = getBackgroundPreset(normalized.presetId)
-  const { c0, c1 } = gradientColors(preset.id)
   const { frameW, frameH, cardW, cardH, padX, padY, cornerRadiusPx, shadowEnabled } =
     layout
 
   const needsMask = cornerRadiusPx > 0
   const needsShadow = shadowEnabled
-  const bgLabel = `${outputLabel}_grad`
+  const gradSrcLabel = `${outputLabel}_gradsrc`
   const cardLabel = `${outputLabel}_card`
   const durationSec =
     durationMs != null && Number.isFinite(durationMs) && durationMs > 0
@@ -152,8 +281,17 @@ export function planBackgroundExport(
     : ''
 
   const lines: string[] = [
-    `gradients=s=${frameW}x${frameH}:c0=${c0}:c1=${c1}:x0=0:y0=0:x1=${frameW}:y1=${frameH}${gradTail}[${bgLabel}]`,
+    `${buildGradientsLavfi(preset.exportGradient, frameW, frameH, gradTail)}[${gradSrcLabel}]`,
   ]
+  // Soft radial washes (aurora/sunset) — same 1-frame→loop pattern as shadow.
+  const bgLabel = appendRadialAccentOverlays(
+    lines,
+    preset.exportGradient.accents,
+    frameW,
+    frameH,
+    gradSrcLabel,
+    outputLabel,
+  )
 
   if (!needsMask && !needsShadow) {
     lines.push(`[${inputLabel}]scale=${cardW}:${cardH}[${cardLabel}]`)

@@ -8,10 +8,16 @@ import path from 'node:path'
 import type { CursorEvent } from '../shared/cursor.ts'
 import { DEFAULT_BACKGROUND_STYLE } from '../shared/background.ts'
 import {
+  appendRadialAccentOverlays,
+  buildGradientsLavfi,
+  clampGradientStopCount,
   computeBackgroundCardLayout,
+  cssAngleToGradientLine,
   planBackgroundExport,
+  radialAccentAlphaExpr,
   roundedRectAlphaExpr,
 } from '../dist-electron/shared/ffmpegBackground.js'
+import { getBackgroundPreset } from '../shared/background.ts'
 import { buildCursorSendCmd, planCursorExport } from '../dist-electron/shared/ffmpegCursor.js'
 import {
   EXPORT_SENDCMD_PLACEHOLDERS,
@@ -36,12 +42,65 @@ function testBackgroundLayout(): void {
   console.log('ok background layout')
 }
 
+function testGradientFidelityHelpers(): void {
+  const line = cssAngleToGradientLine(180, 320, 180)
+  assert(line.x0 === line.x1, '180° is vertical (same x)')
+  assert(line.y0 < line.y1, '180° goes downward (CSS)')
+  assert(line.y0 === 0 && line.y1 === 180, '180° spans top→bottom edges')
+
+  const angled = cssAngleToGradientLine(145, 1920, 1080)
+  assert(angled.x0 !== angled.x1 || angled.y0 !== angled.y1, '145° has a line span')
+  assert(angled.x0 >= 0 && angled.y0 >= 0, '145° start in-bounds')
+  assert(angled.x1 >= 0 && angled.y1 >= 0, '145° end in-bounds')
+  assert(angled.x0 <= 1920 && angled.x1 <= 1920, '145° x within width')
+  assert(angled.y0 <= 1080 && angled.y1 <= 1080, '145° y within height')
+
+  // Previously used half-diagonal length → negative y0 → lavfi "Numerical result out of range".
+  for (const angle of [145, 155, 160, 90, 0, 225]) {
+    const pts = cssAngleToGradientLine(angle, 320, 180)
+    assert(pts.x0 >= 0 && pts.y0 >= 0 && pts.x1 >= 0 && pts.y1 >= 0, `${angle}° non-negative`)
+  }
+
+  assert(clampGradientStopCount(1) === 2, 'min 2 stops')
+  assert(clampGradientStopCount(99) === 8, 'max 8 stops')
+
+  const midnight = getBackgroundPreset('midnight')
+  const lavfi = buildGradientsLavfi(midnight.exportGradient, 320, 180)
+  assert(lavfi.includes('nb_colors=4'), 'midnight uses 4 stops')
+  assert(lavfi.includes('c0=0x0f1c2e'), 'midnight c0')
+  assert(lavfi.includes('c3=0x0d1520'), 'midnight c3')
+  assert(lavfi.includes('type=linear'), 'linear type')
+  assert(lavfi.includes('speed=0.00001'), 'static speed')
+
+  const alpha = radialAccentAlphaExpr(48, 18, 90, 89)
+  assert(alpha.includes('hypot'), 'accent alpha uses hypot')
+  assert(alpha.includes('pow'), 'accent alpha quadratic falloff')
+
+  const accentLines: string[] = []
+  const out = appendRadialAccentOverlays(
+    accentLines,
+    [{ color: '3DD6C6', cx: 0.15, cy: 0.1, radiusFrac: 0.55, alpha: 89 }],
+    320,
+    180,
+    'base',
+    'vbg',
+  )
+  assert(out === 'vbg_acc0out', 'accent renames pad')
+  assert(accentLines.some((l) => l.includes('geq=')), 'accent uses geq still')
+  assert(accentLines.some((l) => l.includes('shortest=1')), 'accent overlay shortest')
+  console.log('ok gradient fidelity helpers')
+}
+
 function testBackgroundPlan(): void {
   const plan = planBackgroundExport(DEFAULT_BACKGROUND_STYLE, { width: 320, height: 180 })
   assert(plan.hasBackground, 'background enabled')
   assert(plan.filterComplex.includes('gradients='), 'uses gradients filter')
+  assert(plan.filterComplex.includes('nb_colors='), 'multi-stop nb_colors')
+  assert(plan.filterComplex.includes('speed=0.00001'), 'static gradient speed')
   assert(plan.filterComplex.includes('overlay='), 'composites card')
   assert(plan.filterComplex.includes('shortest=1'), 'shortest=1 stops infinite gradients')
+  // Default aurora → soft radial accents baked as still overlays.
+  assert(plan.filterComplex.includes('geq='), 'aurora accents use geq still')
   // Default style has radius + shadow → 1-frame mask path (not per-frame geq on video).
   assert(plan.filterComplex.includes('alphamerge'), 'rounded via alphamerge')
   assert(plan.filterComplex.includes('loop=loop=-1:size=1'), 'mask/shadow still is looped')
@@ -68,6 +127,13 @@ function testBackgroundPlan(): void {
   assert(plain.hasBackground, 'plain background enabled')
   assert(!plain.filterComplex.includes('alphamerge'), 'plain skips mask')
   assert(!plain.filterComplex.includes('boxblur='), 'plain skips shadow')
+
+  const minimal = planBackgroundExport(
+    { ...DEFAULT_BACKGROUND_STYLE, presetId: 'minimal', cornerRadiusPx: 0, shadowEnabled: false },
+    { width: 320, height: 180 },
+  )
+  assert(minimal.filterComplex.includes('nb_colors=2'), 'minimal two-stop')
+  assert(!minimal.filterComplex.includes('_acc0'), 'minimal has no radial accents')
 
   const off = planBackgroundExport(
     { ...DEFAULT_BACKGROUND_STYLE, enabled: false },
@@ -310,6 +376,7 @@ async function testFfmpegBackgroundEncodeNoHang(): Promise<void> {
 }
 
 testBackgroundLayout()
+testGradientFidelityHelpers()
 testBackgroundPlan()
 testCursorPlan()
 testCompositePlan()
