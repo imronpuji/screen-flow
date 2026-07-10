@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Multi-segment keep-ranges + ffmpeg concat (FOKUS 5)
+
+- **Keputusan:** `ReviewEditState.keepRanges: KeepRange[]` (`shared/keepRanges.ts`) menyimpan jendela keep non-destruktif. Satu range ≡ trim klasik (`trimStartMs`/`trimEndMs` = outer envelope). Razor **X** (`splitKeepRangesAtPlayhead`) memecah range aktif jadi dua yang saling menyentuh (edit point; `normalize` tidak merge touch). **Delete/Backspace** menghapus range di bawah playhead (min 1 range). Gap nyata (setelah delete middle) → export: encode tiap range lalu **ffmpeg concat** (demuxer `-c copy`, fallback re-encode; GIF pakai filter `concat`). Touching ranges di-merge saat export (`mergeAdjacentKeepRanges`) supaya razor-only tetap single-pass. `S`/`⇧S`/`[`/`]` tetap single-window (collapse ke satu keep). Undo history mencakup keepRanges.
+- **Alasan:** FOKUS 5 butuh split/hapus segmen + jump-cut tanpa merusak sumber; pipeline efek existing (zoom/cursor/bg/camera) di-reuse per segment dengan trim re-base. `S` tetap keep-before (sudah terbiasa di UI) — razor pakai `X` agar tidak bentrok.
+- **Status:** aktif
+
 ## [2026-07-10] Collapsible review editor panels (FOKUS 5)
 
 - **Keputusan:** Panel properti review dipecah jadi 6 section collapsible (`zoom` / `cursor` / `background` / `camera` / `timeline` / `export`) via `shared/editorPanels.ts` + `EditorPanel`. Default: Zoom+Camera+Timeline open; sisanya collapsed. Chrome **Expand / Collapse / Hide** — Hide menyembunyikan seluruh sidebar (preview-first). State + `sidebarCollapsed` persist di `screen-flow:editor-panels` (`editorPanelPrefs`). Tidak menyentuh metadata edit / export.
@@ -12,7 +18,7 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** Cut/trim di playhead memakai **satu keep-range** (`trimStartMs`/`trimEndMs`) lewat `shared/timelineCut.ts`. `[` Mark In, `]` Mark Out, `S` cut-after (keep before), `⇧S` cut-before (keep after). Semua lewat `normalizeTrim` (min 100ms) + undo history. `splitTrimAtPlayhead` ada untuk calon multi-segment; **belum** di-wire ke export (butuh ffmpeg concat).
 - **Alasan:** FOKUS 5 keyboard-first trim/cut tanpa merusak pipeline export single `-ss`/`-t`. Multi-segment + ripple middle-cut = langkah berikutnya.
-- **Status:** aktif
+- **Status:** digantikan sebagian — multi-segment keep-ranges + concat aktif (lihat keputusan di atas); Mark/cut single-window tetap dipakai.
 
 ## [2026-07-10] Review edit undo/redo (FOKUS 5)
 
