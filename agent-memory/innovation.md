@@ -24,7 +24,7 @@
 
 - [ ] Preset background
 - [ ] Export GIF / WebM
-- [ ] Webcam overlay
+- [~] Webcam overlay — enumerate + live bubble + parallel camera.webm; ffmpeg composite belum
 - [ ] Auto-highlight klik
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path
