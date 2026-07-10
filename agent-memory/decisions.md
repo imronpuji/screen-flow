@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Preview gap-skip for keep-ranges (FOKUS 5)
+
+- **Keputusan:** Preview playback memakai `resolveKeepPlaybackMs` / `snapPlayheadIntoKeepRanges` (`shared/keepRanges.ts`) supaya playhead **melompati** jendela discarded (gap antar keep-ranges). `AutoZoomPlayback` menerima `keepRanges`; saat `timeupdate` di gap → seek ke start keep berikutnya; di akhir keep terakhir → pause. Scrub/seek yang mendarat di gap di-snap ke keep berikutnya (atau last end). Timeline menampilkan shade gap via `discardedKeepWindows` (preview ≡ export concat). Sumber media tetap utuh (non-destruktif).
+- **Alasan:** Setelah multi-segment keep-ranges + ffmpeg concat, preview yang masih memutar gap membuat orang awam bingung (beda dari MP4 akhir). Gap-skip menutup celah preview≡export tanpa mengubah file sumber.
+- **Status:** aktif
+
 ## [2026-07-10] Multi-segment keep-ranges + ffmpeg concat (FOKUS 5)
 
 - **Keputusan:** `ReviewEditState.keepRanges: KeepRange[]` (`shared/keepRanges.ts`) menyimpan jendela keep non-destruktif. Satu range ≡ trim klasik (`trimStartMs`/`trimEndMs` = outer envelope). Razor **X** (`splitKeepRangesAtPlayhead`) memecah range aktif jadi dua yang saling menyentuh (edit point; `normalize` tidak merge touch). **Delete/Backspace** menghapus range di bawah playhead (min 1 range). Gap nyata (setelah delete middle) → export: encode tiap range lalu **ffmpeg concat** (demuxer `-c copy`, fallback re-encode; GIF pakai filter `concat`). Touching ranges di-merge saat export (`mergeAdjacentKeepRanges`) supaya razor-only tetap single-pass. `S`/`⇧S`/`[`/`]` tetap single-window (collapse ke satu keep). Undo history mencakup keepRanges.

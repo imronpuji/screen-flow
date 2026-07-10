@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:55] Preview gap-skip for keep-ranges (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/keepRanges.ts` — `resolveKeepPlaybackMs` / `snapPlayheadIntoKeepRanges` / `discardedKeepWindows` / `isInsideKeepRange`.
+  - `AutoZoomPlayback` — terima `keepRanges`; playback lompat gap; scrub snap ke keep; shade gap di timeline.
+  - Review hint + smoke gap-skip.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:keep-ranges` hijau.
+- **Commit:** `39c7660`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Ripple-delete toggle; visual verify on Mac.
+
 ## [2026-07-10 13:45] Multi-segment keep-ranges + ffmpeg concat (FOKUS 5)
 
 - **Dikerjakan:**
