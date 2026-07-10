@@ -153,12 +153,16 @@ export function planCursorExport(
   const ringBase = options.ringBasePx ?? DEFAULT_RING_BASE_PX
   const ringThickness = 3
 
-  const filterComplex = [
-    `[${inputLabel}]sendcmd=f=${sendCmdPathPlaceholder}`,
-    `drawbox@cursor=x=0:y=0:w=${dotSize}:h=${dotSize}:color=0x3dd6c6@0.95:t=fill`,
-    `drawbox@ring=x=0:y=0:w=${ringBase}:h=${ringBase}:color=0xffffff@0:t=${ringThickness}`,
-    `[${outputLabel}]`,
-  ].join(',')
+  // Output pad label must attach to the last filter WITHOUT a comma —
+  // a comma before [label] makes ffmpeg parse an empty filter name.
+  const filterComplex =
+    `[${inputLabel}]` +
+    [
+      `sendcmd=f=${sendCmdPathPlaceholder}`,
+      `drawbox@cursor=x=0:y=0:w=${dotSize}:h=${dotSize}:color=0x3dd6c6@0.95:t=fill`,
+      `drawbox@ring=x=0:y=0:w=${ringBase}:h=${ringBase}:color=0xffffff@0:t=${ringThickness}`,
+    ].join(',') +
+    `[${outputLabel}]`
 
   return {
     hasCursor: true,

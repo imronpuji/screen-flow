@@ -72,22 +72,14 @@ export function computeBackgroundCardLayout(
   }
 }
 
-function roundedAlphaExpr(radius: number): string {
-  const r = Math.max(0, Math.min(64, Math.round(radius)))
-  if (r <= 0) return '255'
-  // Rounded-rect alpha mask (corners use circular arcs).
-  return (
-    `if(gt(abs(W/2-X),W/2-${r})*gt(abs(H/2-Y),H/2-${r}),255,` +
-    `if(lte(hypot(X-${r},${r}-Y),${r}),255,` +
-    `if(lte(hypot(W-${r}-X,${r}-Y),${r}),255,` +
-    `if(lte(hypot(X-${r},H-${r}-Y),${r}),255,` +
-    `if(lte(hypot(W-${r}-X,H-${r}-Y),${r}),255,0)))))`
-  )
-}
-
 /**
  * Build filter_complex that composites [inputLabel] video onto a gradient frame.
  * Input is expected at full frame resolution (post auto-zoom scale).
+ *
+ * Fast path only: gradient background + scaled card + overlay. The previous
+ * rounded-corner (geq) + shadow (boxblur) approach was ~10× slower AND broken —
+ * geq with lum/cb/cr params on rgba wiped the card content, leaving only corner
+ * artifacts. Rounded corners / shadow are a follow-up via a one-time alpha mask.
  */
 export function planBackgroundExport(
   style: BackgroundStyle,
@@ -109,45 +101,16 @@ export function planBackgroundExport(
   const layout = computeBackgroundCardLayout(normalized, videoSize)
   const preset = getBackgroundPreset(normalized.presetId)
   const { c0, c1 } = gradientColors(preset.id)
-  const { frameW, frameH, cardW, cardH, padX, padY, cornerRadiusPx, shadowEnabled } = layout
+  const { frameW, frameH, cardW, cardH, padX, padY } = layout
 
   const bgLabel = `${outputLabel}_grad`
   const cardLabel = `${outputLabel}_card`
-  const cardRoundedLabel = `${outputLabel}_cardr`
-  const shadowLabel = `${outputLabel}_shadow`
-  const bgShadowLabel = `${outputLabel}_bgsh`
 
   const lines: string[] = [
     `gradients=s=${frameW}x${frameH}:c0=${c0}:c1=${c1}:x0=0:y0=0:x1=${frameW}:y1=${frameH}[${bgLabel}]`,
     `[${inputLabel}]scale=${cardW}:${cardH}[${cardLabel}]`,
+    `[${bgLabel}][${cardLabel}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
   ]
-
-  let cardOut = cardLabel
-  if (cornerRadiusPx > 0) {
-    const alpha = roundedAlphaExpr(cornerRadiusPx)
-    lines.push(
-      `[${cardLabel}]format=rgba,geq=lum='p(X,Y)':cb='p(X,Y)':cr='p(X,Y)':a='${alpha}'[${cardRoundedLabel}]`,
-    )
-    cardOut = cardRoundedLabel
-  }
-
-  if (shadowEnabled) {
-    const cardFgLabel = `${outputLabel}_cardfg`
-    lines.push(`[${cardOut}]split=2[${cardFgLabel}][${shadowLabel}]`)
-    lines.push(
-      `[${shadowLabel}]boxblur=12:5,colorchannelmixer=aa=0.35[${shadowLabel}b]`,
-    )
-    lines.push(
-      `[${bgLabel}][${shadowLabel}b]overlay=${padX + 6}:${padY + 10}:format=auto[${bgShadowLabel}]`,
-    )
-    lines.push(
-      `[${bgShadowLabel}][${cardFgLabel}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
-    )
-  } else {
-    lines.push(
-      `[${bgLabel}][${cardOut}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
-    )
-  }
 
   return {
     hasBackground: true,

@@ -133,9 +133,83 @@ async function testFfmpegBackgroundEncode(): Promise<void> {
   })
 }
 
+/**
+ * Encode the FULL composite graph (auto-zoom + background + cursor) through ffmpeg.
+ * The cursor tail attaches its output pad to the last filter — a stray comma there
+ * makes ffmpeg fail with "No such filter: ''". This guards that regression.
+ */
+async function testFfmpegCompositeEncode(): Promise<void> {
+  const events: CursorEvent[] = [
+    { t: 0, x: 0.1, y: 0.1, kind: 'move' },
+    { t: 300, x: 0.5, y: 0.5, kind: 'click', button: 0 },
+    { t: 900, x: 0.8, y: 0.6, kind: 'move' },
+  ]
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screen-flow-composite-'))
+  const outPath = path.join(dir, 'out.mp4')
+  const plan = planExportFilters(
+    { width: 320, height: 180 },
+    1500,
+    { autoZoom: { events }, background: DEFAULT_BACKGROUND_STYLE, cursorSmoothing: { events } },
+  )
+  assert(plan.filterComplex != null, 'filter graph for composite')
+  assert(plan.cursorApplied, 'cursor baked into composite')
+
+  let graph = plan.filterComplex!
+  const esc = (p: string) => p.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'")
+  if (plan.zoomSendCmd) {
+    const zp = path.join(dir, 'zoom.txt')
+    fs.writeFileSync(zp, plan.zoomSendCmd)
+    graph = graph.replace(EXPORT_SENDCMD_PLACEHOLDERS.zoom, esc(zp))
+  }
+  if (plan.cursorSendCmd) {
+    const cp = path.join(dir, 'cursor.txt')
+    fs.writeFileSync(cp, plan.cursorSendCmd)
+    graph = graph.replace(EXPORT_SENDCMD_PLACEHOLDERS.cursor, esc(cp))
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      'ffmpeg',
+      [
+        '-y',
+        '-f', 'lavfi',
+        '-i', 'color=c=gray:s=320x180:d=1.5',
+        '-filter_complex', graph,
+        '-map', `[${plan.outputLabel}]`,
+        '-t', '1.5',
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        outPath,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    )
+    let stderr = ''
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+    child.on('error', () => {
+      console.log('skip ffmpeg composite encode (ffmpeg not installed)')
+      resolve()
+    })
+    child.on('close', (code) => {
+      if (code === 0 && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+        console.log('ok ffmpeg composite encode')
+        resolve()
+        return
+      }
+      if (code !== 0) {
+        reject(new Error(`ffmpeg composite filter failed: ${stderr.slice(-800)}`))
+        return
+      }
+      resolve()
+    })
+  })
+}
+
 testBackgroundLayout()
 testBackgroundPlan()
 testCursorPlan()
 testCompositePlan()
 await testFfmpegBackgroundEncode()
+await testFfmpegCompositeEncode()
 console.log('smoke:export-effects ok')

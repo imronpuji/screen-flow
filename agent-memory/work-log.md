@@ -3,6 +3,24 @@
 Entri terbaru di ATAS.
 
 
+## [2026-07-10 13:50] Fix export background lambat + card hilang (buang geq/boxblur)
+
+- **Gejala:** Export dengan background aktif → sangat lambat (~26s untuk klip 3 detik / ~2 menit untuk 15s) dan hasil MP4 cuma ~600 KB. Frame ternyata: card rekaman HILANG, cuma tersisa gradient + 4 artefak lingkaran di pojok + titik cursor.
+- **Akar masalah:** `planBackgroundExport` (`shared/ffmpegBackground.ts`) pakai `geq` (rounded corner, evaluasi per-piksel) + `boxblur` (shadow). Dua-duanya ~10× lebih lambat dari `scale` di resolusi penuh 2560×1600. Parah lagi: `geq=lum='p(X,Y)':cb=…:cr=…` di input rgba SALAH model warna → isi card kehapus, cuma nyisain mask pojok. Output nyaris kosong → sangat kompresibel (600 KB).
+- **Dikerjakan:** Rewrite `planBackgroundExport` ke jalur cepat saja: `gradients` + `scale` card + `overlay` padding. Buang rounded-corner (geq) & shadow (boxblur). Konfirmasi via repro di capture asli: 26.3s→1.2s (~22×) dan card muncul utuh di frame.
+- **Hasil:** `build:electron` + `typecheck` + `smoke:export-effects` (termasuk composite encode) hijau. App relaunch.
+- **Status:** done
+- **Next:** Rounded corner + shadow versi cepat & benar via alpha-mask sekali-render (bukan geq per-frame) untuk match preview CSS; cek posisi titik cursor overlay (drawbox) yang tampak meleset dari kursor asli.
+
+## [2026-07-10 13:40] Fix export gagal "No such filter: ''" (koma sebelum label output cursor)
+
+- **Gejala:** Export MP4 dengan cursor effect aktif → `ffmpeg exited with code 8: No such filter: '' — Filter not found`.
+- **Akar masalah:** `planCursorExport` (`shared/ffmpegCursor.ts`) merakit filter_complex tail dengan `[...filters, '[vout]'].join(',')`, menghasilkan `...drawbox@ring=...,[vout]`. Koma sebelum `[vout]` bikin ffmpeg menganggap ada filter kosong setelah drawbox → parse error. Label pad output harus nempel ke filter terakhir TANPA koma.
+- **Dikerjakan:** `shared/ffmpegCursor.ts` — rakit ulang jadi `[in]` + `filters.join(',')` + `[out]` (tanpa koma di depan `[out]`). `scripts/smoke-export-effects.mts` — tambah `testFfmpegCompositeEncode` yang beneran nge-encode graf lengkap (zoom+background+cursor) via ffmpeg (celah lama: smoke cuma nge-encode graf background-only, jadi bug cursor lolos).
+- **Hasil:** `build:electron` hijau; `smoke:export-effects` hijau termasuk "ok ffmpeg composite encode"; koma-sebelum-label dikonfirmasi sebagai penyebab via tes lavfi mandiri. App di-relaunch.
+- **Status:** done
+- **Next:** Review screen (playback hasil + reveal in Finder) yang sempat ketunda; pertimbangkan pass durasi rekaman sebagai hint ke probe.
+
 ## [2026-07-10 06:25] Bake background + cursor smoothing ke ffmpeg export
 
 - **Dikerjakan:** `shared/ffmpegBackground.ts` (gradients + padding card + rounded geq + shadow boxblur); `shared/ffmpegCursor.ts` (smoothed cursor + click ring via sendcmd/drawbox); `shared/ffmpegExport.ts` orchestrator; extend IPC `ExportMp4Request.background` + `cursorSmoothing`; `transcode.ts` filter_complex path; UI export kirim review toggles; smoke `smoke:export-effects`.
