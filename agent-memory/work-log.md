@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 11:50] Camera size keys 1/2/3 + layout reset (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `resetCameraLayout` (bottom-right + medium, lock aspect; keep device/chrome/shape/mic/mirror/opacity); `cameraSizePresetFromDigitKey` (1/2/3 → S/M/L).
+  - `CameraBubble` — keys 1/2/3 size presets; key 0 + double-click reset; title hint updated.
+  - Setup + Review — Reset button next to S/M/L; hint mentions 1/2/3 + reset.
+  - Smoke `smoke:camera` covers digit map + reset keeps chrome/device.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** `6498079` (feature) / `3fbd84d` (memory)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; background presets polish atau zoom add-at-playhead.
+
 ## [2026-07-10 11:45] Camera size nudge (+/-) + S/M/L presets (FOKUS 3B)
 
 - **Dikerjakan:**

@@ -14,7 +14,8 @@
  * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
  * - Nudge: arrow keys move free layout by small relative steps (Shift = larger); clamps to safe margin.
  * - Size nudge: +/- (or =/_) adjust width % (Shift = larger); lockAspect keeps height in sync; reclamps.
- * - Size presets: S/M/L quick widths (16/22/32%) — same relative coords for preview ≡ export.
+ * - Size presets: S/M/L quick widths (16/22/32%); keys 1/2/3 when bubble focused.
+ * - Layout reset: key 0 / double-click → bottom-right + medium size (keeps device/chrome/shape).
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
@@ -705,6 +706,37 @@ export function matchCameraSizePreset(
 
 export function cameraSizePresetLabel(id: CameraSizePresetId): string {
   return CAMERA_SIZE_PRESETS.find((p) => p.id === id)?.label ?? id
+}
+
+/**
+ * Reset layout to the Loom/Screen Studio default: bottom-right + medium size,
+ * aspect locked. Keeps device, enabled, shape, chrome, mirror, opacity, mic.
+ */
+export function resetCameraLayout(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
+  const base = normalizeCameraOverlay(style, frameAspect)
+  const sized = applyCameraSizePreset(base, 'medium', frameAspect)
+  return applyCameraCornerPreset(
+    {
+      ...sized,
+      lockAspect: true,
+      heightPercent: sized.sizePercent,
+    },
+    DEFAULT_CAMERA_OVERLAY.corner,
+    frameAspect,
+  )
+}
+
+/** Map digit keys 1/2/3 → S/M/L size presets (bubble keyboard shortcuts). */
+export function cameraSizePresetFromDigitKey(
+  key: string,
+): CameraSizePresetId | null {
+  if (key === '1') return 'small'
+  if (key === '2') return 'medium'
+  if (key === '3') return 'large'
+  return null
 }
 
 /** Clamp overlay style to safe UI/export ranges; fill x/y from corner when needed. */

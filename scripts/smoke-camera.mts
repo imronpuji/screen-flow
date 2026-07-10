@@ -20,6 +20,7 @@ import {
   cameraBubblePosition,
   cameraShapeBorderRadius,
   cameraBubbleSizeNorm,
+  cameraSizePresetFromDigitKey,
   cameraSnapPresetLabel,
   cameraSnapTargets,
   clampCameraLayout,
@@ -30,6 +31,7 @@ import {
   normalizeCameraOverlay,
   nudgeCameraLayout,
   nudgeCameraSize,
+  resetCameraLayout,
   resizeCameraFromHandle,
   snapCameraLayout,
   CAMERA_NUDGE_STEP,
@@ -461,6 +463,48 @@ function testSizeNudgeAndPresets(): void {
   const bigger = applyCameraSizePreset(corner, 'large')
   assert(nearly(bigger.x, CAMERA_SAFE_MARGIN), 'size preset keeps TL x')
   assert(nearly(bigger.y, CAMERA_SAFE_MARGIN), 'size preset keeps TL y')
+
+  assert(cameraSizePresetFromDigitKey('1') === 'small', 'digit 1 → S')
+  assert(cameraSizePresetFromDigitKey('2') === 'medium', 'digit 2 → M')
+  assert(cameraSizePresetFromDigitKey('3') === 'large', 'digit 3 → L')
+  assert(cameraSizePresetFromDigitKey('4') == null, 'digit 4 ignored')
+  assert(cameraSizePresetFromDigitKey('a') == null, 'letter ignored')
+
+  const messy = normalizeCameraOverlay({
+    enabled: true,
+    deviceId: 'facetime-hd',
+    corner: 'top-left',
+    anchor: 'free',
+    x: 0.4,
+    y: 0.4,
+    sizePercent: 36,
+    heightPercent: 18,
+    lockAspect: false,
+    shape: 'rectangle',
+    mirrored: false,
+    opacity: 0.8,
+    micEnabled: false,
+    borderColor: '#3DD6C6',
+  })
+  const reset = resetCameraLayout(messy)
+  assert(reset.corner === 'bottom-right', 'reset corner BR')
+  assert(reset.anchor === 'bottom-right', 'reset anchor BR')
+  assert(reset.sizePercent === 22, 'reset medium size')
+  assert(reset.heightPercent === 22, 'reset locks height')
+  assert(reset.lockAspect === true, 'reset locks aspect')
+  assert(reset.deviceId === 'facetime-hd', 'reset keeps device')
+  assert(reset.enabled === true, 'reset keeps enabled')
+  assert(reset.shape === 'rectangle', 'reset keeps shape')
+  assert(reset.mirrored === false, 'reset keeps mirror')
+  assert(reset.opacity === 0.8, 'reset keeps opacity')
+  assert(reset.micEnabled === false, 'reset keeps mic')
+  assert(reset.borderColor === '#3DD6C6', 'reset keeps border color')
+  const expectedBR = applyCameraCornerPreset(
+    { sizePercent: 22, heightPercent: 22, lockAspect: true },
+    'bottom-right',
+  )
+  assert(nearly(reset.x, expectedBR.x), 'reset x matches BR')
+  assert(nearly(reset.y, expectedBR.y), 'reset y matches BR')
 
   console.log('ok size nudge + presets')
 }

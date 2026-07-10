@@ -18,6 +18,7 @@ import {
   matchCameraSizePreset,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
+  resetCameraLayout,
   type CameraOverlayStyle,
 } from '../shared/camera'
 import {
@@ -975,7 +976,9 @@ export default function App() {
                           active ? ' camera-controls__size-preset--active' : ''
                         }`}
                         disabled={busy}
-                        title={`${preset.label} · ${preset.sizePercent}%`}
+                        title={`${preset.label} · ${preset.sizePercent}% (key ${
+                          preset.id === 'small' ? '1' : preset.id === 'medium' ? '2' : '3'
+                        })`}
                         onClick={() =>
                           setCameraOverlay((prev) =>
                             applyCameraSizePreset(prev, preset.id),
@@ -986,6 +989,17 @@ export default function App() {
                       </button>
                     )
                   })}
+                  <button
+                    type="button"
+                    className="camera-controls__size-preset"
+                    disabled={busy}
+                    title="Reset to bottom-right · medium (key 0 or double-click)"
+                    onClick={() =>
+                      setCameraOverlay((prev) => resetCameraLayout(prev))
+                    }
+                  >
+                    Reset
+                  </button>
                 </div>
                 {!cameraOverlay.lockAspect &&
                 cameraShapeAllowsFreeAspect(cameraOverlay.shape) ? (

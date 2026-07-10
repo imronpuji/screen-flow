@@ -3,16 +3,20 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  applyCameraSizePreset,
   cameraBubblePosition,
   cameraBubbleSizeNorm,
+  cameraSizePresetFromDigitKey,
   cameraSnapTargets,
   normalizeCameraOverlay,
   nudgeCameraLayout,
   nudgeCameraSize,
+  resetCameraLayout,
   resizeCameraFromHandle,
   snapCameraLayout,
   type CameraNudgeDirection,
@@ -279,6 +283,21 @@ export function CameraBubble({
       return
     }
 
+    // 1/2/3 → S/M/L size presets; 0 → reset bottom-right + medium.
+    const sizePreset = cameraSizePresetFromDigitKey(e.key)
+    if (sizePreset) {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(applyCameraSizePreset(style, sizePreset, aspect))
+      return
+    }
+    if (e.key === '0') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(resetCameraLayout(style, aspect))
+      return
+    }
+
     // +/- (and =/_ without shift) grow/shrink width; Shift = larger step.
     const grow =
       e.key === '+' || e.key === '=' || e.key === 'Add'
@@ -293,6 +312,17 @@ export function CameraBubble({
         frameAspect: aspect,
       }),
     )
+  }
+
+  function onBubbleDoubleClick(e: ReactMouseEvent<HTMLDivElement>) {
+    if (!interactive || !onLayoutChange) return
+    // Ignore double-clicks on resize handles.
+    if ((e.target as HTMLElement).closest('[data-resize-handle]')) return
+    e.preventDefault()
+    e.stopPropagation()
+    const metrics = parentMetrics()
+    const aspect = metrics?.aspect ?? frameAspect ?? 16 / 9
+    onLayoutChange(resetCameraLayout(style, aspect))
   }
 
   function onResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>, handle: CameraResizeHandle) {
@@ -455,14 +485,15 @@ export function CameraBubble({
         title={
           interactive
             ? displayStyle.lockAspect
-              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize · corner handles resize (aspect locked)'
-              : 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize width · corner handles free resize'
+              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize · 1/2/3 size · 0 or double-click reset · corner handles (aspect locked)'
+              : 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize width · 1/2/3 size · 0 or double-click reset · corner handles free resize'
             : undefined
         }
         onPointerDown={interactive ? onMovePointerDown : undefined}
         onPointerMove={interactive ? onPointerMove : undefined}
         onPointerUp={interactive ? finishPointer : undefined}
         onPointerCancel={interactive ? finishPointer : undefined}
+        onDoubleClick={interactive ? onBubbleDoubleClick : undefined}
         onKeyDown={interactive ? onBubbleKeyDown : undefined}
       >
         <video

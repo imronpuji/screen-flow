@@ -2,9 +2,15 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera size keys 1/2/3 + layout reset (FOKUS 3B)
+
+- **Keputusan:** Saat bubble focused: digit **1/2/3** → `applyCameraSizePreset` S/M/L (`cameraSizePresetFromDigitKey`). **0** atau **double-click** (bukan di resize handle) → `resetCameraLayout`: pojok **bottom-right** + size **medium (22%)** + `lockAspect: true`; **tetap** device/enabled/shape/chrome/mirror/opacity/mic. Tombol **Reset** di Setup+Review di samping S/M/L.
+- **Alasan:** Orang awam sering “kacau” setelah drag/resize; reset satu ketukan ke default Loom/Screen Studio; digit keys melengkapi +/- nudge tanpa lepas fokus dari bubble.
+- **Status:** aktif
+
 ## [2026-07-10] Camera bubble size nudge + S/M/L presets (FOKUS 3B)
 
-- **Keputusan:** Fine-tune ukuran bubble lewat `nudgeCameraSize(direction, { shift })`. Step default **1** sizePercent (`CAMERA_SIZE_NUDGE_STEP`); Shift = **4** (`CAMERA_SIZE_NUDGE_STEP_SHIFT`). Keys: `+`/`=` grow, `-`/`_` shrink (bubble focused). Preset cepat **S/M/L** = 16/22/32% (`CAMERA_SIZE_PRESETS`); lockAspect → height ikut; unlocked → hanya width. `normalizeCameraOverlay` reclamps posisi (corner re-layout / free clamp).
+- **Keputusan:** Fine-tune ukuran bubble lewat `nudgeCameraSize(direction, { shift })`. Step default **1** sizePercent (`CAMERA_SIZE_NUDGE_STEP`); Shift = **4** (`CAMERA_SIZE_NUDGE_STEP_SHIFT`). Keys: `+`/`=` grow, `-`/`_` shrink (bubble focused). Preset cepat **S/M/L** = 16/22/32% (`CAMERA_SIZE_PRESETS`); lockAspect → height ikut; unlocked → hanya width. `normalizeCameraOverlay` reclamps posisi (corner re-layout / free clamp). Digits 1/2/3 + reset → lihat keputusan “Camera size keys 1/2/3 + layout reset”.
 - **Alasan:** Slider saja lambat untuk orang awam; pasangan natural dengan arrow-key position nudge; angka S/M/L di dalam 12–40% (readable face tanpa menutup demo).
 - **Status:** aktif
 
