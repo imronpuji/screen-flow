@@ -21,7 +21,22 @@ function testPresets(): void {
   assert(BACKGROUND_PRESETS.length >= 4, 'has presets')
   for (const preset of BACKGROUND_PRESETS) {
     assert(preset.css.includes('gradient'), `${preset.id} has gradient`)
+    assert(preset.exportGradient.colors.length >= 2, `${preset.id} export stops`)
+    assert(
+      Number.isFinite(preset.exportGradient.angleDeg),
+      `${preset.id} export angle`,
+    )
+    for (const hex of preset.exportGradient.colors) {
+      assert(/^[0-9a-fA-F]{6}$/.test(hex), `${preset.id} stop ${hex} is RRGGBB`)
+    }
   }
+  const aurora = getBackgroundPreset('aurora')
+  assert((aurora.exportGradient.accents?.length ?? 0) >= 2, 'aurora has radial accents')
+  const sunset = getBackgroundPreset('sunset')
+  assert((sunset.exportGradient.accents?.length ?? 0) >= 2, 'sunset has radial accents')
+  const midnight = getBackgroundPreset('midnight')
+  assert(midnight.exportGradient.colors.length === 4, 'midnight multi-stop')
+  assert(midnight.exportGradient.angleDeg === 145, 'midnight CSS angle')
   const fallback = getBackgroundPreset('unknown-id')
   assert(fallback.id === BACKGROUND_PRESETS[0]!.id, 'unknown falls back to first')
   console.log('ok presets')

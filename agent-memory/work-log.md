@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 20:25] Background gradient fidelity (export ≡ CSS)
+
+- **Dikerjakan:**
+  - `shared/background.ts` — tiap preset punya `exportGradient` (multi-stop colors + CSS `angleDeg` + optional radial `accents`) selaras dengan `css`.
+  - `shared/ffmpegBackground.ts` — `buildGradientsLavfi` (nb_colors + angle→edge endpoints + `speed=0.00001` static); soft accent overlays (1-frame geq→loop); clamp endpoints in-bounds (hindari lavfi "Numerical result out of range").
+  - Smoke background + export-effects covers stops/accents/angle/encode.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke background/background-prefs/beautify/camera*/export-effects/export-camera/camera-sync hijau.
+- **Commit:** `bee281c`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac (aurora/sunset wash vs CSS); optional GIF/WebM export.
+
 ## [2026-07-10 20:15] Persist cursor appearance prefs
 
 - **Dikerjakan:**
