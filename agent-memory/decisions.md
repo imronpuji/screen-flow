@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera mirror + opacity (preview ≡ export)
+
+- **Keputusan:** `CameraOverlayStyle` menambah `mirrored` (default **true**, FaceTime selfie) dan `opacity` (clamp **0.35–1.0**, default 1). Preview: CSS `scaleX(-1)` + `opacity` pada bubble. Export: `hflip` setelah crop; opacity di-bake ke alpha shadow/border/mask (`geq` opaque×opacity) atau `colorchannelmixer=aa=` untuk rectangle tanpa mask. Satu sumber data di style → setup/live/review/export sama.
+- **Alasan:** FOKUS 3B/E — hardcode `mirrored=false` di review memutus preview≡export; user perlu flip natural vs selfie dan soft fade tanpa edit terpisah.
+- **Status:** aktif (menggantikan “recorded selalu natural” di keputusan review playback)
+
 ## [2026-07-10] Camera mid-edge snap polish (FOKUS 3B)
 
 - **Keputusan:** Snap targets tetap 4 pojok + 4 edge mid. Drag memakai **magnetic snap live** (`snapCameraLayout` tiap pointermove) + guide dots di frame. Preset cepat via `applyCameraSnapPreset` untuk semua 8 target; edge mid → `anchor: 'free'` + x/y target; `matchCameraSnapTarget` (ε≈1.2%) untuk highlight tombol aktif. Corner preset tetap lewat `applyCameraCornerPreset` (wrapper).
@@ -163,9 +169,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 ## [2026-07-10] Kamera review playback (recorded bubble sync)
 
-- **Keputusan:** Review memutar `camera.webm` via `screenflow-media://` di `CameraBubble` (`mediaUrl` + `currentTimeSec`). Sync seek bila drift > 80ms terhadap timeline screen. Bubble **di luar** transform auto-zoom (wrapper `zoom-playback__composite` atau full `zoom-playback__background`) supaya posisi pojok match export (zoom→bg→cursor→camera). Recorded frames **tidak** di-mirror (`mirrored=false`); live preview tetap mirrored. Layout review di-edit lewat `ReviewEditState.cameraOverlay` dan diteruskan ke export.
-- **Alasan:** Preview↔export harus sama; mirror CSS hanya untuk selfie live; camera di atas zoom agar bubble tidak ikut pan/scale.
-- **Status:** aktif
+- **Keputusan:** Review memutar `camera.webm` via `screenflow-media://` di `CameraBubble` (`mediaUrl` + `currentTimeSec`). Sync seek bila drift > 80ms terhadap timeline screen. Bubble **di luar** transform auto-zoom (wrapper `zoom-playback__composite` atau full `zoom-playback__background`) supaya posisi pojok match export (zoom→bg→cursor→camera). Mirror & opacity mengikuti `cameraOverlay.mirrored` / `opacity` (lihat “Camera mirror + opacity”) — bukan hardcode natural. Layout review di-edit lewat `ReviewEditState.cameraOverlay` dan diteruskan ke export.
+- **Alasan:** Preview↔export harus sama; camera di atas zoom agar bubble tidak ikut pan/scale.
+- **Status:** aktif (mirror digantikan oleh style.mirrored)
 
 ## [2026-07-10] Background rounded/shadow via 1-frame alpha mask
 

@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:50] Camera mirror + opacity (FOKUS 3B/E)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `mirrored` (default true) + `opacity` (35–100%, default 100%) di `CameraOverlayStyle`; `cameraBubblePosition` membawa opacity.
+  - `shared/ffmpegCamera.ts` — `hflip` saat mirrored; alpha/colorchannelmixer saat opacity < 1 (shadow/border/camera ikut fade); flags `mirroredApplied` / `opacityApplied`.
+  - Setup + review: Mirror checkbox + Opacity slider; review memakai `style.mirrored` (bukan hardcode natural).
+  - Beautify: Tutorial mirror on; Demo natural; Social soft 92% opacity.
+  - Smoke camera/export-camera/beautify cover normalize + plan + encode paths.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/camera-sync/export-effects hijau.
+- **Commit:** `42739e3`
+- **Status:** done (FOKUS 3B/E slice — mirror + opacity)
+- **Next:** Visual verify on Mac; multi-segment camera if MediaRecorder restart needed.
+
 ## [2026-07-10 09:45] Camera mid-edge snap polish (FOKUS 3B)
 
 - **Dikerjakan:**
