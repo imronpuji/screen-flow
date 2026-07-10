@@ -14,7 +14,7 @@
 
 ## Signature (Screen Studio-like)
 
-- [ ] Cursor event capture (posisi + klik) — fondasi auto-zoom
+- [x] Cursor event capture (posisi + klik) — JSONL per session via uIOhook + poll fallback
 - [ ] Auto-zoom ikut klik (spring/cubic-bezier)
 - [ ] Cursor smoothing + efek klik
 - [ ] Background gradient, padding, rounded corners, shadow

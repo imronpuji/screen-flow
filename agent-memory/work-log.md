@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 05:05] Cursor event capture → JSONL
+
+- **Dikerjakan:** `cursor-events.jsonl` per session via `uiohook-napi` (move/down/up/click) + fallback poll `screen.getCursorScreenPoint()`; types di `shared/cursor.ts`; throttle move; `StopRecordingResult.cursorEventsPath/count`; smoke `smoke:cursor-events`; UI summary menampilkan jumlah event.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke cursor/export hijau.
+- **Status:** done
+- **Next:** Auto-zoom engine baca JSONL + easing ke titik klik; atau background padding preview.
+
 ## [2026-07-10 05:00] Save As → Documents after export
 
 - **Dikerjakan:** IPC `export:save` + `dialog.showSaveDialog` default `Documents/Screen Flow/ScreenFlow-….mp4`; copy temp MP4 keluar + cleanup session; path helpers murni + smoke `npm run smoke:export-save`; UI panggil Save As setelah encode sukses.

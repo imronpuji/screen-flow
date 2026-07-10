@@ -37,6 +37,8 @@ const idleRecording: RecordingStatus = {
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cursorEventsPath: null,
+  cursorEventCount: 0,
 }
 
 /** Prefer preload bridge; fall back so Vite preview still works without Electron. */
