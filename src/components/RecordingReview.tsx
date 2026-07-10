@@ -172,6 +172,7 @@ export function RecordingReview({
 }: RecordingReviewProps) {
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [editHistory, setEditHistory] = useState<EditHistory<ReviewEditState>>(() => {
     const exportPrefs = loadExportPrefs()
     return createEditHistory(
@@ -353,6 +354,20 @@ export function RecordingReview({
     }
   }, [exporting])
 
+  const requestDiscard = useCallback(() => {
+    if (exporting) return
+    setConfirmDiscard(true)
+  }, [exporting])
+
+  const cancelDiscard = useCallback(() => {
+    setConfirmDiscard(false)
+  }, [])
+
+  const confirmDiscardNow = useCallback(() => {
+    setConfirmDiscard(false)
+    onDiscard()
+  }, [onDiscard])
+
   function nudgeClickZoomFocus(
     index: number,
     direction: ZoomFocusNudgeDirection,
@@ -495,12 +510,25 @@ export function RecordingReview({
       }
       if (action === 'discard') {
         event.preventDefault()
-        onDiscard()
+        if (confirmDiscard) {
+          cancelDiscard()
+          return
+        }
+        requestDiscard()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [deleteSegmentAtPlayhead, exporting, hasCameraTrack, onCancelExport, onDiscard, onExport])
+  }, [
+    cancelDiscard,
+    confirmDiscard,
+    deleteSegmentAtPlayhead,
+    exporting,
+    hasCameraTrack,
+    onCancelExport,
+    onExport,
+    requestDiscard,
+  ])
 
   function patchCamera(partial: Partial<CameraOverlayStyle>) {
     setEdit((prev) => ({
@@ -600,6 +628,30 @@ export function RecordingReview({
 
   return (
     <div className="review">
+      {confirmDiscard ? (
+        <div
+          className="sf-confirm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="sf-discard-title"
+          data-tooltip-id="discard-confirm"
+        >
+          <div className="sf-confirm__card">
+            <h3 id="sf-discard-title" className="sf-confirm__title">
+              {TOOLTIPS['discard-confirm'].title}
+            </h3>
+            <p className="sf-confirm__body">{TOOLTIPS['discard-confirm'].body}</p>
+            <div className="sf-confirm__actions">
+              <button type="button" className="btn btn--ghost" onClick={cancelDiscard}>
+                Keep editing
+              </button>
+              <button type="button" className="btn btn--danger" onClick={confirmDiscardNow}>
+                Discard recording
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <header className="review__header">
         <div>
           <h2 className="review__title">Review your recording</h2>
@@ -633,7 +685,12 @@ export function RecordingReview({
             </button>
           </Tooltip>
           <Tooltip copy={TOOLTIPS['discard-review']}>
-            <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard}>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={exporting}
+              onClick={requestDiscard}
+            >
               New recording
             </button>
           </Tooltip>
@@ -812,9 +869,16 @@ export function RecordingReview({
                   </button>
                 </div>
                 {zoomSegments.length === 0 && edit.manualZoomPoints.length === 0 ? (
-                  <p className="review__hint">
-                    No zooms yet — record with clicks, or press Z / Add at playhead.
-                  </p>
+                  <EmptyHint
+                    copy={TOOLTIPS['zoom-empty']}
+                    className="review__hint"
+                    action={{
+                      label: 'Add zoom at playhead',
+                      onClick: addZoomAtPlayhead,
+                      disabled: exporting,
+                      title: `Add zoom at ${formatTimeMs(playheadMs)} (Z)`,
+                    }}
+                  />
                 ) : (
                   <ul className="review__zoom-list">
                     {zoomSegments.map((seg, index) => {

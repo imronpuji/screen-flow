@@ -17,9 +17,11 @@ export type TooltipId =
   | 'camera-off'
   | 'camera-no-device'
   | 'camera-review-empty'
+  | 'zoom-empty'
   | 'export-ready'
   | 'beautify'
   | 'discard-review'
+  | 'discard-confirm'
   | 'edit-undo'
   | 'edit-redo'
   | 'trim-mark-in'
@@ -102,6 +104,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
     title: 'No camera on this clip',
     body: 'Enable FaceTime overlay before recording to add a bubble next time.',
   },
+  'zoom-empty': {
+    id: 'zoom-empty',
+    title: 'No zoom points yet',
+    body: 'Record with clicks for auto-zoom, or add one at the playhead (Z).',
+  },
   'export-ready': {
     id: 'export-ready',
     title: 'E · Export polished MP4',
@@ -113,6 +120,12 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'discard-review': {
     id: 'discard-review',
     title: 'Esc · Discard and record again',
+    body: 'Asks for confirmation so you do not lose edits by accident.',
+  },
+  'discard-confirm': {
+    id: 'discard-confirm',
+    title: 'Discard this recording?',
+    body: 'Edits stay in this session only. Discard returns to setup so you can record again.',
   },
   'edit-undo': {
     id: 'edit-undo',
