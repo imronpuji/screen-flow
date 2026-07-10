@@ -940,6 +940,40 @@ export default function App() {
                   />
                   <span>Outline</span>
                 </label>
+                <label className="camera-controls__toggle">
+                  <input
+                    type="checkbox"
+                    checked={cameraOverlay.mirrored}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          mirrored: e.target.checked,
+                        }),
+                      )
+                    }
+                  />
+                  <span>Mirror</span>
+                </label>
+                <label className="camera-controls__field">
+                  <span>Opacity {Math.round(cameraOverlay.opacity * 100)}%</span>
+                  <input
+                    type="range"
+                    min={35}
+                    max={100}
+                    value={Math.round(cameraOverlay.opacity * 100)}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          opacity: Number(e.target.value) / 100,
+                        }),
+                      )
+                    }
+                  />
+                </label>
                 {cameraOverlay.borderEnabled ? (
                   <>
                     <label className="camera-controls__field">

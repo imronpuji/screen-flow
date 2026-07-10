@@ -12,6 +12,8 @@
  * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
  * - Shapes: circle (50% radius), rounded (~22%), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
+ * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
+ * - Opacity: bubble fade 35–100% (preview CSS opacity ≡ ffmpeg alpha / colorchannelmixer).
  */
 
 export type CameraCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
@@ -53,6 +55,13 @@ export interface CameraOverlayStyle {
   borderWidthPx: number
   /** Outline color as #RRGGBB (preview + ffmpeg plate). */
   borderColor: string
+  /**
+   * Horizontal mirror (FaceTime selfie). Preview uses CSS scaleX(-1);
+   * export uses ffmpeg `hflip` on the camera stream.
+   */
+  mirrored: boolean
+  /** Bubble opacity 0.35–1 (preview CSS ≡ ffmpeg alpha on camera/chrome). */
+  opacity: number
 }
 
 export const CAMERA_CORNERS: readonly CameraCorner[] = [
@@ -78,6 +87,13 @@ export const CAMERA_MAX_BORDER_PX = 6
 /** Default outline — soft off-white matching prior hardcoded CSS. */
 export const CAMERA_DEFAULT_BORDER_COLOR = '#E8EEF4'
 export const CAMERA_DEFAULT_BORDER_WIDTH_PX = 2
+
+/** Opacity clamp — below ~35% the face is unreadable; 100% = solid. */
+export const CAMERA_MIN_OPACITY = 0.35
+export const CAMERA_MAX_OPACITY = 1
+export const CAMERA_DEFAULT_OPACITY = 1
+/** Default FaceTime selfie mirror (live + export). */
+export const CAMERA_DEFAULT_MIRRORED = true
 
 /** Quick outline swatches (preview ≡ export via borderColor). */
 export const CAMERA_BORDER_COLOR_PRESETS: readonly {
@@ -110,6 +126,8 @@ export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
     borderEnabled: true,
     borderWidthPx: CAMERA_DEFAULT_BORDER_WIDTH_PX,
     borderColor: CAMERA_DEFAULT_BORDER_COLOR,
+    mirrored: CAMERA_DEFAULT_MIRRORED,
+    opacity: CAMERA_DEFAULT_OPACITY,
   }
 })()
 
@@ -556,6 +574,17 @@ export function normalizeCameraOverlay(
     borderColor: normalizeCameraBorderColor(
       partial?.borderColor ?? DEFAULT_CAMERA_OVERLAY.borderColor,
     ),
+    mirrored:
+      typeof partial?.mirrored === 'boolean'
+        ? partial.mirrored
+        : DEFAULT_CAMERA_OVERLAY.mirrored,
+    opacity: clamp(
+      typeof partial?.opacity === 'number' && Number.isFinite(partial.opacity)
+        ? partial.opacity
+        : DEFAULT_CAMERA_OVERLAY.opacity,
+      CAMERA_MIN_OPACITY,
+      CAMERA_MAX_OPACITY,
+    ),
   }
 }
 
@@ -567,6 +596,7 @@ export function cameraBubblePosition(style: CameraOverlayStyle): {
   borderRadius: string
   border: string
   boxShadow: string
+  opacity: number
 } {
   const normalized = normalizeCameraOverlay(style)
   const chrome = cameraBubbleChromeStyle(normalized)
@@ -577,6 +607,7 @@ export function cameraBubblePosition(style: CameraOverlayStyle): {
     borderRadius: cameraShapeBorderRadius(normalized.shape),
     border: chrome.border,
     boxShadow: chrome.boxShadow,
+    opacity: normalized.opacity,
   }
 }
 

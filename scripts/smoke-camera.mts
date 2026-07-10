@@ -85,6 +85,19 @@ function testNormalize(): void {
   )
   assert(CAMERA_BORDER_COLOR_PRESETS.length >= 5, 'enough outline swatches')
 
+  const look = normalizeCameraOverlay({
+    mirrored: false,
+    opacity: 0.1,
+  })
+  assert(look.mirrored === false, 'mirror off kept')
+  assert(look.opacity === 0.35, 'opacity clamped low')
+  assert(DEFAULT_CAMERA_OVERLAY.mirrored === true, 'default mirrored')
+  assert(DEFAULT_CAMERA_OVERLAY.opacity === 1, 'default opacity')
+  assert(
+    normalizeCameraOverlay({ opacity: 2 }).opacity === 1,
+    'opacity clamped high',
+  )
+
   const free = normalizeCameraOverlay({
     enabled: true,
     anchor: 'free',
@@ -107,7 +120,13 @@ function testPosition(): void {
     assert(typeof pos.top === 'string' && pos.top.endsWith('%'), `${corner} top`)
     assert(pos.border.includes('2px solid'), `${corner} default border`)
     assert(pos.boxShadow.includes('rgba'), `${corner} default shadow`)
+    assert(pos.opacity === 1, `${corner} default opacity`)
   }
+  const faded = cameraBubblePosition({
+    ...DEFAULT_CAMERA_OVERLAY,
+    opacity: 0.7,
+  })
+  assert(faded.opacity === 0.7, 'position carries opacity')
   const rounded = cameraBubblePosition({
     ...DEFAULT_CAMERA_OVERLAY,
     shape: 'rounded',

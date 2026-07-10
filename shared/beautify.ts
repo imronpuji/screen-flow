@@ -34,6 +34,8 @@ export interface BeautifyPreset {
     | 'borderEnabled'
     | 'borderWidthPx'
     | 'borderColor'
+    | 'mirrored'
+    | 'opacity'
   >
   exportQuality: ExportQualityId
 }
@@ -65,6 +67,8 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       borderEnabled: true,
       borderWidthPx: 2,
       borderColor: '#E8EEF4',
+      mirrored: true,
+      opacity: 1,
     },
     exportQuality: 'good',
   },
@@ -94,6 +98,8 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       borderEnabled: true,
       borderWidthPx: 3,
       borderColor: '#3DD6C6',
+      mirrored: false,
+      opacity: 1,
     },
     exportQuality: 'high',
   },
@@ -123,6 +129,8 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       borderEnabled: true,
       borderWidthPx: 3,
       borderColor: '#F0A05A',
+      mirrored: true,
+      opacity: 0.92,
     },
     exportQuality: 'draft',
   },
@@ -163,6 +171,8 @@ export function applyBeautifyPreset(
         borderEnabled: preset.camera.borderEnabled,
         borderWidthPx: preset.camera.borderWidthPx,
         borderColor: preset.camera.borderColor,
+        mirrored: preset.camera.mirrored,
+        opacity: preset.camera.opacity,
       },
       preset.camera.corner,
     ),

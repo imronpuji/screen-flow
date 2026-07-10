@@ -26,7 +26,10 @@ export interface CameraBubbleProps {
   currentTimeSec?: number
   /** When true, play recorded camera in lockstep with the screen preview. */
   playing?: boolean
-  /** Mirror for live selfie preview; leave false for recorded/export match. */
+  /**
+   * Override mirror; when omitted, uses `style.mirrored` (FaceTime selfie default).
+   * Prefer editing style.mirrored so preview ≡ export.
+   */
   mirrored?: boolean
   style: CameraOverlayStyle
   /** Extra class on the root bubble (e.g. muted preview chrome). */
@@ -51,7 +54,7 @@ export function CameraBubble({
   mediaUrl = null,
   currentTimeSec,
   playing = false,
-  mirrored = true,
+  mirrored,
   style,
   className = '',
   label = 'Camera',
@@ -87,6 +90,7 @@ export function CameraBubble({
 
   const displayStyle = dragStyle ?? style
   const pos = cameraBubblePosition(displayStyle)
+  const mirrorVideo = mirrored ?? displayStyle.mirrored
   const useRecorded = Boolean(mediaUrl)
   const active = style.enabled && (useRecorded || Boolean(stream))
   const sourceKey = useRecorded ? `rec:${mediaUrl ?? ''}` : `live:${stream?.id ?? ''}`
@@ -383,6 +387,7 @@ export function CameraBubble({
           borderRadius: pos.borderRadius,
           border: pos.border,
           boxShadow: pos.boxShadow,
+          opacity: pos.opacity,
         }}
         aria-label={label}
         title={
@@ -398,7 +403,7 @@ export function CameraBubble({
         <video
           ref={videoRef}
           className={
-            mirrored
+            mirrorVideo
               ? 'camera-bubble__video'
               : 'camera-bubble__video camera-bubble__video--natural'
           }
