@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ExportProgressEvent } from '../../shared/ipc'
 import type { CursorEvent } from '../../shared/cursor'
 import {
@@ -30,6 +30,14 @@ import {
   matchShortcut,
   shortcutsForContext,
 } from '../../shared/shortcuts'
+import { buildZoomSegments } from '../../shared/autozoom'
+import {
+  clampZoomPeakScale,
+  countEnabledZoomPoints,
+  isZoomPointEnabled,
+  resolveZoomPointPeakScale,
+  upsertZoomPointOverride,
+} from '../../shared/zoomPoints'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import { EmptyHint, Tooltip } from './Tooltip'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
@@ -90,6 +98,23 @@ export function RecordingReview({
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
+
+  const zoomSegments = useMemo(
+    () =>
+      edit.autoZoomEnabled
+        ? buildZoomSegments(
+            cursorEvents,
+            { width: 1920, height: 1080 },
+            captureGeometry ? { geometry: captureGeometry } : {},
+          )
+        : [],
+    [captureGeometry, cursorEvents, edit.autoZoomEnabled],
+  )
+
+  const enabledZoomCount = countEnabledZoomPoints(
+    zoomSegments.length,
+    edit.zoomPointOverrides,
+  )
 
   useEffect(() => {
     editRef.current = edit
@@ -213,6 +238,7 @@ export function RecordingReview({
             cursorEvents={cursorEvents}
             captureGeometry={captureGeometry}
             autoZoomEnabled={edit.autoZoomEnabled}
+            zoomPointOverrides={edit.zoomPointOverrides}
             cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
             cursorAppearance={edit.cursorAppearance}
             background={edit.background}
@@ -238,6 +264,104 @@ export function RecordingReview({
             />
             <span>Auto-zoom on clicks</span>
           </label>
+
+          {edit.autoZoomEnabled ? (
+            <div className="review__zoom-points" aria-label="Zoom points">
+              <div className="review__field">
+                <span className="review__label">
+                  Zoom points · {enabledZoomCount}/{zoomSegments.length} on
+                </span>
+                {zoomSegments.length === 0 ? (
+                  <p className="review__hint">
+                    No click zooms yet — record with clicks to generate points.
+                  </p>
+                ) : (
+                  <ul className="review__zoom-list">
+                    {zoomSegments.map((seg, index) => {
+                      const enabled = isZoomPointEnabled(index, edit.zoomPointOverrides)
+                      const peak = resolveZoomPointPeakScale(
+                        seg,
+                        index,
+                        edit.zoomPointOverrides,
+                      )
+                      return (
+                        <li
+                          key={`zoom-point-${index}-${seg.startMs}`}
+                          className={`review__zoom-item${
+                            enabled ? '' : ' review__zoom-item--off'
+                          }`}
+                        >
+                          <label className="review__toggle review__toggle--nested">
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              disabled={exporting}
+                              onChange={(e) =>
+                                setEdit((prev) => ({
+                                  ...prev,
+                                  zoomPointOverrides: upsertZoomPointOverride(
+                                    prev.zoomPointOverrides,
+                                    {
+                                      index,
+                                      enabled: e.target.checked,
+                                      peakScale: peak,
+                                    },
+                                  ),
+                                }))
+                              }
+                            />
+                            <span>
+                              Zoom {index + 1} · {formatTimeMs(seg.peakMs)}
+                            </span>
+                          </label>
+                          {enabled ? (
+                            <div className="review__field review__field--compact">
+                              <label
+                                className="review__label"
+                                htmlFor={`zoom-scale-${index}`}
+                              >
+                                Scale {peak.toFixed(1)}×
+                              </label>
+                              <input
+                                id={`zoom-scale-${index}`}
+                                className="review__range"
+                                type="range"
+                                min={1.1}
+                                max={3}
+                                step={0.1}
+                                value={peak}
+                                disabled={exporting}
+                                onChange={(e) =>
+                                  setEdit((prev) => ({
+                                    ...prev,
+                                    zoomPointOverrides: upsertZoomPointOverride(
+                                      prev.zoomPointOverrides,
+                                      {
+                                        index,
+                                        enabled: true,
+                                        peakScale: clampZoomPeakScale(
+                                          Number(e.target.value),
+                                        ),
+                                      },
+                                    ),
+                                  }))
+                                }
+                              />
+                            </div>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {zoomSegments.length > 0 ? (
+                  <p className="review__hint">
+                    Toggle points or tweak scale — preview and export stay in sync.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <label className="review__toggle">
             <input
@@ -629,12 +753,6 @@ export function RecordingReview({
                   <kbd className="kbd">{s.keys}</kbd> {s.description}
                 </li>
               ))}
-            </ul>
-          </div>
-          <div className="review__coming">
-            <p className="review__coming-title">Coming next</p>
-            <ul>
-              <li>Per-click zoom points</li>
             </ul>
           </div>
         </aside>

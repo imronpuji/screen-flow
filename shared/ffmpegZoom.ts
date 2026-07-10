@@ -11,6 +11,10 @@ import {
   type ZoomSegment,
 } from './autozoom.js'
 import type { CursorEvent } from './cursor.js'
+import {
+  applyZoomPointOverrides,
+  type ZoomPointOverride,
+} from './zoomPoints.js'
 
 export interface CropRect {
   w: number
@@ -124,8 +128,12 @@ export function planAutoZoomExport(
   durationMs: number,
   autoZoomOptions: AutoZoomOptions = {},
   sendCmdOptions: ZoomSendCmdOptions = {},
+  zoomOverrides?: ZoomPointOverride[] | null,
 ): AutoZoomFilterPlan {
-  const segments = buildZoomSegments(events, videoSize, autoZoomOptions)
+  const segments = applyZoomPointOverrides(
+    buildZoomSegments(events, videoSize, autoZoomOptions),
+    zoomOverrides,
+  )
   const filterName = sendCmdOptions.filterName ?? 'z'
   const { width, height } = videoSize
 

@@ -7,6 +7,7 @@ import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { ExportQualityId } from './exportQuality.js'
 import { DEFAULT_EXPORT_QUALITY, normalizeExportQuality } from './exportQuality.js'
+import type { ZoomPointOverride } from './zoomPoints.js'
 
 /** Lightweight edit state for post-record review (trim + effects). */
 
@@ -19,6 +20,11 @@ export interface ReviewEditState {
   trimStartMs: number
   trimEndMs: number
   autoZoomEnabled: boolean
+  /**
+   * Per-click zoom edits (enable/disable + peak scale) keyed by auto-segment index.
+   * Empty = all auto-zoom points keep defaults.
+   */
+  zoomPointOverrides: ZoomPointOverride[]
   cursorSmoothingEnabled: boolean
   /** Size / style / hide / spotlight for composited cursor. */
   cursorAppearance: CursorAppearance
@@ -61,6 +67,7 @@ export function defaultReviewEdit(
     trimStartMs: 0,
     trimEndMs: Math.max(0, durationMs),
     autoZoomEnabled: true,
+    zoomPointOverrides: [],
     cursorSmoothingEnabled: true,
     cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
     background: { ...DEFAULT_BACKGROUND_STYLE },

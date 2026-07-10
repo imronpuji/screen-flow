@@ -465,7 +465,13 @@ export default function App() {
         },
       }
       if (_edit.autoZoomEnabled && lastCursorEventsPath) {
-        exportRequest.autoZoom = { cursorEventsPath: lastCursorEventsPath }
+        exportRequest.autoZoom = {
+          cursorEventsPath: lastCursorEventsPath,
+          zoomOverrides:
+            _edit.zoomPointOverrides.length > 0
+              ? _edit.zoomPointOverrides
+              : undefined,
+        }
       }
       if (_edit.background.enabled) {
         exportRequest.background = { style: _edit.background }

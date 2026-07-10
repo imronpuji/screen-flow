@@ -114,6 +114,8 @@ export function applyBeautifyPreset(
   return {
     ...edit,
     autoZoomEnabled: preset.autoZoomEnabled,
+    // Keep manual zoom-point edits; beautify only toggles the master switch.
+    zoomPointOverrides: edit.zoomPointOverrides,
     cursorSmoothingEnabled: preset.cursorSmoothingEnabled,
     cursorAppearance: normalizeCursorAppearance(preset.cursorAppearance),
     background: normalizeBackgroundStyle(preset.background),
