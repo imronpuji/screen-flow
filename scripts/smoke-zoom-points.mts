@@ -16,9 +16,13 @@ import {
   isZoomPointEnabled,
   manualZoomToSegment,
   mergeZoomSegments,
+  MIN_ZOOM_EDGE_MS,
   moveManualZoomPeak,
   nudgeZoomFocus,
   removeManualZoomPoint,
+  resizeAutoZoomEdge,
+  resizeManualZoomEdge,
+  resizeZoomSegmentEdge,
   resolveZoomPointFocus,
   resolveZoomPointPeakMs,
   resolveZoomPointPeakScale,
@@ -361,6 +365,143 @@ function testPeakDrag(): void {
   console.log('ok peak drag')
 }
 
+function testEdgeResize(): void {
+  const segments = buildZoomSegments(sampleEvents(), videoSize)
+  // Use middle segment — early click peaks near t=0 so start can't extend far.
+  const mid = segments[1]!
+  const hold = mid.holdEndMs - mid.peakMs
+
+  const longerIn = resizeZoomSegmentEdge(
+    mid,
+    'start',
+    mid.peakMs - 700,
+    8000,
+  )
+  assert(longerIn.peakMs === mid.peakMs, 'start keeps peak')
+  assert(longerIn.holdEndMs === mid.holdEndMs, 'start keeps hold end')
+  assert(longerIn.startMs === mid.peakMs - 700, 'start extended')
+  assert(longerIn.endMs === mid.endMs, 'start keeps end')
+
+  const minIn = resizeZoomSegmentEdge(mid, 'start', mid.peakMs, 8000)
+  assert(
+    mid.peakMs - minIn.startMs === MIN_ZOOM_EDGE_MS,
+    'start clamps to min edge',
+  )
+
+  const longerOut = resizeZoomSegmentEdge(
+    mid,
+    'end',
+    mid.holdEndMs + 900,
+    8000,
+  )
+  assert(longerOut.peakMs === mid.peakMs, 'end keeps peak')
+  assert(longerOut.startMs === mid.startMs, 'end keeps start')
+  assert(longerOut.endMs === mid.holdEndMs + 900, 'end extended')
+
+  const minOut = resizeZoomSegmentEdge(mid, 'end', mid.holdEndMs, 8000)
+  assert(
+    minOut.endMs - minOut.holdEndMs === MIN_ZOOM_EDGE_MS,
+    'end clamps to min edge',
+  )
+
+  let overrides = resizeAutoZoomEdge(
+    segments,
+    [],
+    1,
+    'start',
+    mid.peakMs - 600,
+    8000,
+  )
+  assert(overrides.length === 1, 'edge upserts override')
+  assert(overrides[0]!.index === 1, 'targets index 1')
+  assert(overrides[0]!.zoomInMs === 600, 'stores zoomInMs')
+  assert(overrides[0]!.holdMs === hold, 'stores holdMs')
+  assert(overrides[0]!.peakMs === mid.peakMs, 'stores peakMs')
+
+  const applied = applyZoomPointOverrides(segments, overrides)
+  const appliedMid = applied.find((s) => s.peakMs === mid.peakMs)!
+  assert(appliedMid.startMs === mid.peakMs - 600, 'apply start edge')
+  assert(appliedMid.peakMs === mid.peakMs, 'apply peak intact')
+
+  overrides = resizeAutoZoomEdge(
+    segments,
+    overrides,
+    1,
+    'end',
+    mid.holdEndMs + 750,
+    8000,
+  )
+  assert(overrides[0]!.zoomOutMs === 750, 'stores zoomOutMs')
+  const appliedOut = applyZoomPointOverrides(segments, overrides)
+  const appliedMidOut = appliedOut.find((s) => s.peakMs === mid.peakMs)!
+  assert(appliedMidOut.endMs === mid.holdEndMs + 750, 'apply end edge')
+  assert(appliedMidOut.startMs === mid.peakMs - 600, 'keeps prior start')
+
+  const withPeak = applyZoomPointOverrides(segments, [
+    {
+      index: 1,
+      enabled: true,
+      peakMs: mid.peakMs + 200,
+      zoomInMs: 500,
+      holdMs: hold,
+      zoomOutMs: 400,
+    },
+  ])
+  const peaked = withPeak.find((s) => s.peakMs === mid.peakMs + 200)!
+  assert(peaked.peakMs === mid.peakMs + 200, 'timing+peak peak')
+  assert(peaked.peakMs - peaked.startMs === 500, 'timing+peak in')
+  assert(peaked.endMs - peaked.holdEndMs === 400, 'timing+peak out')
+
+  const manual = createManualZoomPoint({
+    peakMs: 3000,
+    id: 'mz-edge',
+    focusX: 0.5,
+    focusY: 0.5,
+  })
+  const manualSeg = manualZoomToSegment(manual)!
+  const resizedManual = resizeManualZoomEdge(
+    [manual],
+    'mz-edge',
+    'start',
+    manualSeg.peakMs - 550,
+    8000,
+  )
+  assert(resizedManual[0]!.zoomInMs === 550, 'manual zoomIn stored')
+  const manualApplied = manualZoomToSegment(resizedManual[0]!)!
+  assert(manualApplied.startMs === 3000 - 550, 'manual start applied')
+  assert(manualApplied.peakMs === 3000, 'manual peak intact')
+
+  const markers = buildZoomEventMarkers(segments, overrides, resizedManual)
+  assert(
+    markers.some(
+      (m) =>
+        m.zoomIndex === 1 &&
+        m.startMs === mid.peakMs - 600 &&
+        m.endMs === mid.holdEndMs + 750,
+    ),
+    'markers reflect edge timing',
+  )
+
+  const exportPlan = planAutoZoomExport(
+    sampleEvents(),
+    videoSize,
+    8000,
+    {},
+    {},
+    overrides,
+  )
+  const exported = exportPlan.segments.find((s) => s.peakMs === mid.peakMs)!
+  assert(
+    exported.startMs === mid.peakMs - 600,
+    'export bakes zoom-in edge',
+  )
+  assert(
+    exported.endMs === mid.holdEndMs + 750,
+    'export bakes zoom-out edge',
+  )
+  console.log('ok edge resize')
+}
+
 testClamp()
 testApplyOverrides()
 testUpsertAndResolve()
@@ -369,4 +510,5 @@ testEditDefaults()
 testManualZoomAtPlayhead()
 testFocusNudge()
 testPeakDrag()
+testEdgeResize()
 console.log('smoke-zoom-points: all ok')

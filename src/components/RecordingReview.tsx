@@ -109,6 +109,8 @@ import {
   removeManualZoomPoint,
   resolveZoomPointFocus,
   resolveZoomPointPeakScale,
+  resizeAutoZoomEdge,
+  resizeManualZoomEdge,
   upsertManualZoomPoint,
   upsertZoomPointOverride,
   type ZoomFocusNudgeDirection,
@@ -888,8 +890,44 @@ export function RecordingReview({
                       : {}),
                     ...(existing?.focusX != null ? { focusX: existing.focusX } : {}),
                     ...(existing?.focusY != null ? { focusY: existing.focusY } : {}),
+                    ...(existing?.zoomInMs != null
+                      ? { zoomInMs: existing.zoomInMs }
+                      : {}),
+                    ...(existing?.holdMs != null ? { holdMs: existing.holdMs } : {}),
+                    ...(existing?.zoomOutMs != null
+                      ? { zoomOutMs: existing.zoomOutMs }
+                      : {}),
                     peakMs: Math.max(0, change.peakMs),
                   }),
+                }
+              })
+            }}
+            onZoomEdgeChange={(change) => {
+              if (exporting) return
+              const duration = durationMsRef.current
+              setEdit((prev) => {
+                if (change.kind === 'manual') {
+                  return {
+                    ...prev,
+                    manualZoomPoints: resizeManualZoomEdge(
+                      prev.manualZoomPoints,
+                      change.id,
+                      change.edge,
+                      change.tMs,
+                      duration,
+                    ),
+                  }
+                }
+                return {
+                  ...prev,
+                  zoomPointOverrides: resizeAutoZoomEdge(
+                    zoomSegments,
+                    prev.zoomPointOverrides,
+                    change.index,
+                    change.edge,
+                    change.tMs,
+                    duration,
+                  ),
                 }
               })
             }}
@@ -987,10 +1025,12 @@ export function RecordingReview({
                 <span className="review__label">
                   Zoom points · {enabledZoomCount}/{totalZoomSlots} on
                 </span>
-                <p className="review__hint">
-                  Drag teal zoom spans on the scrubber to move peaks
-                  {timelinePrefs.magneticSnapEnabled ? ' (magnetic snap on)' : ''}.
-                </p>
+                <Tooltip copy={TOOLTIPS['trim-zoom-edge']}>
+                  <p className="review__hint">
+                    Drag teal zoom spans to move peaks; drag edges to trim zoom-in/out
+                    {timelinePrefs.magneticSnapEnabled ? ' (magnetic snap on)' : ''}.
+                  </p>
+                </Tooltip>
                 <div className="review__zoom-actions">
                   <button
                     type="button"
