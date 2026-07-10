@@ -25,6 +25,9 @@
 - [ ] Preset background
 - [ ] Export GIF / WebM
 - [x] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake
+- [x] One-click beautify — Tutorial / Product demo / Social presets (review)
+- [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik
+- [ ] Keyboard shortcuts
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

@@ -185,3 +185,15 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Tiga preset di `shared/exportQuality.ts`: **Draft** (VT 4M / x264 CRF 28 ultrafast), **Good** default (VT 8M / CRF 20 veryfast), **High** (VT 16M / CRF 18 medium). IPC `ExportMp4Request.quality`; VideoToolbox fallback ke libx264 memakai CRF/preset yang sama. UI picker di review sebelum Export MP4.
 - **Alasan:** Roadmap #10 — orang awam pilih kualitas tanpa flag ffmpeg; Good = perilaku lama; Draft cepat cek; High untuk share final.
 - **Status:** aktif
+
+## [2026-07-10] One-click Beautify presets
+
+- **Keputusan:** `shared/beautify.ts` mendefinisikan 3 look: **Tutorial** (Aurora + spotlight cursor 1.35× + Good), **Product demo** (Midnight + crisp cursor + High), **Social** (Sunset + crosshair/spotlight + Draft). `applyBeautifyPreset` menimpa zoom/cursor/bg/quality/camera layout tapi **preserve trim**; camera overlay diaktifkan hanya jika ada camera track.
+- **Alasan:** Roadmap #11 / inovasi — orang awam dapat hasil cakep tanpa menyentuh banyak toggle; pure helper smoke-testable.
+- **Status:** aktif
+
+## [2026-07-10] First-run onboarding overlay
+
+- **Keputusan:** Overlay 3 langkah di setup (record → polish/beautify → export MP4). Completion flag di `localStorage` key `screen-flow:onboarding-done`. Skip = mark done. Tidak memblok Electron permission flow.
+- **Alasan:** Roadmap #11 — first-run tanpa baca manual; localStorage cukup (tanpa main-process prefs) untuk MVP.
+- **Status:** aktif
