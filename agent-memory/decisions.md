@@ -55,3 +55,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Main spawn system `ffmpeg` (override via `SCREEN_FLOW_FFMPEG`). IPC `export:webm-to-mp4` hanya menerima path di bawah `app.getPath('temp')/screen-flow/`. Encoder: `h264_videotoolbox` di darwin (fallback `libx264`), `libx264` di platform lain. Default output sibling `export.mp4`; `cleanupTemp` default true menghapus WebM setelah sukses.
 - **Alasan:** Encode di child process — UI tidak blok; VideoToolbox = HW accel macOS; path guard mencegah path traversal via IPC; CI Linux bisa smoke-test dengan libx264 tanpa GUI.
 - **Status:** aktif
+
+## [2026-07-10] Export progress + cancel
+
+- **Keputusan:** Satu active ffmpeg child di main; progress di-parse dari stderr (`Duration:` + `out_time_ms` via `-progress pipe:2`) lalu di-broadcast `export:progress` ke semua window. Cancel = `export:cancel` → SIGTERM; invoke `export:webm-to-mp4` melempar `EXPORT_CANCELLED` (dengan `cause`). Parser murni di `electron/ffmpeg/progress.ts` untuk smoke tanpa Electron.
+- **Alasan:** UI tetap responsif; % best-effort cukup untuk MVP; cancel mencegah encode panjang tanpa kill orphan process.
+- **Status:** aktif

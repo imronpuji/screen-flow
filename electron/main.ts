@@ -102,7 +102,7 @@ function registerIpc(): void {
     } catch (err) {
       if (err instanceof ExportCancelledError) {
         // Structured cancel so renderer can distinguish from hard failures.
-        throw new Error('EXPORT_CANCELLED')
+        throw new Error('EXPORT_CANCELLED', { cause: err })
       }
       throw err
     }

@@ -67,15 +67,22 @@ async function testCancelSigterm(): Promise<void> {
   const killed = child.kill('SIGTERM')
   assert(killed, 'SIGTERM sent')
 
-  const { signal } = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-    (resolve) => {
-      child.on('close', (code, sig) => resolve({ code, signal: sig }))
-    },
-  )
+  const closeResult = await new Promise<{
+    code: number | null
+    signal: NodeJS.Signals | null
+  }>((resolve) => {
+    child.on('close', (code, sig) => resolve({ code, signal: sig }))
+  })
 
-  assert(signal === 'SIGTERM' || !fs.existsSync(out) || fs.statSync(out).size === 0, 'cancelled')
-  // Progress lines are best-effort; do not fail the smoke if the window was too short.
-  console.log(`ok cancel (signal=${signal}, progressSeen=${sawProgress})`)
+  // Success = process stopped early (signal or non-zero), not a clean 30s encode.
+  const stoppedEarly =
+    closeResult.signal === 'SIGTERM' ||
+    closeResult.signal === 'SIGKILL' ||
+    (closeResult.code != null && closeResult.code !== 0)
+  assert(stoppedEarly, `expected early stop, got code=${closeResult.code} signal=${closeResult.signal}`)
+  console.log(
+    `ok cancel (code=${closeResult.code}, signal=${closeResult.signal}, progressSeen=${sawProgress})`,
+  )
 
   fs.rmSync(dir, { recursive: true, force: true })
 }

@@ -10,7 +10,7 @@
 - [x] Capture dasar via `desktopCapturer` (list + getUserMedia/MediaRecorder → temp WebM)
 - [x] Simpan frame/stream via ffmpeg (child process di main) — WebM → MP4 export
 - [~] Preview real-time (canvas) — live `<video>` preview done; canvas/WebGL later
-- [x] Export MP4 (H.264; VideoToolbox di macOS, libx264 fallback) — basic path done; progress/cancel + save dialog next
+- [x] Export MP4 (H.264; VideoToolbox di macOS, libx264 fallback) — progress/cancel done; save dialog next
 
 ## Signature (Screen Studio-like)
 
