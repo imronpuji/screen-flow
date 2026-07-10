@@ -50,10 +50,13 @@ import {
   countEnabledZoomPoints,
   createManualZoomPoint,
   isZoomPointEnabled,
+  nudgeZoomFocus,
   removeManualZoomPoint,
+  resolveZoomPointFocus,
   resolveZoomPointPeakScale,
   upsertManualZoomPoint,
   upsertZoomPointOverride,
+  type ZoomFocusNudgeDirection,
 } from '../../shared/zoomPoints'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
 import { EmptyHint, Tooltip } from './Tooltip'
@@ -194,6 +197,56 @@ export function RecordingReview({
         }),
       ),
     }))
+  }
+
+  function nudgeClickZoomFocus(
+    index: number,
+    direction: ZoomFocusNudgeDirection,
+    shift: boolean,
+  ) {
+    if (exporting) return
+    setEdit((prev) => {
+      const seg = zoomSegments[index]
+      if (!seg) return prev
+      const current = resolveZoomPointFocus(seg, index, prev.zoomPointOverrides)
+      const next = nudgeZoomFocus(current.focusX, current.focusY, direction, {
+        shift,
+      })
+      const peak = resolveZoomPointPeakScale(seg, index, prev.zoomPointOverrides)
+      return {
+        ...prev,
+        zoomPointOverrides: upsertZoomPointOverride(prev.zoomPointOverrides, {
+          index,
+          enabled: true,
+          peakScale: peak,
+          focusX: next.focusX,
+          focusY: next.focusY,
+        }),
+      }
+    })
+  }
+
+  function nudgeManualZoomFocus(
+    id: string,
+    direction: ZoomFocusNudgeDirection,
+    shift: boolean,
+  ) {
+    if (exporting) return
+    setEdit((prev) => {
+      const point = prev.manualZoomPoints.find((p) => p.id === id)
+      if (!point) return prev
+      const next = nudgeZoomFocus(point.focusX, point.focusY, direction, {
+        shift,
+      })
+      return {
+        ...prev,
+        manualZoomPoints: upsertManualZoomPoint(prev.manualZoomPoints, {
+          ...point,
+          focusX: next.focusX,
+          focusY: next.focusY,
+        }),
+      }
+    })
   }
 
   const addZoomAtPlayheadRef = useRef(addZoomAtPlayhead)
@@ -390,6 +443,11 @@ export function RecordingReview({
                         index,
                         edit.zoomPointOverrides,
                       )
+                      const focus = resolveZoomPointFocus(
+                        seg,
+                        index,
+                        edit.zoomPointOverrides,
+                      )
                       return (
                         <li
                           key={`zoom-point-${index}-${seg.startMs}`}
@@ -411,6 +469,8 @@ export function RecordingReview({
                                       index,
                                       enabled: e.target.checked,
                                       peakScale: peak,
+                                      focusX: focus.focusX,
+                                      focusY: focus.focusY,
                                     },
                                   ),
                                 }))
@@ -421,39 +481,50 @@ export function RecordingReview({
                             </span>
                           </label>
                           {enabled ? (
-                            <div className="review__field review__field--compact">
-                              <label
-                                className="review__label"
-                                htmlFor={`zoom-scale-${index}`}
-                              >
-                                Scale {peak.toFixed(1)}×
-                              </label>
-                              <input
-                                id={`zoom-scale-${index}`}
-                                className="review__range"
-                                type="range"
-                                min={1.1}
-                                max={3}
-                                step={0.1}
-                                value={peak}
+                            <>
+                              <div className="review__field review__field--compact">
+                                <label
+                                  className="review__label"
+                                  htmlFor={`zoom-scale-${index}`}
+                                >
+                                  Scale {peak.toFixed(1)}×
+                                </label>
+                                <input
+                                  id={`zoom-scale-${index}`}
+                                  className="review__range"
+                                  type="range"
+                                  min={1.1}
+                                  max={3}
+                                  step={0.1}
+                                  value={peak}
+                                  disabled={exporting}
+                                  onChange={(e) =>
+                                    setEdit((prev) => ({
+                                      ...prev,
+                                      zoomPointOverrides: upsertZoomPointOverride(
+                                        prev.zoomPointOverrides,
+                                        {
+                                          index,
+                                          enabled: true,
+                                          peakScale: clampZoomPeakScale(
+                                            Number(e.target.value),
+                                          ),
+                                          focusX: focus.focusX,
+                                          focusY: focus.focusY,
+                                        },
+                                      ),
+                                    }))
+                                  }
+                                />
+                              </div>
+                              <ZoomFocusNudgePad
+                                label={`Focus ${Math.round(focus.focusX * 100)}%, ${Math.round(focus.focusY * 100)}%`}
                                 disabled={exporting}
-                                onChange={(e) =>
-                                  setEdit((prev) => ({
-                                    ...prev,
-                                    zoomPointOverrides: upsertZoomPointOverride(
-                                      prev.zoomPointOverrides,
-                                      {
-                                        index,
-                                        enabled: true,
-                                        peakScale: clampZoomPeakScale(
-                                          Number(e.target.value),
-                                        ),
-                                      },
-                                    ),
-                                  }))
+                                onNudge={(direction, shift) =>
+                                  nudgeClickZoomFocus(index, direction, shift)
                                 }
                               />
-                            </div>
+                            </>
                           ) : null}
                         </li>
                       )
@@ -485,38 +556,47 @@ export function RecordingReview({
                           </span>
                         </label>
                         {point.enabled ? (
-                          <div className="review__field review__field--compact">
-                            <label
-                              className="review__label"
-                              htmlFor={`manual-zoom-scale-${point.id}`}
-                            >
-                              Scale {point.peakScale.toFixed(1)}×
-                            </label>
-                            <input
-                              id={`manual-zoom-scale-${point.id}`}
-                              className="review__range"
-                              type="range"
-                              min={1.1}
-                              max={3}
-                              step={0.1}
-                              value={point.peakScale}
+                          <>
+                            <div className="review__field review__field--compact">
+                              <label
+                                className="review__label"
+                                htmlFor={`manual-zoom-scale-${point.id}`}
+                              >
+                                Scale {point.peakScale.toFixed(1)}×
+                              </label>
+                              <input
+                                id={`manual-zoom-scale-${point.id}`}
+                                className="review__range"
+                                type="range"
+                                min={1.1}
+                                max={3}
+                                step={0.1}
+                                value={point.peakScale}
+                                disabled={exporting}
+                                onChange={(e) =>
+                                  setEdit((prev) => ({
+                                    ...prev,
+                                    manualZoomPoints: upsertManualZoomPoint(
+                                      prev.manualZoomPoints,
+                                      {
+                                        ...point,
+                                        peakScale: clampZoomPeakScale(
+                                          Number(e.target.value),
+                                        ),
+                                      },
+                                    ),
+                                  }))
+                                }
+                              />
+                            </div>
+                            <ZoomFocusNudgePad
+                              label={`Focus ${Math.round(point.focusX * 100)}%, ${Math.round(point.focusY * 100)}%`}
                               disabled={exporting}
-                              onChange={(e) =>
-                                setEdit((prev) => ({
-                                  ...prev,
-                                  manualZoomPoints: upsertManualZoomPoint(
-                                    prev.manualZoomPoints,
-                                    {
-                                      ...point,
-                                      peakScale: clampZoomPeakScale(
-                                        Number(e.target.value),
-                                      ),
-                                    },
-                                  ),
-                                }))
+                              onNudge={(direction, shift) =>
+                                nudgeManualZoomFocus(point.id, direction, shift)
                               }
                             />
-                          </div>
+                          </>
                         ) : null}
                         <button
                           type="button"
@@ -540,8 +620,9 @@ export function RecordingReview({
                 )}
                 {totalZoomSlots > 0 ? (
                   <p className="review__hint">
-                    Toggle points or tweak scale — preview and export stay in sync.
-                    Press Z to add a zoom at the playhead (focus follows cursor).
+                    Toggle points, tweak scale, or nudge focus (Shift = larger step) —
+                    preview and export stay in sync. Press Z to add a zoom at the
+                    playhead (focus follows cursor).
                   </p>
                 ) : null}
               </div>
@@ -1189,6 +1270,50 @@ export function RecordingReview({
             </ul>
           </div>
         </aside>
+      </div>
+    </div>
+  )
+}
+
+const FOCUS_NUDGE_BUTTONS: {
+  direction: ZoomFocusNudgeDirection
+  label: string
+  gridArea: string
+}[] = [
+  { direction: 'up', label: '↑', gridArea: 'up' },
+  { direction: 'left', label: '←', gridArea: 'left' },
+  { direction: 'right', label: '→', gridArea: 'right' },
+  { direction: 'down', label: '↓', gridArea: 'down' },
+]
+
+function ZoomFocusNudgePad(props: {
+  label: string
+  disabled: boolean
+  onNudge: (direction: ZoomFocusNudgeDirection, shift: boolean) => void
+}) {
+  const { label, disabled, onNudge } = props
+  return (
+    <div className="review__focus-nudge">
+      <span className="review__label">{label}</span>
+      <div
+        className="review__focus-pad"
+        role="group"
+        aria-label="Nudge zoom focus"
+      >
+        {FOCUS_NUDGE_BUTTONS.map((btn) => (
+          <button
+            key={btn.direction}
+            type="button"
+            className="btn btn--ghost review__focus-btn"
+            style={{ gridArea: btn.gridArea }}
+            disabled={disabled}
+            title={`Nudge focus ${btn.direction} (Shift = larger)`}
+            aria-label={`Nudge focus ${btn.direction}`}
+            onClick={(e) => onNudge(btn.direction, e.shiftKey)}
+          >
+            {btn.label}
+          </button>
+        ))}
       </div>
     </div>
   )

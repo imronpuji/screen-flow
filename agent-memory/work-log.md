@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 12:55] Zoom focus nudge (arrow pad) — editor follow-up
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — `focusX`/`focusY` di `ZoomPointOverride`; `nudgeZoomFocus` (2% / Shift 8%); `resolveZoomPointFocus`; apply/export bake fokus override.
+  - Review UI — pad ↑←→↓ per zoom point (click + manual); Shift = langkah lebih besar; hint diperbarui.
+  - Smoke `smoke:zoom-points` covers nudge clamp + focus override + export bake.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/beautify/export-autozoom/shortcuts/export-effects/camera* hijau.
+- **Commit:** `599b972`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; background presets polish (FOKUS 3 camera layout solid).
+
 ## [2026-07-10 12:15] Add zoom at playhead (Z) — editor follow-up
 
 - **Dikerjakan:**

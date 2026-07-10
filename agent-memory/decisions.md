@@ -2,11 +2,17 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Zoom focus nudge (preview ≡ export)
+
+- **Keputusan:** User bisa menggeser fokus zoom lewat pad ↑←→↓ di tiap zoom point (click override + manual). Step default **2%** frame (`ZOOM_FOCUS_NUDGE_STEP`); Shift = **8%** (`ZOOM_FOCUS_NUDGE_STEP_SHIFT`). Click zooms menyimpan fokus di `ZoomPointOverride.focusX/Y` (opsional; omit = fokus-derived). Manual zooms mengedit `ManualZoomPoint.focusX/Y` langsung. `applyZoomPointOverrides` + `planAutoZoomExport` memakai fokus yang sama → preview≡export.
+- **Alasan:** Add-at-playhead memakai fokus kursor, tapi orang awam sering perlu geser sedikit (UI di tepi / miss click); pasangan natural dengan scale slider; pola sama camera arrow-nudge.
+- **Status:** aktif (mengisi follow-up “focus nudge”)
+
 ## [2026-07-10] Add zoom at playhead (manual zoom points)
 
 - **Keputusan:** User bisa menambah zoom di playhead lewat tombol **Add at playhead** atau shortcut **Z**. Disimpan sebagai `ManualZoomPoint[]` di `ReviewEditState` (id, peakMs, focusX/Y 0–1, peakScale, enabled) — **terpisah** dari `zoomPointOverrides` (index click-segment). Timing sama default auto-zoom (in 400 / hold 800 / out 500); `startMs = max(0, peakMs − zoomInMs)`. Focus = smoothed cursor di `peakMs`, fallback center (0.5, 0.5). Preview + export memakai `mergeZoomSegments(autoAfterOverrides, manuals)` (sort by startMs; overlap → latest start wins di `getZoomTransformAtTime`). Beautify **tidak** menghapus manuals. Master `autoZoomEnabled=false` menonaktifkan click + manual di preview/export.
 - **Alasan:** Orang awam sering butuh zoom di momen tanpa klik; index-based overrides tidak cukup untuk titik baru; preview≡export lewat data yang sama.
-- **Status:** aktif (mengisi follow-up “add-at-playhead”; focus nudge masih open)
+- **Status:** aktif (mengisi follow-up “add-at-playhead”; focus nudge → keputusan terpisah)
 
 ## [2026-07-10] Camera snap cycle [ ] + shape cycle C (FOKUS 3B)
 
@@ -120,7 +126,7 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** Auto-zoom tetap dibangun dari click events (`buildZoomSegments`). Manual edit menyimpan `ZoomPointOverride[]` di `ReviewEditState.zoomPointOverrides` (index → enabled + optional peakScale). Preview & export memanggil `applyZoomPointOverrides` sebelum sample transform / sendcmd. IPC `ExportAutoZoomRequest.zoomOverrides`. Beautify tidak menghapus overrides.
 - **Alasan:** User bisa matikan zoom yang mengganggu atau perbesar fokus tanpa menulis ulang engine; index segment stabil dalam satu session; pure helpers smoke-testable (`smoke:zoom-points`).
-- **Status:** aktif (MVP); focus nudge / add-at-playhead = follow-up
+- **Status:** aktif (MVP); focus nudge + add-at-playhead = follow-ups (keduanya sudah diimplementasi terpisah)
 
 ## [2026-07-10] Stack dasar
 

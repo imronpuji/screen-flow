@@ -16,10 +16,14 @@ import {
   isZoomPointEnabled,
   manualZoomToSegment,
   mergeZoomSegments,
+  nudgeZoomFocus,
   removeManualZoomPoint,
+  resolveZoomPointFocus,
   resolveZoomPointPeakScale,
   upsertManualZoomPoint,
   upsertZoomPointOverride,
+  ZOOM_FOCUS_NUDGE_STEP,
+  ZOOM_FOCUS_NUDGE_STEP_SHIFT,
 } from '../dist-electron/shared/zoomPoints.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
@@ -212,10 +216,65 @@ function testManualZoomAtPlayhead(): void {
   console.log('ok manual playhead')
 }
 
+function testFocusNudge(): void {
+  const nudged = nudgeZoomFocus(0.5, 0.5, 'right')
+  assert(
+    Math.abs(nudged.focusX - (0.5 + ZOOM_FOCUS_NUDGE_STEP)) < 1e-9,
+    'right step',
+  )
+  assert(nudged.focusY === 0.5, 'y unchanged')
+
+  const shifted = nudgeZoomFocus(0.5, 0.5, 'up', { shift: true })
+  assert(
+    Math.abs(shifted.focusY - (0.5 - ZOOM_FOCUS_NUDGE_STEP_SHIFT)) < 1e-9,
+    'shift up',
+  )
+
+  const clamped = nudgeZoomFocus(0.01, 0.99, 'left')
+  assert(clamped.focusX === 0, 'clamp left')
+  const clampedDown = nudgeZoomFocus(0.5, 0.99, 'down', { shift: true })
+  assert(clampedDown.focusY === 1, 'clamp down')
+
+  const segments = buildZoomSegments(sampleEvents(), videoSize)
+  const withFocus = applyZoomPointOverrides(segments, [
+    { index: 0, enabled: true, focusX: 0.1, focusY: 0.9, peakScale: 2 },
+  ])
+  assert(withFocus[0]!.focusX === 0.1 && withFocus[0]!.focusY === 0.9, 'focus override')
+  assert(withFocus[0]!.peakScale === 2, 'scale with focus')
+  assert(
+    withFocus[1]!.focusX === segments[1]!.focusX,
+    'other focus untouched',
+  )
+
+  const resolved = resolveZoomPointFocus(segments[0]!, 0, [
+    { index: 0, enabled: true, focusX: 0.33, focusY: 0.66 },
+  ])
+  assert(resolved.focusX === 0.33 && resolved.focusY === 0.66, 'resolve focus')
+  const fallback = resolveZoomPointFocus(segments[1]!, 1, [])
+  assert(
+    fallback.focusX === segments[1]!.focusX &&
+      fallback.focusY === segments[1]!.focusY,
+    'resolve default',
+  )
+
+  const exportPlan = planAutoZoomExport(
+    sampleEvents(),
+    videoSize,
+    8000,
+    {},
+    {},
+    [{ index: 0, enabled: true, focusX: 0.2, focusY: 0.8 }],
+  )
+  assert(exportPlan.segments[0]!.focusX === 0.2, 'export focus bake')
+  assert(exportPlan.segments[0]!.focusY === 0.8, 'export focus bake y')
+  console.log('ok focus nudge')
+}
+
 testClamp()
 testApplyOverrides()
 testUpsertAndResolve()
 testExportPlan()
 testEditDefaults()
 testManualZoomAtPlayhead()
+testFocusNudge()
 console.log('smoke-zoom-points: all ok')

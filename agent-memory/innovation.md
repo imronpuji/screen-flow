@@ -18,7 +18,7 @@
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight — preview + export bake
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask)
-- [~] Timeline editor — clip markers (zoom spans + click ticks + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)**; focus nudge still open
+- [~] Timeline editor — clip markers (zoom spans + click ticks + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge**; background presets still open
 
 ## Nanti
 
