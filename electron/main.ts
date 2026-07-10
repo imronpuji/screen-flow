@@ -15,12 +15,16 @@ import {
   startRecording,
   stopRecording,
 } from './recording/session.js'
+import { readCursorEventsFile } from './recording/readCursorEvents.js'
+import { getScreenFlowMediaUrl } from './recording/mediaUrl.js'
 import {
   IPC_CHANNELS,
   type AppendChunkRequest,
   type AppInfo,
   type ExportMp4Request,
+  type GetMediaUrlRequest,
   type ListSourcesRequest,
+  type ReadCursorEventsRequest,
   type SaveExportRequest,
   type StartRecordingRequest,
 } from '../shared/ipc.js'
@@ -87,6 +91,22 @@ function registerIpc(): void {
       throw new Error('Invalid append chunk payload')
     }
     return appendRecordingChunk(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_READ_CURSOR_EVENTS, (_event, request: ReadCursorEventsRequest) => {
+    if (!request || typeof request.eventsPath !== 'string' || !request.eventsPath.trim()) {
+      throw new Error('Invalid read cursor events payload: eventsPath required')
+    }
+    const events = readCursorEventsFile(request.eventsPath)
+    return { ok: true as const, events }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_GET_MEDIA_URL, (_event, request: GetMediaUrlRequest) => {
+    if (!request || typeof request.filePath !== 'string' || !request.filePath.trim()) {
+      throw new Error('Invalid get media url payload: filePath required')
+    }
+    const url = getScreenFlowMediaUrl(request.filePath)
+    return { ok: true as const, url }
   })
 
   ipcMain.handle(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, async (_event, request: ExportMp4Request) => {

@@ -3,6 +3,8 @@
  * Keep channel names and payloads in sync — preload only exposes these.
  */
 
+import type { CursorEvent } from './cursor.js'
+
 export const IPC_CHANNELS = {
   APP_GET_INFO: 'app:get-info',
   APP_GET_PLATFORM: 'app:get-platform',
@@ -18,6 +20,10 @@ export const IPC_CHANNELS = {
   EXPORT_CANCEL: 'export:cancel',
   /** Copy finished temp MP4 to a user path (Save As → Documents/Screen Flow). */
   EXPORT_SAVE: 'export:save',
+  /** Read cursor JSONL from a session temp path (for auto-zoom preview). */
+  RECORDING_READ_CURSOR_EVENTS: 'recording:read-cursor-events',
+  /** Return a file:// URL for a temp capture file (WebM/MP4 playback). */
+  RECORDING_GET_MEDIA_URL: 'recording:get-media-url',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -174,6 +180,26 @@ export interface SaveExportRequest {
   cleanupSource?: boolean
 }
 
+export interface ReadCursorEventsRequest {
+  /** Absolute path to cursor-events.jsonl under screen-flow temp. */
+  eventsPath: string
+}
+
+export interface ReadCursorEventsResult {
+  ok: true
+  events: CursorEvent[]
+}
+
+export interface GetMediaUrlRequest {
+  /** Absolute path to capture.webm or export.mp4 under screen-flow temp. */
+  filePath: string
+}
+
+export interface GetMediaUrlResult {
+  ok: true
+  url: string
+}
+
 export type SaveExportResult =
   | {
       ok: true
@@ -200,6 +226,8 @@ export interface ScreenFlowApi {
   onExportProgress: (listener: (event: ExportProgressEvent) => void) => () => void
   cancelExport: () => Promise<CancelExportResult>
   saveExport: (request: SaveExportRequest) => Promise<SaveExportResult>
+  readCursorEvents: (request: ReadCursorEventsRequest) => Promise<ReadCursorEventsResult>
+  getMediaUrl: (request: GetMediaUrlRequest) => Promise<GetMediaUrlResult>
 }
 
 declare global {
