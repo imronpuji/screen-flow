@@ -2,6 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -10,8 +11,10 @@ import {
   cameraBubbleSizeNorm,
   cameraSnapTargets,
   normalizeCameraOverlay,
+  nudgeCameraLayout,
   resizeCameraFromHandle,
   snapCameraLayout,
+  type CameraNudgeDirection,
   type CameraOverlayStyle,
   type CameraResizeHandle,
   type CameraSnapTarget,
@@ -233,6 +236,8 @@ export function CameraBubble({
     const base = normalizeCameraOverlay(style, metrics.aspect)
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
+    // Focus so arrow-key nudge works after click/drag.
+    e.currentTarget.focus({ preventScroll: true })
     resizeRef.current = null
     setResizeActive(false)
     setSnapTarget(null)
@@ -249,6 +254,26 @@ export function CameraBubble({
       aspect: metrics.aspect,
     }
     setDragStyle(base)
+  }
+
+  function onBubbleKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    if (!interactive || !onLayoutChange) return
+    if (dragRef.current || resizeRef.current) return
+    const map: Record<string, CameraNudgeDirection> = {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+    }
+    const direction = map[e.key]
+    if (!direction) return
+    e.preventDefault()
+    e.stopPropagation()
+    const metrics = parentMetrics()
+    const aspect = metrics?.aspect ?? frameAspect ?? 16 / 9
+    onLayoutChange(
+      nudgeCameraLayout(style, direction, { shift: e.shiftKey, frameAspect: aspect }),
+    )
   }
 
   function onResizePointerDown(e: ReactPointerEvent<HTMLSpanElement>, handle: CameraResizeHandle) {
@@ -407,17 +432,19 @@ export function CameraBubble({
           opacity: pos.opacity,
         }}
         aria-label={label}
+        tabIndex={interactive ? 0 : undefined}
         title={
           interactive
             ? displayStyle.lockAspect
-              ? 'Drag to reposition — snaps to corners & edges · corner handles resize (aspect locked)'
-              : 'Drag to reposition — snaps to corners & edges · corner handles free resize'
+              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · corner handles resize (aspect locked)'
+              : 'Drag to reposition — snaps to corners & edges · arrows nudge · corner handles free resize'
             : undefined
         }
         onPointerDown={interactive ? onMovePointerDown : undefined}
         onPointerMove={interactive ? onPointerMove : undefined}
         onPointerUp={interactive ? finishPointer : undefined}
         onPointerCancel={interactive ? finishPointer : undefined}
+        onKeyDown={interactive ? onBubbleKeyDown : undefined}
       >
         <video
           ref={videoRef}

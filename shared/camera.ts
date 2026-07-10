@@ -12,6 +12,7 @@
  * - Resize: corner handles keep the opposite corner fixed; aspect locked unless user unlocks
  *   (rectangle/rounded only — circle always locked square).
  * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
+ * - Nudge: arrow keys move free layout by small relative steps (Shift = larger); clamps to safe margin.
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
@@ -98,6 +99,12 @@ export const CAMERA_MAX_SIZE_PERCENT = 40
 export const CAMERA_SAFE_MARGIN = 0.03
 /** Snap when within this fraction of a corner/edge target (of the shorter travel). */
 export const CAMERA_SNAP_THRESHOLD = 0.045
+/** Arrow-key nudge step as fraction of frame (≈0.5%). */
+export const CAMERA_NUDGE_STEP = 0.005
+/** Shift+arrow nudge step as fraction of frame (≈2%). */
+export const CAMERA_NUDGE_STEP_SHIFT = 0.02
+
+export type CameraNudgeDirection = 'left' | 'right' | 'up' | 'down'
 /** Default aspect used when deriving corner layout without a known frame size. */
 export const CAMERA_DEFAULT_ASPECT = 16 / 9
 
@@ -569,6 +576,47 @@ export function matchCameraSnapTarget(
     }
   }
   return bestDist <= epsilon ? best : null
+}
+
+/**
+ * Nudge bubble by a small relative step (arrow keys). Always becomes free layout;
+ * clamps to safe margin. Shift uses a larger step for faster fine-tuning.
+ */
+export function nudgeCameraLayout(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  direction: CameraNudgeDirection,
+  options: { shift?: boolean; frameAspect?: number } = {},
+): CameraOverlayStyle {
+  const aspect =
+    options.frameAspect && options.frameAspect > 0
+      ? options.frameAspect
+      : CAMERA_DEFAULT_ASPECT
+  const base = normalizeCameraOverlay(style, aspect)
+  const step = options.shift ? CAMERA_NUDGE_STEP_SHIFT : CAMERA_NUDGE_STEP
+  let x = base.x
+  let y = base.y
+  if (direction === 'left') x -= step
+  else if (direction === 'right') x += step
+  else if (direction === 'up') y -= step
+  else y += step
+  const clamped = clampCameraLayout(
+    x,
+    y,
+    base.sizePercent,
+    aspect,
+    base.heightPercent,
+  )
+  return normalizeCameraOverlay(
+    {
+      ...base,
+      anchor: 'free',
+      x: clamped.x,
+      y: clamped.y,
+      sizePercent: base.sizePercent,
+      heightPercent: base.heightPercent,
+    },
+    aspect,
+  )
 }
 
 /** Clamp overlay style to safe UI/export ranges; fill x/y from corner when needed. */
