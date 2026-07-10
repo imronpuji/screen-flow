@@ -151,8 +151,20 @@ export function AutoZoomPlayback({
   const clickCount = cursorEvents.filter((e) => e.kind === 'click' || e.kind === 'down').length
 
   const timelineMarkers = useMemo(
-    () => buildTimelineMarkers(segments, cursorEvents),
-    [cursorEvents, segments],
+    () =>
+      buildTimelineMarkers(segments, cursorEvents, {
+        cameraActiveRanges: cameraSync?.activeRanges,
+        screenFirstChunkMs: cameraSync?.screenFirstChunkMs,
+        wallDurationMs: cameraSync?.wallDurationMs ?? durationMs,
+      }),
+    [
+      cameraSync?.activeRanges,
+      cameraSync?.screenFirstChunkMs,
+      cameraSync?.wallDurationMs,
+      cursorEvents,
+      durationMs,
+      segments,
+    ],
   )
 
   const updateCursorOverlay = useCallback(
@@ -462,7 +474,7 @@ export function AutoZoomPlayback({
             {durationMs > 0
               ? timelineMarkers.map((marker) => {
                   if (
-                    marker.kind === 'zoom' &&
+                    (marker.kind === 'zoom' || marker.kind === 'camera') &&
                     marker.startMs != null &&
                     marker.endMs != null
                   ) {
@@ -471,12 +483,16 @@ export function AutoZoomPlayback({
                       0.4,
                       markerPercent(marker.endMs, durationMs) - spanLeft,
                     )
+                    const kindClass =
+                      marker.kind === 'camera'
+                        ? 'zoom-playback__marker--camera'
+                        : 'zoom-playback__marker--zoom'
                     return (
                       <button
                         key={marker.id}
                         type="button"
                         role="listitem"
-                        className="zoom-playback__marker zoom-playback__marker--zoom"
+                        className={`zoom-playback__marker ${kindClass}`}
                         style={{ left: `${spanLeft}%`, width: `${spanWidth}%` }}
                         title={`${marker.label} · ${formatTimeMs(marker.tMs)}`}
                         aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}

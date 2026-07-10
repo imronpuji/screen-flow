@@ -604,6 +604,16 @@
   background: color-mix(in srgb, var(--accent) 78%, transparent);
 }
 
+.zoom-playback__marker--camera {
+  border-radius: 3px;
+  background: color-mix(in srgb, #f0a05a 48%, transparent);
+  z-index: 0;
+}
+
+.zoom-playback__marker--camera:hover:not(:disabled) {
+  background: color-mix(in srgb, #f0a05a 72%, transparent);
+}
+
 .zoom-playback__marker--click {
   width: 2px;
   margin-left: -1px;
