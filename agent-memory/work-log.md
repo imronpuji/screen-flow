@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:15] Camera layout: corner resize handles (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `resizeCameraFromHandle` (NW/NE/SW/SE); opposite corner fixed; aspect lock (square); size 12–40%; result `anchor: 'free'`.
+  - `CameraBubble` corner handles + pointer capture; CSS cursors; review hint updated.
+  - Smoke `smoke:camera` covers grow/shrink/clamp.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects hijau.
+- **Commit:** `4ec32ea`
+- **Status:** done (FOKUS 3B slice — resize handles)
+- **Next:** Rectangle shape; configurable border/shadow bake; drift compensation A/V.
+
 ## [2026-07-10 09:10] Camera layout: free drag + snap (FOKUS 3B)
 
 - **Dikerjakan:**
