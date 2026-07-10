@@ -3,12 +3,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
 import {
+  appendRecordingChunk,
   getRecordingStatus,
-  startRecordingStub,
-  stopRecordingStub,
+  startRecording,
+  stopRecording,
 } from './recording/session.js'
 import {
   IPC_CHANNELS,
+  type AppendChunkRequest,
   type AppInfo,
   type ListSourcesRequest,
   type StartRecordingRequest,
@@ -66,10 +68,17 @@ function registerIpc(): void {
     if (!request || typeof request.sourceId !== 'string') {
       throw new Error('Invalid start recording payload')
     }
-    return startRecordingStub(request)
+    return startRecording(request)
   })
 
-  ipcMain.handle(IPC_CHANNELS.RECORDING_STOP, () => stopRecordingStub())
+  ipcMain.handle(IPC_CHANNELS.RECORDING_STOP, () => stopRecording())
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_APPEND_CHUNK, (_event, request: AppendChunkRequest) => {
+    if (!request || request.data == null) {
+      throw new Error('Invalid append chunk payload')
+    }
+    return appendRecordingChunk(request)
+  })
 }
 
 app.whenReady().then(() => {

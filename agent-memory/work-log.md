@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 04:45] Live capture stream → temp WebM writer
+
+- **Dikerjakan:** Renderer `getUserMedia` + `MediaRecorder` (timeslice 500ms) untuk source terpilih; IPC `recording:append-chunk`; main session membuat temp dir + append-only `capture.webm`; live `<video>` preview + byte/chunk status di UI.
+- **Hasil:** `typecheck` + `build` + `lint` hijau.
+- **Status:** done
+- **Next:** Spawn ffmpeg child process untuk remux/transcode WebM → MP4 (VideoToolbox di macOS) + cleanup temp setelah export.
+
 ## [2026-07-10 04:40] IPC sources list + permission + recording stub
 
 - **Dikerjakan:** Extend `shared/ipc.ts` (permission/sources/recording channels); implement `desktopCapturer` list + TCC probe di `electron/capture/`; in-memory recording session stub; wire preload + renderer source picker / Start–Stop.

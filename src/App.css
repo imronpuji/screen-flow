@@ -209,6 +209,21 @@
   line-height: 1.45;
 }
 
+.preview-frame__video {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 0.35rem;
+  background: #070b10;
+  border: 1px solid rgba(232, 238, 244, 0.08);
+}
+
+.preview-frame__video--hidden {
+  display: none;
+}
+
 .source-list {
   position: relative;
   z-index: 1;

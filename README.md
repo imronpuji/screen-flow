@@ -34,4 +34,4 @@ Incremental autonomous work is tracked in `agent-memory/` (`decisions.md`, `work
 
 ## Status
 
-Bootstrap: Electron shell + typed IPC + Screen Flow UI. Capture/export pipeline next.
+Electron shell + source picker + live `getUserMedia` capture streaming WebM chunks to a main-process temp file. ffmpeg export / effects next.

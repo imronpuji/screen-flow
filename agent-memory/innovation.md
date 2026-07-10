@@ -7,9 +7,9 @@
 - [x] Electron + React + TS boilerplate (main/preload/renderer, contextIsolation)
 - [x] IPC typed: app info, permission status, sources list, recording stub session
 - [x] Izin TCC Screen Recording (macOS) — probe + UX saat ditolak
-- [~] Capture dasar via `desktopCapturer` (list sources done; frame stream next)
-- [ ] Simpan frame/stream via ffmpeg (child process di main)
-- [ ] Preview real-time (canvas)
+- [x] Capture dasar via `desktopCapturer` (list + getUserMedia/MediaRecorder → temp WebM)
+- [ ] Simpan frame/stream via ffmpeg (child process di main) — WebM ada; remux/encode MP4 next
+- [~] Preview real-time (canvas) — live `<video>` preview done; canvas/WebGL later
 - [ ] Export MP4 (H.264; VideoToolbox di macOS)
 
 ## Signature (Screen Studio-like)
