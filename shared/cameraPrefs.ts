@@ -1,14 +1,14 @@
 /**
  * Persist FaceTime / webcam overlay prefs across sessions (renderer localStorage).
  * Layout + device + chrome are restored on launch so users don't reconfigure every time.
- * Opening the live stream remains explicit (or best-effort restore when enabled was saved).
+ * Opening the live stream remains best-effort when `enabled` was saved true.
  */
 
 import {
   DEFAULT_CAMERA_OVERLAY,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
-} from '../../shared/camera'
+} from './camera.js'
 
 export const CAMERA_PREFS_STORAGE_KEY = 'screen-flow:camera-overlay'
 

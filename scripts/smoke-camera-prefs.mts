@@ -6,8 +6,8 @@ import {
   clearCameraPrefs,
   loadCameraPrefs,
   saveCameraPrefs,
-} from '../src/lib/cameraPrefs.ts'
-import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from '../shared/camera.ts'
+} from '../dist-electron/shared/cameraPrefs.js'
+import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from '../dist-electron/shared/camera.js'
 
 function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg)

@@ -53,7 +53,7 @@ import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
 import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
-import { loadCameraPrefs, saveCameraPrefs } from './lib/cameraPrefs'
+import { loadCameraPrefs, saveCameraPrefs } from '../shared/cameraPrefs'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
 import type { CameraActiveRange, CameraSyncMeta } from '../shared/cameraSync'
@@ -136,6 +136,9 @@ export default function App() {
   const cameraActiveRangesRef = useRef<CameraActiveRange[]>([])
   const recordingStartedAtRef = useRef<number | null>(null)
   const toggleRecordingRef = useRef<() => void>(() => undefined)
+  const enableCameraPreviewRef = useRef<(next: CameraOverlayStyle) => Promise<void>>(
+    async () => undefined,
+  )
 
   const inElectron = isElectronBridgeAvailable()
   const isRecording = mode === 'recording' || recording.state === 'recording'
@@ -188,12 +191,6 @@ export default function App() {
           if (!cancelled) setCameraDevices(devices)
         } catch {
           /* camera enumerate is best-effort before permission */
-        }
-
-        // Returning users who left the camera armed: reopen preview (layout already loaded).
-        const prefs = loadCameraPrefs()
-        if (!cancelled && prefs.enabled && nextRecording.state !== 'recording') {
-          await enableCameraPreview(prefs)
         }
       } catch (err) {
         if (!cancelled) {
@@ -279,6 +276,17 @@ export default function App() {
       setCameraError(err instanceof Error ? err.message : 'Camera unavailable')
     }
   }
+
+  useEffect(() => {
+    enableCameraPreviewRef.current = enableCameraPreview
+  })
+
+  // Returning users who left the camera armed: reopen preview after prefs load.
+  useEffect(() => {
+    const prefs = loadCameraPrefs()
+    if (!prefs.enabled) return
+    void enableCameraPreviewRef.current(prefs)
+  }, [])
 
   function disableCameraPreview() {
     void cameraCaptureRef.current?.stop()
