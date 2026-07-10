@@ -32,8 +32,8 @@ import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
 import { readCaptureGeometryBeside } from '../recording/readCaptureGeometry.js'
 import { resolveCameraSyncMeta } from '../recording/readCameraSync.js'
-import { computeCameraDrift, cameraOverlayEnableExpr } from '../../shared/cameraSync.js'
-import { probeVideoFile } from './probe.js'
+import { computeCameraDrift, cameraOverlayEnableExpr, cameraMicAudioFilter } from '../../shared/cameraSync.js'
+import { probeHasAudioStream, probeVideoFile } from './probe.js'
 import {
   clampPercent,
   parseFfmpegDurationSec,
@@ -158,6 +158,15 @@ async function transcodeOnce(
     expectedDurationSec?: number
     /** Extra inputs after the screen capture (e.g. camera.webm as input 1). */
     extraInputs?: string[]
+    /**
+     * Map mic audio from camera.webm (input index). When set, encode AAC instead of -an.
+     * Optional filter fragment must end with `[audioOutputLabel]`.
+     */
+    cameraAudio?: {
+      inputIndex: number
+      filter?: string | null
+      outputLabel?: string
+    }
   } = {},
 ): Promise<{ code: number; stderr: string }> {
   const args = ['-y']
@@ -214,13 +223,40 @@ async function transcodeOnce(
   if (durationLimitSec != null && Number.isFinite(durationLimitSec) && durationLimitSec > 0) {
     args.push('-t', durationLimitSec.toFixed(3))
   }
-  args.push('-an')
-  if (options.filterComplex) {
-    args.push('-filter_complex', options.filterComplex)
-    args.push('-map', `[${options.outputLabel ?? 'vout'}]`)
+
+  const cameraAudio = options.cameraAudio
+  let filterComplex = options.filterComplex
+  const audioOutLabel = cameraAudio?.outputLabel ?? 'aout'
+  if (cameraAudio?.filter) {
+    filterComplex = filterComplex
+      ? `${filterComplex};${cameraAudio.filter}`
+      : cameraAudio.filter
+  }
+
+  if (filterComplex) {
+    args.push('-filter_complex', filterComplex)
+    if (options.outputLabel) {
+      args.push('-map', `[${options.outputLabel}]`)
+    }
   } else if (options.videoFilter) {
     args.push('-vf', options.videoFilter)
   }
+
+  if (cameraAudio) {
+    // Explicit maps required once we select an audio stream.
+    if (!options.outputLabel && !filterComplex) {
+      args.push('-map', '0:v:0')
+    }
+    if (cameraAudio.filter) {
+      args.push('-map', `[${audioOutLabel}]`)
+    } else {
+      args.push('-map', `${cameraAudio.inputIndex}:a:0?`)
+    }
+    args.push('-c:a', 'aac', '-b:a', '128k')
+  } else {
+    args.push('-an')
+  }
+
   args.push(
     '-c:v',
     encoder.codec,
@@ -397,6 +433,11 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   }
 
   let cameraPath: string | null = null
+  let cameraAudioPlan: {
+    inputIndex: number
+    filter?: string | null
+    outputLabel?: string
+  } | null = null
   if (request.camera?.cameraPath && request.camera.style?.enabled) {
     cameraPath = assertUnderScreenFlowTemp(request.camera.cameraPath)
     if (!fs.existsSync(cameraPath) || fs.statSync(cameraPath).size === 0) {
@@ -433,6 +474,13 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       ),
     }
     extraInputs = [cameraPath]
+    if (await probeHasAudioStream(cameraPath)) {
+      cameraAudioPlan = {
+        inputIndex: 1,
+        filter: cameraMicAudioFilter(1, cameraDrift.offsetMs, 'aout'),
+        outputLabel: 'aout',
+      }
+    }
   }
 
   const hasEffects =
@@ -513,6 +561,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       fullDurationMs,
       expectedDurationSec,
       extraInputs: cameraApplied ? extraInputs : [],
+      cameraAudio: cameraApplied ? cameraAudioPlan ?? undefined : undefined,
     }
     let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 

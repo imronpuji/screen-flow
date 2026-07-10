@@ -57,10 +57,14 @@ function testNormalize(): void {
   assert(clamped.borderEnabled === true, 'default border on')
   assert(clamped.borderWidthPx === 2, 'default border width')
   assert(clamped.borderColor === '#E8EEF4', 'default border color')
+  assert(clamped.micEnabled === true, 'default mic on with camera')
 
   const low = normalizeCameraOverlay({ sizePercent: 2 })
   assert(low.sizePercent === 12, 'size clamped low')
   assert(low.enabled === false, 'default off')
+
+  const noMic = normalizeCameraOverlay({ micEnabled: false })
+  assert(noMic.micEnabled === false, 'mic can be disabled')
 
   const rect = normalizeCameraOverlay({ shape: 'rectangle', sizePercent: 18 })
   assert(rect.shape === 'rectangle', 'rectangle shape kept')

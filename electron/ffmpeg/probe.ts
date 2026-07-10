@@ -12,6 +12,29 @@ export interface VideoProbeResult {
   durationSec: number
 }
 
+/** True when the file has at least one audio stream (e.g. camera.webm with mic). */
+export async function probeHasAudioStream(inputPath: string): Promise<boolean> {
+  try {
+    const json = await runFfprobe([
+      '-v',
+      'error',
+      '-select_streams',
+      'a:0',
+      '-show_entries',
+      'stream=index,codec_type',
+      '-of',
+      'json',
+      inputPath,
+    ])
+    const parsed = JSON.parse(json) as {
+      streams?: Array<{ codec_type?: string }>
+    }
+    return (parsed.streams ?? []).some((s) => s.codec_type === 'audio')
+  } catch {
+    return false
+  }
+}
+
 function runFfprobe(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(FFPROBE_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] })

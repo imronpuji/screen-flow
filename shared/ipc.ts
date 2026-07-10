@@ -21,6 +21,8 @@ export const IPC_CHANNELS = {
   PERMISSION_GET_STATUS: 'permission:get-status',
   /** Ask macOS TCC for camera (FaceTime) before getUserMedia. */
   PERMISSION_REQUEST_CAMERA: 'permission:request-camera',
+  /** Ask macOS TCC for microphone (camera A/V track) before getUserMedia. */
+  PERMISSION_REQUEST_MICROPHONE: 'permission:request-microphone',
   SOURCES_LIST: 'sources:list',
   RECORDING_START: 'recording:start',
   RECORDING_STOP: 'recording:stop',
@@ -347,6 +349,8 @@ export interface ScreenFlowApi {
   getPermissionStatus: () => Promise<PermissionStatus>
   /** Prompt macOS Camera TCC (no-op / granted on other platforms). */
   requestCameraAccess: () => Promise<CameraAccessResult>
+  /** Prompt macOS Microphone TCC (non-fatal — UI may fall back to video-only). */
+  requestMicrophoneAccess: () => Promise<CameraAccessResult>
   listSources: (request?: ListSourcesRequest) => Promise<CaptureSource[]>
   startRecording: (request: StartRecordingRequest) => Promise<StartRecordingResult>
   stopRecording: () => Promise<StopRecordingResult>

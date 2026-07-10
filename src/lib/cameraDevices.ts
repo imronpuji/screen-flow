@@ -1,6 +1,8 @@
 /**
  * Webcam / FaceTime device helpers (renderer).
  * Enumeration + permission via navigator.mediaDevices — no main-process IPC needed.
+ * Mic is opened on the same getUserMedia call as the camera so MediaRecorder
+ * writes one A/V WebM (FOKUS 3A — voice locked to FaceTime track).
  */
 
 export interface CameraDevice {
@@ -9,6 +11,19 @@ export interface CameraDevice {
 }
 
 export type CameraPermissionState = 'granted' | 'denied' | 'prompt' | 'unsupported'
+
+export interface OpenCameraStreamOptions {
+  /** Request microphone on the same stream (default false). */
+  includeMic?: boolean
+}
+
+export interface OpenCameraStreamResult {
+  stream: MediaStream
+  /** True when at least one live audio track was obtained. */
+  micActive: boolean
+  /** Soft status when mic was requested but unavailable (permission / device). */
+  micNote: string | null
+}
 
 function friendlyLabel(info: MediaDeviceInfo, index: number): string {
   const raw = info.label?.trim()
@@ -66,49 +81,104 @@ export async function probeCameraPermission(): Promise<CameraPermissionState> {
   return 'prompt'
 }
 
-/** Open a webcam stream; prefers deviceId when set. */
-export async function openCameraStream(deviceId: string | null): Promise<MediaStream> {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error('Camera is not supported in this environment')
-  }
+const BASE_VIDEO: MediaTrackConstraints = {
+  width: { ideal: 1280 },
+  height: { ideal: 720 },
+  frameRate: { ideal: 30 },
+}
 
-  // Ideal constraints help FaceTime HD pick a real camera resolution (not 0×0).
-  const baseVideo: MediaTrackConstraints = {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    frameRate: { ideal: 30 },
-  }
-  const video: MediaTrackConstraints = deviceId
-    ? { ...baseVideo, deviceId: { exact: deviceId } }
-    : { ...baseVideo, facingMode: 'user' }
+function videoConstraints(deviceId: string | null): MediaTrackConstraints {
+  return deviceId
+    ? { ...BASE_VIDEO, deviceId: { exact: deviceId } }
+    : { ...BASE_VIDEO, facingMode: 'user' }
+}
 
+function cameraErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof DOMException && err.name === 'NotAllowedError') {
+    return 'Camera permission denied. Allow camera access to show the FaceTime overlay.'
+  }
+  if (err instanceof Error) return err.message
+  return fallback
+}
+
+async function getUserMediaVideoOnly(deviceId: string | null): Promise<MediaStream> {
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: false, video })
+    return await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: videoConstraints(deviceId),
+    })
   } catch (err) {
-    // Exact deviceId can fail if the device disappeared — retry with default.
     if (deviceId) {
       try {
         return await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { ...baseVideo, facingMode: 'user' },
+          video: { ...BASE_VIDEO, facingMode: 'user' },
         })
       } catch (retryErr) {
-        const message =
-          retryErr instanceof DOMException && retryErr.name === 'NotAllowedError'
-            ? 'Camera permission denied. Allow camera access to show the FaceTime overlay.'
-            : retryErr instanceof Error
-              ? retryErr.message
-              : 'Failed to open camera'
-        throw new Error(message, { cause: retryErr })
+        throw new Error(cameraErrorMessage(retryErr, 'Failed to open camera'), {
+          cause: retryErr,
+        })
       }
     }
-    const message =
-      err instanceof DOMException && err.name === 'NotAllowedError'
-        ? 'Camera permission denied. Allow camera access to show the FaceTime overlay.'
-        : err instanceof Error
-          ? err.message
-          : 'Failed to open camera'
-    throw new Error(message, { cause: err })
+    throw new Error(cameraErrorMessage(err, 'Failed to open camera'), { cause: err })
+  }
+}
+
+/**
+ * Open a webcam stream; prefers deviceId when set.
+ * When `includeMic` is true, requests mic on the same call; on mic failure falls
+ * back to video-only so the FaceTime overlay still works.
+ */
+export async function openCameraStream(
+  deviceId: string | null,
+  options: OpenCameraStreamOptions = {},
+): Promise<OpenCameraStreamResult> {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Camera is not supported in this environment')
+  }
+
+  const includeMic = Boolean(options.includeMic)
+  const video = videoConstraints(deviceId)
+
+  if (!includeMic) {
+    const stream = await getUserMediaVideoOnly(deviceId)
+    return { stream, micActive: false, micNote: null }
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video,
+    })
+    const micActive = stream.getAudioTracks().some((t) => t.readyState === 'live')
+    return {
+      stream,
+      micActive,
+      micNote: micActive
+        ? null
+        : 'Microphone track missing — recording camera video only.',
+    }
+  } catch (err) {
+    // Exact deviceId + mic can fail for several reasons; try video-only recovery.
+    const micDenied = err instanceof DOMException && err.name === 'NotAllowedError'
+    try {
+      const stream = await getUserMediaVideoOnly(deviceId)
+      return {
+        stream,
+        micActive: false,
+        micNote: micDenied
+          ? 'Microphone permission denied — camera stays on without mic.'
+          : 'Microphone unavailable — camera stays on without mic.',
+      }
+    } catch (videoErr) {
+      throw new Error(cameraErrorMessage(videoErr, 'Failed to open camera'), {
+        cause: videoErr,
+      })
+    }
   }
 }
 
@@ -117,4 +187,10 @@ export function stopMediaStream(stream: MediaStream | null | undefined): void {
   for (const track of stream.getTracks()) {
     track.stop()
   }
+}
+
+/** True when the stream currently has a live audio track (mic armed). */
+export function streamHasLiveMic(stream: MediaStream | null | undefined): boolean {
+  if (!stream) return false
+  return stream.getAudioTracks().some((t) => t.readyState === 'live')
 }

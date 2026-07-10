@@ -3,7 +3,12 @@
  * MediaRecorder chunks are streamed to main (temp WebM) — no full blob held in RAM.
  */
 
-export type CaptureMimeType = 'video/webm;codecs=vp9' | 'video/webm;codecs=vp8' | 'video/webm'
+export type CaptureMimeType =
+  | 'video/webm;codecs=vp9,opus'
+  | 'video/webm;codecs=vp8,opus'
+  | 'video/webm;codecs=vp9'
+  | 'video/webm;codecs=vp8'
+  | 'video/webm'
 
 export interface LiveCaptureHandle {
   stream: MediaStream
@@ -11,12 +16,18 @@ export interface LiveCaptureHandle {
   stop: () => Promise<void>
 }
 
-function pickMimeType(): CaptureMimeType {
-  const candidates: CaptureMimeType[] = [
+function pickMimeType(includeAudio: boolean): CaptureMimeType {
+  const withAudio: CaptureMimeType[] = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ]
+  const videoOnly: CaptureMimeType[] = [
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
     'video/webm',
   ]
+  const candidates = includeAudio ? withAudio : videoOnly
   for (const type of candidates) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
       return type
@@ -46,16 +57,22 @@ export async function openDesktopCaptureStream(sourceId: string): Promise<MediaS
 function startRecorderOnStream(options: {
   stream: MediaStream
   videoBitsPerSecond: number
+  audioBitsPerSecond?: number
   onChunk: (data: ArrayBuffer) => Promise<void>
   onError?: (error: Error) => void
   /** When true, stop() also stops MediaStream tracks (default true). */
   stopTracksOnEnd?: boolean
 }): LiveCaptureHandle {
-  const mimeType = pickMimeType()
-  const recorder = new MediaRecorder(options.stream, {
+  const hasAudio = options.stream.getAudioTracks().some((t) => t.readyState !== 'ended')
+  const mimeType = pickMimeType(hasAudio)
+  const recorderOpts: MediaRecorderOptions = {
     mimeType,
     videoBitsPerSecond: options.videoBitsPerSecond,
-  })
+  }
+  if (hasAudio) {
+    recorderOpts.audioBitsPerSecond = options.audioBitsPerSecond ?? 128_000
+  }
+  const recorder = new MediaRecorder(options.stream, recorderOpts)
   const stopTracksOnEnd = options.stopTracksOnEnd !== false
 
   let chain: Promise<void> = Promise.resolve()
@@ -132,7 +149,7 @@ export async function startLiveCapture(options: {
   })
 }
 
-/** Record an already-open webcam stream in parallel with screen capture. */
+/** Record an already-open webcam (+ optional mic) stream in parallel with screen capture. */
 export function startCameraCapture(options: {
   stream: MediaStream
   onChunk: (data: ArrayBuffer) => Promise<void>
@@ -141,6 +158,7 @@ export function startCameraCapture(options: {
   return startRecorderOnStream({
     stream: options.stream,
     videoBitsPerSecond: 2_500_000,
+    audioBitsPerSecond: 128_000,
     onChunk: options.onChunk,
     onError: options.onError,
     // Keep preview stream alive until the UI stops it explicitly.

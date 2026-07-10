@@ -80,6 +80,17 @@ export async function requestCameraAccess(): Promise<CameraAccessResult> {
   }
 }
 
+export async function requestMicrophoneAccess(): Promise<CameraAccessResult> {
+  if (window.screenFlow?.requestMicrophoneAccess) {
+    return window.screenFlow.requestMicrophoneAccess()
+  }
+  return {
+    ok: true,
+    status: 'unsupported',
+    message: 'Browser preview — microphone TCC is handled by getUserMedia.',
+  }
+}
+
 export async function fetchCaptureSources(
   request: ListSourcesRequest = { thumbnails: true },
 ): Promise<CaptureSource[]> {

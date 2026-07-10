@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 10:00] Camera mic on same A/V track (FOKUS 3A)
+
+- **Dikerjakan:**
+  - `CameraOverlayStyle.micEnabled` (default true); Setup checkbox; reopen stream when toggled (disabled mid-recording).
+  - `openCameraStream({ includeMic })` — one getUserMedia for camera+mic; graceful video-only fallback + soft `micNote`.
+  - macOS TCC `requestMicrophoneAccess`; MediaRecorder picks `vp9/vp8,opus` + audio bitrate when mic live.
+  - Mid-recording mute disables **all** tracks (video+audio); export probes camera audio → AAC map + `cameraMicAudioFilter` (adelay/atrim = same start lag as video).
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** (pending)
+- **Status:** done (FOKUS 3A — mic selaras video kamera)
+- **Next:** Visual verify on Mac (mic in MP4 + mute silence); multi-segment only if MediaRecorder restart ever required.
+
 ## [2026-07-10 09:50] Camera mirror + opacity (FOKUS 3B/E)
 
 - **Dikerjakan:**
