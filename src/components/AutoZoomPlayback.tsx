@@ -57,6 +57,11 @@ import {
   snapPlayheadIntoKeepRanges,
   type KeepRange,
 } from '../../shared/keepRanges'
+import {
+  collectTimelineSnapTargets,
+  magneticSnapThresholdMs,
+  snapPlayheadMagnetically,
+} from '../../shared/timelineSnap'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
@@ -96,6 +101,11 @@ export interface AutoZoomPlaybackProps {
    * skips discarded regions so preview matches ffmpeg concat.
    */
   keepRanges?: KeepRange[]
+  /**
+   * When true, scrubber seeks stick to nearby edit points (FOKUS 5 magnetic
+   * timeline). Keyboard frame-step and internal gap-skip seeks stay free.
+   */
+  magneticSnapEnabled?: boolean
   onDurationMs?: (ms: number) => void
   onTimeMs?: (ms: number) => void
 }
@@ -119,6 +129,7 @@ export function AutoZoomPlayback({
   trimStartMs = 0,
   trimEndMs,
   keepRanges,
+  magneticSnapEnabled = true,
   onDurationMs,
   onTimeMs,
 }: AutoZoomPlaybackProps) {
@@ -357,11 +368,27 @@ export function AutoZoomPlayback({
   }, [mediaUrl])
 
   const seekToMs = useCallback(
-    (ms: number) => {
+    (ms: number, opts?: { magnetic?: boolean }) => {
       const el = videoRef.current
       if (!el) return
       const ranges = keepRangesRef.current
       let clamped = Math.max(trimStartMs, Math.min(effectiveEndMs, ms))
+      // Magnetic snap only for user scrub — not gap-skip / play restart.
+      if (opts?.magnetic && magneticSnapEnabled && durationMs > 0) {
+        const targets = collectTimelineSnapTargets({
+          durationMs,
+          trimStartMs,
+          trimEndMs: effectiveEndMs,
+          keepRanges: ranges ?? normalizedKeepRanges,
+          markers: timelineMarkers,
+        })
+        const snapped = snapPlayheadMagnetically(
+          clamped,
+          targets,
+          magneticSnapThresholdMs(durationMs),
+        )
+        clamped = Math.max(trimStartMs, Math.min(effectiveEndMs, snapped.ms))
+      }
       if (ranges && ranges.length > 0 && durationMs > 0) {
         clamped = snapPlayheadIntoKeepRanges(ranges, clamped, durationMs)
       }
@@ -370,7 +397,16 @@ export function AutoZoomPlayback({
       onTimeMs?.(clamped)
       updateCursorOverlay(clamped)
     },
-    [durationMs, effectiveEndMs, onTimeMs, trimStartMs, updateCursorOverlay],
+    [
+      durationMs,
+      effectiveEndMs,
+      magneticSnapEnabled,
+      normalizedKeepRanges,
+      onTimeMs,
+      timelineMarkers,
+      trimStartMs,
+      updateCursorOverlay,
+    ],
   )
 
   function onLoadedMetadata() {
@@ -477,7 +513,8 @@ export function AutoZoomPlayback({
   }, [durationMs, keepPlayEndMs, keepPlayStartMs, loadError, seekToMs])
 
   function onScrub(value: number) {
-    seekToMs(value)
+    // Scrubber + marker clicks: sticky magnetic snap when enabled.
+    seekToMs(value, { magnetic: true })
   }
 
   useEffect(() => {

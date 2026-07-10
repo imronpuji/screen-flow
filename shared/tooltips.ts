@@ -29,6 +29,7 @@ export type TooltipId =
   | 'trim-split'
   | 'trim-delete-segment'
   | 'trim-ripple-delete'
+  | 'trim-magnetic-snap'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -149,6 +150,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
     id: 'trim-ripple-delete',
     title: 'Ripple delete · Merge touching clips after Delete',
     body: 'When on, deleting a segment pulls the neighbors together (razor edit points collapse). When off, survivors stay separate for fine edits.',
+  },
+  'trim-magnetic-snap': {
+    id: 'trim-magnetic-snap',
+    title: 'Magnetic snap · Stick playhead to edit points',
+    body: 'When on, scrubbing snaps to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing.',
   },
 }
 
