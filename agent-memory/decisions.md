@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] FaceTime layout map snap guides (FOKUS 3B)
+
+- **Keputusan:** Saat drag di `CameraLayoutMap`, tampilkan 8 snap guide dots (4 pojok + 4 edge mid) dari `cameraSnapTargets` + highlight target aktif via `matchCameraSnapTarget` — sama dengan live `CameraBubble`. Marker bubble menonaktifkan CSS transition selama drag supaya magnetic snap tidak dilawan easing. Koordinat relatif tetap preview ≡ export.
+- **Alasan:** FOKUS 3B — tanpa guide, drag di chrome map terasa buta (live bubble disembunyikan saat rekam); orang awam butuh feedback visual yang sama dengan preview bubble.
+- **Status:** aktif
+
 ## [2026-07-10] FaceTime layout map keyboard parity (FOKUS 3B)
 
 - **Keputusan:** `CameraLayoutMap` (setup + recording chrome + review) mendukung keyboard yang sama dengan live bubble: arrows (`nudgeCameraLayout`), +/- (`nudgeCameraSize`), `[`/`]` (`cycleCameraSnapPreset`), `C` (`cycleCameraShape`), `0` / double-click (`resetCameraLayout`). Digit 7/9/1/3/5 tetap quick-place corners/center di map; digit 1/2/3 size presets **hanya** di live bubble (1/3 bentrok dengan corner place). Koordinat relatif tetap preview ≡ export.

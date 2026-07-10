@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 25:40] FaceTime layout map snap guides (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `CameraLayoutMap` — saat drag, tampilkan 8 snap guide dots (corners + edge mids) lewat `cameraSnapTargets` + highlight aktif via `matchCameraSnapTarget` (parity live bubble).
+  - Disable CSS transition bubble saat dragging agar magnetic snap terasa sticky; hint/label diperbarui.
+  - Smoke `place at point` covers guide centers in-frame.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `18d83dd`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional ScreenCaptureKit.
+
 ## [2026-07-10 25:00] FaceTime layout map keyboard parity (FOKUS 3B)
 
 - **Dikerjakan:**
