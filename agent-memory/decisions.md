@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Review timeline cut at playhead (FOKUS 5)
+
+- **Keputusan:** Cut/trim di playhead memakai **satu keep-range** (`trimStartMs`/`trimEndMs`) lewat `shared/timelineCut.ts`. `[` Mark In, `]` Mark Out, `S` cut-after (keep before), `⇧S` cut-before (keep after). Semua lewat `normalizeTrim` (min 100ms) + undo history. `splitTrimAtPlayhead` ada untuk calon multi-segment; **belum** di-wire ke export (butuh ffmpeg concat).
+- **Alasan:** FOKUS 5 keyboard-first trim/cut tanpa merusak pipeline export single `-ss`/`-t`. Multi-segment + ripple middle-cut = langkah berikutnya.
+- **Status:** aktif
+
 ## [2026-07-10] Review edit undo/redo (FOKUS 5)
 
 - **Keputusan:** `ReviewEditState` di-review memakai `shared/editHistory.ts` (past/present/future, limit 50). Setiap `setEdit` → `pushEdit` dengan **coalesce 400ms** supaya slider/drag jadi satu undo step. Shortcut: ⌘/Ctrl+Z undo, ⌘⇧Z / Ctrl+Shift+Z / Ctrl+Y redo (`matchShortcut` khusus modifier). Tombol Undo/Redo di header review + tooltip. Non-destruktif — hanya metadata edit, media asli utuh.
