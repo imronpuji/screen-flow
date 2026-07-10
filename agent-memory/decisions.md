@@ -2,9 +2,15 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera active-range scrubber edge drag (FOKUS 3A/B)
+
+- **Keputusan:** Amber camera spans di scrubber punya handle start/end. Drag memanggil `resizeCameraActiveRangeEdge(ranges, index, edge, wallMs, wallDurationMs)` — materialize always-on dulu, clamp ke tetangga + wall, min window `CAMERA_ACTIVE_RANGE_MIN_MS` (20), merge overlapping/adjacent. Marker membawa `rangeIndex`. UI menulis `cameraActiveRangesOverride` lewat `onCameraActiveRangesChange` → preview ≡ export (ranges yang sama ke `cameraOverlayEnableExpr`).
+- **Alasan:** Hide/Show from playhead bagus untuk potong kasar; orang awam butuh geser tepi window seperti trim editor tanpa angka ms.
+- **Status:** aktif
+
 ## [2026-07-10] Camera active-range edit in review (FOKUS 3A)
 
-- **Keputusan:** Review boleh mengedit FaceTime `activeRanges` lewat `ReviewEditState.cameraActiveRangesOverride` (`null` = warisi `camera-sync.json`). UI: **Hide/Show from playhead** (`toggleCameraActiveAtWallMs`), **Remove** window, **Always on** (`[]`), **Reset** (`null`). Empty `[]` = always-on legacy; fully muted = sentinel `CAMERA_ACTIVE_RANGES_NEVER` (`[{0,0}]`) → `isCameraActiveAtMs` false + `cameraOverlayEnableExpr` → `'0'`. Preview memakai wall time (`screenTimelineMsToWallMs`) supaya selaras export. Export: `ExportCameraOverlayRequest.activeRangesOverride` + `cameraOverlayEnableExpr(..., { trimStartMs })` supaya enable tetap benar setelah input `-ss` trim.
+- **Keputusan:** Review boleh mengedit FaceTime `activeRanges` lewat `ReviewEditState.cameraActiveRangesOverride` (`null` = warisi `camera-sync.json`). UI: **Hide/Show from playhead** (`toggleCameraActiveAtWallMs`), **Remove** window, **Always on** (`[]`), **Reset** (`null`). Empty `[]` = always-on legacy; fully muted = sentinel `CAMERA_ACTIVE_RANGES_NEVER` (`[{0,0}]`) → `isCameraActiveAtMs` false + `cameraOverlayEnableExpr` → `'0'`. Preview memakai wall time (`screenTimelineMsToWallMs`) supaya selaras export. Export: `ExportCameraOverlayRequest.activeRangesOverride` + `cameraOverlayEnableExpr(..., { trimStartMs })` supaya enable tetap benar setelah input `-ss` trim. Scrubber edge drag → keputusan terpisah.
 - **Alasan:** FOKUS 3 — orang awam perlu trim mute windows setelah rekaman tanpa re-record; preview ≡ export lewat data ranges yang sama.
 - **Status:** aktif
 

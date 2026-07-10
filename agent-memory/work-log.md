@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 19:20] Camera active-range scrubber edge drag (FOKUS 3A/B)
+
+- **Dikerjakan:**
+  - `shared/cameraSync.ts` — `resizeCameraActiveRangeEdge` (neighbor clamp, min 20ms, merge on touch, materialize always-on).
+  - `shared/timelineMarkers.ts` — `rangeIndex` on camera markers for edge→window mapping.
+  - Review scrubber — amber span start/end handles; `onCameraActiveRangesChange` → override; preview ≡ export.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-sync/timeline-markers/camera*/beautify/export-effects/export-camera/zoom-points/shortcuts hijau.
+- **Commit:** `a902be0`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional persist background prefs.
+
 ## [2026-07-10 19:10] Camera active-range edit in review (FOKUS 3A/B)
 
 - **Dikerjakan:**
