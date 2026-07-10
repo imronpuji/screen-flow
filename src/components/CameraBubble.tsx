@@ -65,6 +65,7 @@ export function CameraBubble({
   const [resizeActive, setResizeActive] = useState(false)
   const [snapTarget, setSnapTarget] = useState<CameraSnapTarget | null>(null)
   const [guideParent, setGuideParent] = useState<HTMLElement | null>(null)
+  const [dragAspect, setDragAspect] = useState<number | null>(null)
   const dragRef = useRef<{
     pointerId: number
     startClientX: number
@@ -226,6 +227,7 @@ export function CameraBubble({
     setResizeActive(false)
     setSnapTarget(null)
     setGuideParent(rootRef.current?.offsetParent as HTMLElement | null)
+    setDragAspect(metrics.aspect)
     dragRef.current = {
       pointerId: e.pointerId,
       startClientX: e.clientX,
@@ -305,6 +307,7 @@ export function CameraBubble({
       setResizeActive(false)
       setSnapTarget(null)
       setGuideParent(null)
+      setDragAspect(null)
       try {
         e.currentTarget.releasePointerCapture(e.pointerId)
       } catch {
@@ -322,6 +325,7 @@ export function CameraBubble({
     dragRef.current = null
     setSnapTarget(null)
     setGuideParent(null)
+    setDragAspect(null)
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {
@@ -353,7 +357,7 @@ export function CameraBubble({
 
   if (!active) return null
 
-  const guideAspect = dragRef.current?.aspect ?? frameAspect ?? 16 / 9
+  const guideAspect = dragAspect ?? frameAspect ?? 16 / 9
   const guideTargets =
     dragging && guideParent
       ? cameraSnapTargets(displayStyle.sizePercent, guideAspect)
