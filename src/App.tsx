@@ -8,6 +8,7 @@ import type {
 } from '../shared/ipc'
 import type { ReviewEditState } from '../shared/edit'
 import {
+  CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_CORNERS,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
@@ -937,24 +938,77 @@ export default function App() {
                   <span>Outline</span>
                 </label>
                 {cameraOverlay.borderEnabled ? (
-                  <label className="camera-controls__field">
-                    <span>Outline {cameraOverlay.borderWidthPx}px</span>
-                    <input
-                      type="range"
-                      min={1}
-                      max={6}
-                      value={cameraOverlay.borderWidthPx}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setCameraOverlay((prev) =>
-                          normalizeCameraOverlay({
-                            ...prev,
-                            borderWidthPx: Number(e.target.value),
-                          }),
-                        )
-                      }
-                    />
-                  </label>
+                  <>
+                    <label className="camera-controls__field">
+                      <span>Outline {cameraOverlay.borderWidthPx}px</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={6}
+                        value={cameraOverlay.borderWidthPx}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setCameraOverlay((prev) =>
+                            normalizeCameraOverlay({
+                              ...prev,
+                              borderWidthPx: Number(e.target.value),
+                            }),
+                          )
+                        }
+                      />
+                    </label>
+                    <div className="camera-controls__field camera-controls__field--color">
+                      <span>Outline color</span>
+                      <div className="camera-controls__swatches" role="listbox" aria-label="Outline color">
+                        {CAMERA_BORDER_COLOR_PRESETS.map((preset) => {
+                          const active =
+                            cameraOverlay.borderColor.toUpperCase() ===
+                            preset.color.toUpperCase()
+                          return (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              aria-label={preset.label}
+                              title={preset.label}
+                              className={
+                                active
+                                  ? 'camera-controls__swatch camera-controls__swatch--active'
+                                  : 'camera-controls__swatch'
+                              }
+                              style={{ background: preset.color }}
+                              disabled={busy}
+                              onClick={() =>
+                                setCameraOverlay((prev) =>
+                                  normalizeCameraOverlay({
+                                    ...prev,
+                                    borderColor: preset.color,
+                                  }),
+                                )
+                              }
+                            />
+                          )
+                        })}
+                        <label className="camera-controls__swatch-custom" title="Custom color">
+                          <span className="visually-hidden">Custom outline color</span>
+                          <input
+                            type="color"
+                            value={cameraOverlay.borderColor}
+                            disabled={busy}
+                            onChange={(e) =>
+                              setCameraOverlay((prev) =>
+                                normalizeCameraOverlay({
+                                  ...prev,
+                                  borderColor: e.target.value,
+                                }),
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </>
                 ) : null}
               </div>
             ) : null}
