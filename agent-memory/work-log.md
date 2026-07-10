@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:55] Zoom span edge resize (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — `zoomInMs`/`holdMs`/`zoomOutMs` on override + manual; `resizeZoomSegmentEdge` / `resizeAutoZoomEdge` / `resizeManualZoomEdge` / `rebuildZoomSegmentTiming` / `applyOneZoomOverride`; `MIN_ZOOM_EDGE_MS=80`.
+  - `AutoZoomPlayback` — start/end handles on teal zoom spans; magnetic snap; `onZoomEdgeChange`.
+  - `RecordingReview` — wire edge resize; peak-drag preserves timing fields; hint + tooltip `trim-zoom-edge`.
+  - Markers/autosave normalize timing; smoke edge-resize cases.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/tooltips/project-autosave/timeline-snap/timeline-zoom hijau.
+- **Commit:** (pending)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; FaceTime polish after editor solid; optional hold-edge resize / keyboard overlay.
+
 ## [2026-07-10 14:45] Zoom-event drag on timeline (FOKUS 5)
 
 - **Dikerjakan:**
