@@ -1225,6 +1225,11 @@
   pointer-events: none;
 }
 
+.camera-recording-badge--muted {
+  border-color: rgba(232, 238, 244, 0.18);
+  color: rgba(232, 238, 244, 0.55);
+}
+
 .camera-bubble__video {
   display: block;
   width: 100%;

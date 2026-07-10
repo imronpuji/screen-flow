@@ -19,7 +19,9 @@ import {
 } from './ffmpeg/transcode.js'
 import {
   appendRecordingChunk,
+  ensureCameraTrack,
   getRecordingStatus,
+  setCameraActiveRanges,
   startRecording,
   stopRecording,
 } from './recording/session.js'
@@ -35,6 +37,7 @@ import {
   type ListSourcesRequest,
   type ReadCursorEventsRequest,
   type SaveExportRequest,
+  type SetCameraActiveRangesRequest,
   type StartRecordingRequest,
 } from '../shared/ipc.js'
 
@@ -105,6 +108,22 @@ function registerIpc(): void {
     }
     return appendRecordingChunk(request)
   })
+
+  ipcMain.handle(IPC_CHANNELS.RECORDING_ENSURE_CAMERA, async () => {
+    const status = await ensureCameraTrack()
+    return { ok: true as const, status }
+  })
+
+  ipcMain.handle(
+    IPC_CHANNELS.RECORDING_SET_CAMERA_ACTIVE_RANGES,
+    (_event, request: SetCameraActiveRangesRequest) => {
+      if (!request || !Array.isArray(request.ranges)) {
+        throw new Error('Invalid camera active ranges payload')
+      }
+      const status = setCameraActiveRanges(request.ranges)
+      return { ok: true as const, status }
+    },
+  )
 
   ipcMain.handle(IPC_CHANNELS.RECORDING_READ_CURSOR_EVENTS, (_event, request: ReadCursorEventsRequest) => {
     if (!request || typeof request.eventsPath !== 'string' || !request.eventsPath.trim()) {

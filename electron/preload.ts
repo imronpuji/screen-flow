@@ -19,6 +19,9 @@ import {
   type SaveExportRequest,
   type SaveExportResult,
   type ScreenFlowApi,
+  type SetCameraActiveRangesRequest,
+  type SetCameraActiveRangesResult,
+  type EnsureCameraTrackResult,
   type StartRecordingRequest,
   type StartRecordingResult,
   type StopRecordingResult,
@@ -46,6 +49,13 @@ const api: ScreenFlowApi = {
       IPC_CHANNELS.RECORDING_APPEND_CHUNK,
       request,
     ) as Promise<AppendChunkResult>,
+  ensureCameraTrack: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.RECORDING_ENSURE_CAMERA) as Promise<EnsureCameraTrackResult>,
+  setCameraActiveRanges: (request: SetCameraActiveRangesRequest) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.RECORDING_SET_CAMERA_ACTIVE_RANGES,
+      request,
+    ) as Promise<SetCameraActiveRangesResult>,
   exportWebmToMp4: (request: ExportMp4Request) =>
     ipcRenderer.invoke(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, request) as Promise<ExportMp4Result>,
   onExportProgress: (listener) => {
