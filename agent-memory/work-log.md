@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Review: `onCameraOverlayChange` syncs layout edits back to setup (keeps setup `enabled` if clip has no camera track).
   - Smoke `smoke:camera-prefs`.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera-prefs/camera/camera-sync/export-camera/beautify/export-effects hijau.
-- **Commit:** (pending push)
+- **Commit:** `d01adea` (feature) / `68d9aa4` (shared path + memory)
 - **Status:** done (FOKUS 3 — prefs survive relaunch; review polish carries to next record)
 - **Next:** Visual verify on Mac; optional free aspect unlock for rectangle/rounded; multi-segment only if MediaRecorder restart required.
 
