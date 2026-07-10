@@ -11,6 +11,8 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
+const { spawn } = require("child_process");
 
 // --- Loader .env sederhana (tanpa dependency) ---
 // Baca file .env di folder yang sama lalu isikan ke process.env.
@@ -66,6 +68,41 @@ function gh(path, options = {}) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// --- Nada dering saat ada callback masuk ---
+// SUCCESS_SOUND / FAIL_SOUND bisa dioverride di .env (path file audio).
+// Default pakai suara sistem macOS.
+const CALLBACK_SOUND =
+  process.env.CALLBACK_SOUND || "/System/Library/Sounds/Ping.aiff";
+const SUCCESS_SOUND =
+  process.env.SUCCESS_SOUND || "/System/Library/Sounds/Glass.aiff";
+const FAIL_SOUND =
+  process.env.FAIL_SOUND || "/System/Library/Sounds/Basso.aiff";
+
+function playSound(file) {
+  try {
+    let cmd, args;
+    if (process.platform === "darwin") {
+      cmd = "afplay";
+      args = [file];
+    } else if (process.platform === "linux") {
+      cmd = "aplay";
+      args = [file];
+    } else if (process.platform === "win32") {
+      cmd = "powershell";
+      args = ["-c", `(New-Object Media.SoundPlayer '${file}').PlaySync();`];
+    } else {
+      return;
+    }
+    const p = spawn(cmd, args, { stdio: "ignore", detached: true });
+    p.on("error", (e) =>
+      console.warn(`(audio gagal: ${cmd} -> ${e.message})`)
+    );
+    p.unref();
+  } catch {
+    /* jangan sampai gagal audio bikin server crash */
+  }
+}
 
 // GitHub kadang balas 404/5xx sesaat karena replication lag (mis. tepat setelah
 // PR baru dibuat). Jadi kita retry beberapa kali sebelum menyerah.
@@ -162,6 +199,8 @@ const server = http.createServer(async (req, res) => {
 
   // Endpoint utama: trigger merge PR terbaru
   if (req.method === "POST" && req.url === "/merge") {
+    console.log("🔔 Callback masuk!");
+    playSound(CALLBACK_SOUND); // bunyi tiap kali ada callback, apa pun hasilnya
     const body = await readBody(req);
     const owner = body.owner || DEFAULT_OWNER;
     const repo = body.repo || DEFAULT_REPO;
@@ -196,6 +235,7 @@ const server = http.createServer(async (req, res) => {
       const result = await mergePR(owner, repo, pr.number);
 
       console.log(`PR #${pr.number} berhasil di-merge.`);
+      playSound(SUCCESS_SOUND); // 🔔 nada dering sukses
       return send(res, 200, {
         ok: true,
         merged: true,
@@ -207,6 +247,7 @@ const server = http.createServer(async (req, res) => {
       });
     } catch (err) {
       console.error("Gagal merge:", err.message);
+      playSound(FAIL_SOUND); // 🔔 nada dering gagal
       return send(res, err.status || 500, {
         ok: false,
         error: err.message,
