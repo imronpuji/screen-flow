@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Persist export format + quality prefs
+
+- **Keputusan:** `ExportPrefs` `{ format, quality }` disimpan di renderer `localStorage` (`screen-flow:export-prefs`) lewat `shared/exportPrefs.ts` + `normalizeExportPrefs`. Review hydrate via `defaultReviewEdit(..., quality, background, cursor, format)`; save on every `exportFormat` / `exportQuality` change (Beautify ikut). Pola sama FaceTime `cameraPrefs` / background / cursor prefs.
+- **Alasan:** Format (WebM/GIF) dan quality sering di-set sekali; orang awam tidak mau ulang tiap rekaman; picker tetap satu sumber data di review state.
+- **Status:** aktif
+
 ## [2026-07-10] Export format picker (MP4 / WebM / GIF)
 
 - **Keputusan:** `ReviewEditState.exportFormat` (`mp4` | `webm` | `gif`, default **mp4**) + `ExportMp4Request.format`. Satu pipeline effects (zoom→bg→cursor→camera) lalu encode per format: **MP4** = H.264 (+ AAC mic) seperti sebelumnya; **WebM** = `libvpx-vp9` CRF (draft 40 / good 32 / high 28) + `libopus` bila mic; **GIF** = `palettegen`/`paletteuse` (fps+maxWidth dari quality: 8/480 · 12/720 · 15/1080), **tanpa audio**. Save As memakai ekstensi + dialog filter yang sama. Beautify **tidak** mengubah format.
