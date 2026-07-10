@@ -577,7 +577,7 @@
   height: 0.7rem;
   border-radius: 4px;
   background: color-mix(in srgb, var(--ink-muted) 18%, transparent);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .zoom-playback__marker {
@@ -612,6 +612,46 @@
 
 .zoom-playback__marker--camera:hover:not(:disabled) {
   background: color-mix(in srgb, #f0a05a 72%, transparent);
+}
+
+.zoom-playback__marker--camera-editable {
+  z-index: 1;
+}
+
+.zoom-playback__marker-body {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.zoom-playback__marker-handle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 8px;
+  border-radius: 2px;
+  background: color-mix(in srgb, #f0a05a 88%, #1a1a1a);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #1a1a1a 35%, transparent);
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 3;
+}
+
+.zoom-playback__marker-handle--start {
+  left: -3px;
+}
+
+.zoom-playback__marker-handle--end {
+  right: -3px;
+}
+
+.zoom-playback__marker-handle:hover,
+.zoom-playback__marker-handle:active {
+  background: #f0a05a;
 }
 
 .zoom-playback__marker--click {

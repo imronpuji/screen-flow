@@ -244,6 +244,50 @@ export function removeCameraActiveRangeAt(
   return next.length > 0 ? next : [...CAMERA_ACTIVE_RANGES_NEVER]
 }
 
+/** Minimum active-window length when dragging scrubber edges (ms). */
+export const CAMERA_ACTIVE_RANGE_MIN_MS = 20
+
+/**
+ * Drag-resize one edge of a FaceTime active window (wall ms).
+ * Clamps against neighbors + wall so windows never overlap or invert.
+ * Empty / always-on input is materialized first. Collapse → never sentinel.
+ */
+export function resizeCameraActiveRangeEdge(
+  ranges: CameraActiveRange[] | null | undefined,
+  index: number,
+  edge: 'start' | 'end',
+  wallMs: number,
+  wallDurationMs: number,
+): CameraActiveRange[] {
+  const wall = Math.max(0, wallDurationMs)
+  const list = materializeCameraActiveRanges(ranges, wall).filter(
+    (r) => (r.endMs ?? 0) - r.startMs >= CAMERA_ACTIVE_RANGE_MIN_MS,
+  )
+  if (index < 0 || index >= list.length) return list
+
+  const t = Math.max(0, Math.min(wallMs, wall))
+  const next = list.map((r) => ({
+    startMs: r.startMs,
+    endMs: r.endMs == null ? wall : r.endMs,
+  }))
+  const cur = next[index]!
+  const prevEnd = index > 0 ? (next[index - 1]!.endMs ?? 0) : 0
+  const nextStart = index < next.length - 1 ? next[index + 1]!.startMs : wall
+
+  if (edge === 'start') {
+    const maxStart = Math.max(prevEnd, (cur.endMs ?? wall) - CAMERA_ACTIVE_RANGE_MIN_MS)
+    cur.startMs = Math.max(prevEnd, Math.min(t, maxStart))
+  } else {
+    const minEnd = Math.min(nextStart, cur.startMs + CAMERA_ACTIVE_RANGE_MIN_MS)
+    cur.endMs = Math.min(nextStart, Math.max(t, minEnd))
+  }
+
+  const merged = mergeCameraActiveRanges(next).filter(
+    (r) => (r.endMs ?? 0) - r.startMs >= CAMERA_ACTIVE_RANGE_MIN_MS,
+  )
+  return merged.length > 0 ? merged : [...CAMERA_ACTIVE_RANGES_NEVER]
+}
+
 /** True when ranges mean "never show" (edited fully muted), not legacy always-on. */
 export function isCameraActiveRangesNever(
   ranges: CameraActiveRange[] | null | undefined,

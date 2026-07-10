@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { CursorEvent } from '../../shared/cursor'
 import {
   appearanceToCursorDrawOptions,
@@ -34,6 +34,7 @@ import type { CameraActiveRange, CameraSyncMeta } from '../../shared/cameraSync'
 import {
   cameraStartLagMs,
   isCameraActiveAtMs,
+  resizeCameraActiveRangeEdge,
   screenTimeToCameraTimeSec,
   screenTimelineMsToWallMs,
 } from '../../shared/cameraSync'
@@ -74,6 +75,11 @@ export interface AutoZoomPlaybackProps {
   cameraActiveRangesOverride?: CameraActiveRange[] | null
   /** Persist drag/snap layout from the review bubble (relative 0–1 coords). */
   onCameraLayoutChange?: (next: CameraOverlayStyle) => void
+  /**
+   * Drag-resize FaceTime active-window edges on the scrubber (wall ms).
+   * When set, camera spans show start/end handles.
+   */
+  onCameraActiveRangesChange?: (ranges: CameraActiveRange[]) => void
   trimStartMs?: number
   trimEndMs?: number
   onDurationMs?: (ms: number) => void
@@ -95,6 +101,7 @@ export function AutoZoomPlayback({
   cameraSync = null,
   cameraActiveRangesOverride = null,
   onCameraLayoutChange,
+  onCameraActiveRangesChange,
   trimStartMs = 0,
   trimEndMs,
   onDurationMs,
@@ -102,6 +109,15 @@ export function AutoZoomPlayback({
 }: AutoZoomPlaybackProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const currentMsRef = useRef(0)
+  const markersTrackRef = useRef<HTMLDivElement | null>(null)
+  const cameraRangeDragRef = useRef<{
+    rangeIndex: number
+    edge: 'start' | 'end'
+    pointerId: number
+  } | null>(null)
+  const effectiveCameraRangesRef = useRef<CameraActiveRange[] | null | undefined>(
+    cameraActiveRangesOverride,
+  )
   const [videoSize, setVideoSize] = useState<VideoSize>({ width: 1920, height: 1080 })
   const [transform, setTransform] = useState({ scale: 1, focusX: 0.5, focusY: 0.5 })
   const [cursorPos, setCursorPos] = useState<NormalizedPoint | null>(null)
@@ -162,21 +178,104 @@ export function AutoZoomPlayback({
       ? cameraActiveRangesOverride
       : cameraSync?.activeRanges
 
+  const cameraWallDurationMs = Math.max(
+    cameraSync?.wallDurationMs ?? 0,
+    durationMs + Math.max(0, cameraSync?.screenFirstChunkMs ?? 0),
+  )
+
+  useEffect(() => {
+    effectiveCameraRangesRef.current = effectiveCameraRanges
+  }, [effectiveCameraRanges])
+
   const timelineMarkers = useMemo(
     () =>
       buildTimelineMarkers(segments, cursorEvents, {
         cameraActiveRanges: effectiveCameraRanges,
         screenFirstChunkMs: cameraSync?.screenFirstChunkMs,
-        wallDurationMs: cameraSync?.wallDurationMs ?? durationMs,
+        wallDurationMs: cameraWallDurationMs,
       }),
     [
       cameraSync?.screenFirstChunkMs,
-      cameraSync?.wallDurationMs,
+      cameraWallDurationMs,
       cursorEvents,
-      durationMs,
       effectiveCameraRanges,
       segments,
     ],
+  )
+
+  const applyCameraRangeEdgeAtClientX = useCallback(
+    (clientX: number, rangeIndex: number, edge: 'start' | 'end') => {
+      if (!onCameraActiveRangesChange || durationMs <= 0) return
+      const track = markersTrackRef.current
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+      const screenMs = ratio * durationMs
+      const wallMs = screenTimelineMsToWallMs(screenMs, cameraSync?.screenFirstChunkMs)
+      const next = resizeCameraActiveRangeEdge(
+        effectiveCameraRangesRef.current,
+        rangeIndex,
+        edge,
+        wallMs,
+        cameraWallDurationMs,
+      )
+      onCameraActiveRangesChange(next)
+    },
+    [
+      cameraSync?.screenFirstChunkMs,
+      cameraWallDurationMs,
+      durationMs,
+      onCameraActiveRangesChange,
+    ],
+  )
+
+  const onCameraRangeEdgePointerDown = useCallback(
+    (
+      event: ReactPointerEvent<HTMLSpanElement>,
+      rangeIndex: number,
+      edge: 'start' | 'end',
+    ) => {
+      if (!onCameraActiveRangesChange || Boolean(loadError)) return
+      event.preventDefault()
+      event.stopPropagation()
+      const target = event.currentTarget
+      target.setPointerCapture(event.pointerId)
+      cameraRangeDragRef.current = {
+        rangeIndex,
+        edge,
+        pointerId: event.pointerId,
+      }
+      applyCameraRangeEdgeAtClientX(event.clientX, rangeIndex, edge)
+    },
+    [applyCameraRangeEdgeAtClientX, loadError, onCameraActiveRangesChange],
+  )
+
+  const onCameraRangeEdgePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const drag = cameraRangeDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      applyCameraRangeEdgeAtClientX(event.clientX, drag.rangeIndex, drag.edge)
+    },
+    [applyCameraRangeEdgeAtClientX],
+  )
+
+  const onCameraRangeEdgePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLSpanElement>) => {
+      const drag = cameraRangeDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      cameraRangeDragRef.current = null
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+    },
+    [],
   )
 
   const updateCursorOverlay = useCallback(
@@ -479,6 +578,7 @@ export function AutoZoomPlayback({
         </span>
         <div className="zoom-playback__timeline">
           <div
+            ref={markersTrackRef}
             className="zoom-playback__markers"
             role="list"
             aria-label="Clip markers"
@@ -499,6 +599,59 @@ export function AutoZoomPlayback({
                       marker.kind === 'camera'
                         ? 'zoom-playback__marker--camera'
                         : 'zoom-playback__marker--zoom'
+                    const canResizeCamera =
+                      marker.kind === 'camera' &&
+                      marker.rangeIndex != null &&
+                      Boolean(onCameraActiveRangesChange) &&
+                      !loadError
+                    if (canResizeCamera) {
+                      return (
+                        <div
+                          key={marker.id}
+                          role="listitem"
+                          className="zoom-playback__marker zoom-playback__marker--camera zoom-playback__marker--camera-editable"
+                          style={{ left: `${spanLeft}%`, width: `${spanWidth}%` }}
+                          title={`${marker.label} · drag edges to trim · ${formatTimeMs(marker.tMs)}`}
+                        >
+                          <button
+                            type="button"
+                            className="zoom-playback__marker-body"
+                            aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}
+                            onClick={() => onScrub(marker.tMs)}
+                          />
+                          <span
+                            className="zoom-playback__marker-handle zoom-playback__marker-handle--start"
+                            role="slider"
+                            aria-label={`${marker.label} start`}
+                            aria-valuemin={0}
+                            aria-valuemax={durationMs}
+                            aria-valuenow={marker.startMs}
+                            tabIndex={-1}
+                            onPointerDown={(e) =>
+                              onCameraRangeEdgePointerDown(e, marker.rangeIndex!, 'start')
+                            }
+                            onPointerMove={onCameraRangeEdgePointerMove}
+                            onPointerUp={onCameraRangeEdgePointerUp}
+                            onPointerCancel={onCameraRangeEdgePointerUp}
+                          />
+                          <span
+                            className="zoom-playback__marker-handle zoom-playback__marker-handle--end"
+                            role="slider"
+                            aria-label={`${marker.label} end`}
+                            aria-valuemin={0}
+                            aria-valuemax={durationMs}
+                            aria-valuenow={marker.endMs}
+                            tabIndex={-1}
+                            onPointerDown={(e) =>
+                              onCameraRangeEdgePointerDown(e, marker.rangeIndex!, 'end')
+                            }
+                            onPointerMove={onCameraRangeEdgePointerMove}
+                            onPointerUp={onCameraRangeEdgePointerUp}
+                            onPointerCancel={onCameraRangeEdgePointerUp}
+                          />
+                        </div>
+                      )
+                    }
                     return (
                       <button
                         key={marker.id}

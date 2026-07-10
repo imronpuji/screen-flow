@@ -20,6 +20,11 @@ export interface TimelineMarker {
   /** Visual span end for zoom/camera markers; omitted for point markers. */
   endMs?: number
   label: string
+  /**
+   * Index into materialized camera active ranges (camera markers only).
+   * Used by scrubber edge-drag to resize the matching window.
+   */
+  rangeIndex?: number
 }
 
 export interface BuildTimelineMarkersOptions {
@@ -94,6 +99,7 @@ export function buildCameraActiveRangeMarkers(
       startMs,
       endMs: Math.max(startMs, endMs),
       label: `Camera ${i + 1}`,
+      rangeIndex: i,
     })
   }
 

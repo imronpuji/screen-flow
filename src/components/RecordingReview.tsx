@@ -478,6 +478,13 @@ export function RecordingReview({
                 cameraOverlay: normalizeCameraOverlay(next),
               }))
             }
+            onCameraActiveRangesChange={(ranges) => {
+              if (exporting) return
+              setEdit((prev) => ({
+                ...prev,
+                cameraActiveRangesOverride: ranges,
+              }))
+            }}
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             onDurationMs={onDurationMs}
@@ -1057,7 +1064,8 @@ export function RecordingReview({
                       </ul>
                     )}
                     <p className="review__hint">
-                      Amber timeline spans match these windows · preview = export.
+                      Amber timeline spans match these windows — drag edges to trim · preview =
+                      export.
                     </p>
                   </div>
 
