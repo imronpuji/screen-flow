@@ -39,6 +39,7 @@ import {
   EXPORT_FORMAT_PRESETS,
   getExportFormatPreset,
 } from '../../shared/exportFormat'
+import { estimateExportSize } from '../../shared/exportSizeEstimate'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_SIZE_PRESETS,
@@ -621,6 +622,12 @@ export function RecordingReview({
 
   const keepRanges = normalizeKeepRanges(edit.keepRanges, durationMs)
   const trimDurationMs = totalKeepDurationMs(keepRanges)
+  const exportSizeEstimate = estimateExportSize({
+    format: edit.exportFormat,
+    quality: edit.exportQuality,
+    durationMs: trimDurationMs,
+    includeAudio: Boolean(hasCameraTrack && edit.cameraOverlay.micEnabled),
+  })
   const canSplit = canSplitKeepRangesAtPlayhead(keepRanges, playheadMs, durationMs)
   const canDeleteSegment =
     keepRanges.length > 1 && findKeepRangeIndex(keepRanges, playheadMs) >= 0
@@ -2064,7 +2071,7 @@ export function RecordingReview({
             id="export"
             open={editorChrome.panels.export}
             onToggle={togglePanel}
-            summary={`${getExportFormatPreset(edit.exportFormat).label} · ${getExportQualityPreset(edit.exportQuality).label}`}
+            summary={`${getExportFormatPreset(edit.exportFormat).label} · ${getExportQualityPreset(edit.exportQuality).label} · ${exportSizeEstimate.label}`}
           >
           <div className="review__field">
             <span className="review__label" id="beautify-label">
@@ -2159,6 +2166,29 @@ export function RecordingReview({
             <p className="review__hint">
               {getExportQualityPreset(edit.exportQuality).hint}
             </p>
+          </div>
+
+          <div className="review__field" data-tooltip-id="export-size">
+            <span className="review__label" id="export-size-label">
+              Estimated size
+            </span>
+            <p
+              className="review__export-size"
+              aria-labelledby="export-size-label"
+              role="status"
+            >
+              {exportSizeEstimate.label}
+              <span className="review__export-size-meta">
+                {' '}
+                · {formatTimeMs(trimDurationMs)}
+                {hasCameraTrack &&
+                edit.cameraOverlay.micEnabled &&
+                edit.exportFormat !== 'gif'
+                  ? ' · with mic'
+                  : ''}
+              </span>
+            </p>
+            <p className="review__hint">{exportSizeEstimate.hint}</p>
           </div>
 
           <div className="review__coming">
