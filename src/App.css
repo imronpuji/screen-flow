@@ -1014,6 +1014,26 @@
   animation: camera-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Review/export match: no entrance motion that looks like the bubble is drifting. */
+.camera-bubble--fixed {
+  animation: none;
+}
+
+.camera-recording-badge {
+  position: absolute;
+  z-index: 4;
+  right: 3%;
+  bottom: 3%;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(232, 238, 244, 0.35);
+  background: rgba(10, 14, 18, 0.82);
+  color: rgba(232, 238, 244, 0.9);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+}
+
 .camera-bubble__video {
   display: block;
   width: 100%;

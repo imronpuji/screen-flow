@@ -133,7 +133,7 @@ export function CameraBubble({
 
   return (
     <div
-      className={`camera-bubble ${className}`.trim()}
+      className={`camera-bubble ${useRecorded ? 'camera-bubble--fixed' : ''} ${className}`.trim()}
       style={{
         top: pos.top,
         bottom: pos.bottom,

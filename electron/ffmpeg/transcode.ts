@@ -150,6 +150,8 @@ async function transcodeOnce(
     filterComplex?: string
     outputLabel?: string
     trim?: TrimRange
+    /** Full source duration before trim — used to detect end-handle shortening. */
+    fullDurationMs?: number
     /** Expected output duration for progress % when trimming. */
     expectedDurationSec?: number
     /** Extra inputs after the screen capture (e.g. camera.webm as input 1). */
@@ -173,8 +175,20 @@ async function transcodeOnce(
     args.push('-i', extra)
   }
 
+  // After input -ss, limit OUTPUT length with -t (duration), not -to (absolute end).
+  // Using -to endMs after a seek asks ffmpeg for endMs seconds of output and can
+  // overrun the remaining source → libx264 "Conversion failed!" (exit 234).
+  // Full exports (start≈0, end≈source length): omit -t and read to EOF so VFR
+  // WebM duration probe mismatch cannot overshoot past the last frame.
   if (options.trim) {
-    args.push('-to', msToFfmpegSec(options.trim.endMs))
+    const startMs = options.trim.startMs
+    const endMs = options.trim.endMs
+    const durSec = (endMs - startMs) / 1000
+    const fullMs = options.fullDurationMs
+    const shortenedEnd = fullMs != null && endMs < fullMs - 100
+    if ((startMs > 50 || shortenedEnd) && Number.isFinite(durSec) && durSec > 0.08) {
+      args.push('-t', Math.max(0.05, durSec - 0.05).toFixed(3))
+    }
   }
   args.push('-an')
   if (options.filterComplex) {
@@ -428,6 +442,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       filterComplex,
       outputLabel,
       trim: trimRange,
+      fullDurationMs,
       expectedDurationSec,
       extraInputs: cameraApplied ? extraInputs : [],
     }

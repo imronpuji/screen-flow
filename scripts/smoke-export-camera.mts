@@ -39,9 +39,11 @@ function testCameraPlan(): void {
   const plan = planCameraExport(style, { width: 320, height: 180 }, 'vbase', 'vout', 1)
   assert(plan.hasCamera, 'camera enabled')
   assert(plan.filterComplex.includes('[1:v]'), 'reads camera input 1')
+  assert(plan.filterComplex.includes('fps=30'), 'normalizes camera fps')
   assert(plan.filterComplex.includes('alphamerge'), '1-frame mask alphamerge')
   assert(plan.filterComplex.includes('loop=loop=-1:size=1'), 'mask still looped')
   assert(plan.filterComplex.includes('overlay='), 'overlays bubble')
+  assert(plan.filterComplex.includes('format=yuv420p'), 'forces yuv420p for libx264')
   assert(plan.overlay.w === 64, `bubble w even (got ${plan.overlay.w})`)
   assert(plan.overlay.x > 200, 'bottom-right x near right')
 

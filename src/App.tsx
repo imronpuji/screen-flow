@@ -780,7 +780,17 @@ export default function App() {
               playsInline
               autoPlay
             />
-            <CameraBubble stream={cameraStream} style={cameraOverlay} />
+            {/*
+              Hide the live FaceTime bubble while recording so full-display capture
+              does not burn it into screen WebM (review overlays camera.webm once).
+            */}
+            {isRecording && cameraOverlay.enabled ? (
+              <div className="camera-recording-badge" role="status">
+                Camera recording
+              </div>
+            ) : (
+              <CameraBubble stream={cameraStream} style={cameraOverlay} />
+            )}
             {!isRecording ? (
               !inElectron ? (
                 <p className="preview-frame__hint">
