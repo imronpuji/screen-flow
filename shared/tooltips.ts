@@ -20,6 +20,8 @@ export type TooltipId =
   | 'export-ready'
   | 'beautify'
   | 'discard-review'
+  | 'edit-undo'
+  | 'edit-redo'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -103,6 +105,14 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'discard-review': {
     id: 'discard-review',
     title: 'Esc · Discard and record again',
+  },
+  'edit-undo': {
+    id: 'edit-undo',
+    title: '⌘Z / Ctrl+Z · Undo last edit',
+  },
+  'edit-redo': {
+    id: 'edit-redo',
+    title: '⌘⇧Z / Ctrl+Shift+Z · Redo',
   },
 }
 

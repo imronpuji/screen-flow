@@ -43,11 +43,41 @@ function testMatchReview(): void {
   assert(matchShortcut({ key: 'Z' }, 'review') === 'add-zoom', 'Z add zoom')
   assert(matchShortcut({ key: 'ArrowLeft' }, 'review') === 'scrub-back', 'left scrub')
   assert(shortcutsForContext('review').some((s) => s.id === 'add-zoom'), 'catalog has add-zoom')
+  assert(shortcutsForContext('review').some((s) => s.id === 'undo'), 'catalog has undo')
+  assert(shortcutsForContext('review').some((s) => s.id === 'redo'), 'catalog has redo')
   assert(matchShortcut({ key: 'z' }, 'setup') === null, 'z ignored in setup')
   assert(matchShortcut({ key: 'ArrowRight' }, 'review') === 'scrub-forward', 'right scrub')
   assert(matchShortcut({ key: 'Escape' }, 'review') === 'discard', 'esc discard')
   assert(matchShortcut({ key: 'Escape' }, 'exporting') === 'cancel-export', 'esc cancel export')
   assert(matchShortcut({ key: 'e' }, 'exporting') === null, 'e ignored while exporting')
+  assert(
+    matchShortcut({ key: 'z', metaKey: true }, 'review') === 'undo',
+    'meta+z undo',
+  )
+  assert(
+    matchShortcut({ key: 'z', ctrlKey: true }, 'review') === 'undo',
+    'ctrl+z undo',
+  )
+  assert(
+    matchShortcut({ key: 'z', metaKey: true, shiftKey: true }, 'review') === 'redo',
+    'meta+shift+z redo',
+  )
+  assert(
+    matchShortcut({ key: 'z', ctrlKey: true, shiftKey: true }, 'review') === 'redo',
+    'ctrl+shift+z redo',
+  )
+  assert(
+    matchShortcut({ key: 'y', ctrlKey: true }, 'review') === 'redo',
+    'ctrl+y redo',
+  )
+  assert(
+    matchShortcut({ key: 'z', metaKey: true }, 'setup') === null,
+    'meta+z ignored in setup',
+  )
+  assert(
+    matchShortcut({ key: 'z', metaKey: true, altKey: true }, 'review') === null,
+    'meta+alt+z ignored',
+  )
   console.log('ok review/exporting')
 }
 
