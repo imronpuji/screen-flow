@@ -189,6 +189,107 @@ export function cutGapInKeepRanges(
   return normalizeKeepRanges(next, fullDurationMs)
 }
 
+/** True when playhead sits inside a keep window (inclusive ends). */
+export function isInsideKeepRange(ranges: KeepRange[], playheadMs: number): boolean {
+  return findKeepRangeIndex(ranges, playheadMs) >= 0
+}
+
+/**
+ * Discarded source windows (gaps + leading/trailing trim) for timeline shading.
+ * Preview skips these during playback so scrub ≡ export concat.
+ */
+export function discardedKeepWindows(
+  ranges: KeepRange[],
+  fullDurationMs: number,
+): KeepRange[] {
+  const duration = Math.max(0, fullDurationMs)
+  const normalized = normalizeKeepRanges(ranges, duration)
+  const gaps: KeepRange[] = []
+  let cursor = 0
+  for (const r of normalized) {
+    if (r.startMs - cursor >= MIN_KEEP_MS) {
+      gaps.push({ startMs: cursor, endMs: r.startMs })
+    }
+    cursor = Math.max(cursor, r.endMs)
+  }
+  if (duration - cursor >= MIN_KEEP_MS) {
+    gaps.push({ startMs: cursor, endMs: duration })
+  }
+  return gaps
+}
+
+/**
+ * Snap a scrub/seek into a keep window.
+ * Prefer the next keep start when landing in a gap; clamp past-end to last end.
+ */
+export function snapPlayheadIntoKeepRanges(
+  ranges: KeepRange[],
+  playheadMs: number,
+  fullDurationMs: number,
+): number {
+  const duration = Math.max(0, fullDurationMs)
+  const normalized = normalizeKeepRanges(ranges, duration)
+  const first = normalized[0]!
+  const last = normalized[normalized.length - 1]!
+  const ph = Math.max(0, Math.min(playheadMs, duration))
+  if (ph < first.startMs) return first.startMs
+  if (ph > last.endMs) return last.endMs
+  if (findKeepRangeIndex(normalized, ph) >= 0) return ph
+  for (const r of normalized) {
+    if (r.startMs > ph) return r.startMs
+  }
+  return last.endMs
+}
+
+export interface KeepPlaybackResolve {
+  /** Media timeline ms to show / seek. */
+  ms: number
+  /** Pause when playhead reached the end of the last keep window. */
+  shouldPause: boolean
+}
+
+/**
+ * During playback: skip discarded gaps so preview matches ffmpeg concat.
+ * Returns the same ms when still inside a keep window.
+ */
+export function resolveKeepPlaybackMs(
+  ranges: KeepRange[],
+  playheadMs: number,
+  fullDurationMs: number,
+): KeepPlaybackResolve {
+  const duration = Math.max(0, fullDurationMs)
+  const normalized = normalizeKeepRanges(ranges, duration)
+  const first = normalized[0]!
+  const last = normalized[normalized.length - 1]!
+  const ph = Math.max(0, Math.min(playheadMs, duration))
+
+  if (ph < first.startMs) {
+    return { ms: first.startMs, shouldPause: false }
+  }
+  if (ph >= last.endMs) {
+    return { ms: last.endMs, shouldPause: true }
+  }
+
+  const idx = findKeepRangeIndex(normalized, ph)
+  if (idx >= 0) {
+    const r = normalized[idx]!
+    // At the exclusive end of a non-final keep → jump to the next segment.
+    if (ph >= r.endMs - 0.5 && idx < normalized.length - 1) {
+      return { ms: normalized[idx + 1]!.startMs, shouldPause: false }
+    }
+    return { ms: ph, shouldPause: false }
+  }
+
+  // In a gap — skip forward to the next keep start.
+  for (let i = 0; i < normalized.length; i++) {
+    const r = normalized[i]!
+    if (r.startMs > ph) {
+      return { ms: r.startMs, shouldPause: false }
+    }
+  }
+  return { ms: last.endMs, shouldPause: true }
+}
+
 /** Apply a single-window trim edit onto keep-ranges (replaces with one range). */
 export function keepRangesFromTrim(trim: KeepRange, fullDurationMs: number): KeepRange[] {
   return normalizeKeepRanges([trim], fullDurationMs)

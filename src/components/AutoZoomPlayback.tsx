@@ -50,6 +50,13 @@ import {
   buildTimelineMarkers,
   markerPercent,
 } from '../../shared/timelineMarkers'
+import {
+  discardedKeepWindows,
+  normalizeKeepRanges,
+  resolveKeepPlaybackMs,
+  snapPlayheadIntoKeepRanges,
+  type KeepRange,
+} from '../../shared/keepRanges'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
@@ -84,6 +91,11 @@ export interface AutoZoomPlaybackProps {
   onCameraActiveRangesChange?: (ranges: CameraActiveRange[]) => void
   trimStartMs?: number
   trimEndMs?: number
+  /**
+   * Multi-segment keep windows (FOKUS 5). When 2+ ranges with gaps, playback
+   * skips discarded regions so preview matches ffmpeg concat.
+   */
+  keepRanges?: KeepRange[]
   onDurationMs?: (ms: number) => void
   onTimeMs?: (ms: number) => void
 }
@@ -106,6 +118,7 @@ export function AutoZoomPlayback({
   onCameraActiveRangesChange,
   trimStartMs = 0,
   trimEndMs,
+  keepRanges,
   onDurationMs,
   onTimeMs,
 }: AutoZoomPlaybackProps) {
@@ -120,6 +133,7 @@ export function AutoZoomPlayback({
   const effectiveCameraRangesRef = useRef<CameraActiveRange[] | null | undefined>(
     cameraActiveRangesOverride,
   )
+  const keepRangesRef = useRef<KeepRange[] | undefined>(keepRanges)
   const [videoSize, setVideoSize] = useState<VideoSize>({ width: 1920, height: 1080 })
   const [transform, setTransform] = useState({ scale: 1, focusX: 0.5, focusY: 0.5 })
   const [cursorPos, setCursorPos] = useState<NormalizedPoint | null>(null)
@@ -132,6 +146,23 @@ export function AutoZoomPlayback({
   const [loading, setLoading] = useState(true)
 
   const effectiveEndMs = trimEndMs ?? durationMs
+  const normalizedKeepRanges = useMemo(() => {
+    if (!keepRanges || keepRanges.length === 0 || durationMs <= 0) return null
+    return normalizeKeepRanges(keepRanges, durationMs)
+  }, [durationMs, keepRanges])
+  const gapWindows = useMemo(() => {
+    if (!normalizedKeepRanges || normalizedKeepRanges.length === 0 || durationMs <= 0) {
+      return []
+    }
+    return discardedKeepWindows(normalizedKeepRanges, durationMs)
+  }, [durationMs, normalizedKeepRanges])
+  const keepPlayStartMs = normalizedKeepRanges?.[0]?.startMs ?? trimStartMs
+  const keepPlayEndMs =
+    normalizedKeepRanges?.[normalizedKeepRanges.length - 1]?.endMs ?? effectiveEndMs
+
+  useEffect(() => {
+    keepRangesRef.current = keepRanges
+  }, [keepRanges])
   const cursorDraw = useMemo(
     () => appearanceToCursorDrawOptions(cursorAppearance),
     [cursorAppearance],
@@ -329,13 +360,17 @@ export function AutoZoomPlayback({
     (ms: number) => {
       const el = videoRef.current
       if (!el) return
-      const clamped = Math.max(trimStartMs, Math.min(effectiveEndMs, ms))
+      const ranges = keepRangesRef.current
+      let clamped = Math.max(trimStartMs, Math.min(effectiveEndMs, ms))
+      if (ranges && ranges.length > 0 && durationMs > 0) {
+        clamped = snapPlayheadIntoKeepRanges(ranges, clamped, durationMs)
+      }
       el.currentTime = clamped / 1000
       setCurrentMs(clamped)
       onTimeMs?.(clamped)
       updateCursorOverlay(clamped)
     },
-    [effectiveEndMs, onTimeMs, trimStartMs, updateCursorOverlay],
+    [durationMs, effectiveEndMs, onTimeMs, trimStartMs, updateCursorOverlay],
   )
 
   function onLoadedMetadata() {
@@ -348,27 +383,63 @@ export function AutoZoomPlayback({
     setDurationMs(durMs)
     onDurationMs?.(durMs)
     setLoading(false)
-    if (trimStartMs > 0) {
-      el.currentTime = trimStartMs / 1000
-      setCurrentMs(trimStartMs)
-      updateCursorOverlay(trimStartMs)
+    const startMs =
+      keepRanges && keepRanges.length > 0 && durMs > 0
+        ? snapPlayheadIntoKeepRanges(keepRanges, Math.max(trimStartMs, 0), durMs)
+        : trimStartMs
+    if (startMs > 0) {
+      el.currentTime = startMs / 1000
+      setCurrentMs(startMs)
+      updateCursorOverlay(startMs)
+      onTimeMs?.(startMs)
     }
   }
 
   function onTimeUpdate() {
     const el = videoRef.current
     if (!el) return
-    const tMs = el.currentTime * 1000
-    if (tMs >= effectiveEndMs && effectiveEndMs > 0) {
-      el.pause()
-      setPlaying(false)
-      seekToMs(effectiveEndMs)
-      return
+    let tMs = el.currentTime * 1000
+    const ranges = keepRangesRef.current
+
+    if (ranges && ranges.length > 0 && durationMs > 0) {
+      const resolved = resolveKeepPlaybackMs(ranges, tMs, durationMs)
+      if (resolved.shouldPause) {
+        el.pause()
+        setPlaying(false)
+        if (Math.abs(resolved.ms - tMs) > 1) {
+          seekToMs(resolved.ms)
+        } else {
+          setCurrentMs(resolved.ms)
+          onTimeMs?.(resolved.ms)
+          updateCursorOverlay(resolved.ms)
+        }
+        return
+      }
+      if (Math.abs(resolved.ms - tMs) > 1) {
+        // Gap-skip: jump to next keep window (preview ≡ export concat).
+        el.currentTime = resolved.ms / 1000
+        tMs = resolved.ms
+        setCurrentMs(tMs)
+        onTimeMs?.(tMs)
+        updateCursorOverlay(tMs)
+        if (autoZoomEnabled) {
+          setTransform(getZoomTransformAtTime(tMs, segments))
+        }
+        return
+      }
+    } else {
+      if (tMs >= effectiveEndMs && effectiveEndMs > 0) {
+        el.pause()
+        setPlaying(false)
+        seekToMs(effectiveEndMs)
+        return
+      }
+      if (tMs < trimStartMs) {
+        seekToMs(trimStartMs)
+        return
+      }
     }
-    if (tMs < trimStartMs) {
-      seekToMs(trimStartMs)
-      return
-    }
+
     setCurrentMs(tMs)
     onTimeMs?.(tMs)
     updateCursorOverlay(tMs)
@@ -381,8 +452,19 @@ export function AutoZoomPlayback({
     const el = videoRef.current
     if (!el || loadError) return
     if (el.paused) {
-      if (currentMsRef.current >= effectiveEndMs - 50) {
-        seekToMs(trimStartMs)
+      const endMs = keepPlayEndMs
+      const startMs = keepPlayStartMs
+      if (currentMsRef.current >= endMs - 50) {
+        seekToMs(startMs)
+      } else if (keepRangesRef.current && keepRangesRef.current.length > 0 && durationMs > 0) {
+        const snapped = snapPlayheadIntoKeepRanges(
+          keepRangesRef.current,
+          currentMsRef.current,
+          durationMs,
+        )
+        if (Math.abs(snapped - currentMsRef.current) > 1) {
+          seekToMs(snapped)
+        }
       }
       void el.play().catch(() => {
         setLoadError('Playback blocked — click Play again.')
@@ -392,7 +474,7 @@ export function AutoZoomPlayback({
       el.pause()
       setPlaying(false)
     }
-  }, [effectiveEndMs, loadError, seekToMs, trimStartMs])
+  }, [durationMs, keepPlayEndMs, keepPlayStartMs, loadError, seekToMs])
 
   function onScrub(value: number) {
     seekToMs(value)
@@ -712,7 +794,24 @@ export function AutoZoomPlayback({
                   )
                 })
               : null}
-            {durationMs > 0 && (trimStartMs > 0 || effectiveEndMs < durationMs) ? (
+            {durationMs > 0 && gapWindows.length > 0
+              ? gapWindows.map((gap) => {
+                  const left = markerPercent(gap.startMs, durationMs)
+                  const width = Math.max(
+                    0.2,
+                    markerPercent(gap.endMs, durationMs) - left,
+                  )
+                  return (
+                    <span
+                      key={`gap-${gap.startMs}-${gap.endMs}`}
+                      className="zoom-playback__trim-shade zoom-playback__trim-shade--gap"
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      aria-hidden="true"
+                      title="Skipped on export"
+                    />
+                  )
+                })
+              : durationMs > 0 && (trimStartMs > 0 || effectiveEndMs < durationMs) ? (
               <>
                 <span
                   className="zoom-playback__trim-shade zoom-playback__trim-shade--start"
