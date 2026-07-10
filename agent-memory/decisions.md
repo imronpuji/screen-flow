@@ -67,3 +67,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Setelah ffmpeg sukses, renderer memanggil `export:save`. Main menampilkan `dialog.showSaveDialog` dengan default `app.getPath('documents')/Screen Flow/ScreenFlow-YYYYMMDD-HHMMSS.mp4`, lalu `copyFile` dari temp MP4. Source temp tetap di-guard `assertUnderScreenFlowTemp`; destinasi user boleh di luar temp (hanya validasi absolut + `.mp4`). `destinationPath` opsional untuk smoke/automation tanpa GUI. Cancel dialog = temp MP4 tetap (summary memberitahu path temp).
 - **Alasan:** User mendapat file permanen di Documents tanpa path traversal ke temp via IPC; dialog di main (bukan renderer); CI tetap bisa uji naming/copy tanpa Electron dialog.
 - **Status:** aktif
+
+## [2026-07-10] Cursor event capture (JSONL)
+
+- **Keputusan:** Saat `recording:start`, main menulis `cursor-events.jsonl` di session temp. Event: `{ t, x, y, kind: move|down|up|click, button? }` dengan `t` = ms sejak start. Primary: `uiohook-napi` global hook (posisi + klik). Fallback: poll `screen.getCursorScreenPoint()` ~60Hz (posisi saja). Move di-throttle (≥16ms atau ≥2px). Stop menutup stream dan expose `cursorEventsPath` + `cursorEventCount` di `StopRecordingResult`.
+- **Alasan:** Metadata kursor terpisah dari WebM = fondasi auto-zoom/click effects tanpa decode video; uIOhook = global clicks di macOS/Windows; fallback polling tetap berguna jika hook gagal (permission/headless).
+- **Status:** aktif

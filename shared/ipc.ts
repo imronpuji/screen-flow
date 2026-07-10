@@ -74,6 +74,9 @@ export interface RecordingStatus {
   outputPath: string | null
   bytesWritten: number
   chunkCount: number
+  /** JSONL cursor trail for auto-zoom (null when idle or sampler inactive). */
+  cursorEventsPath: string | null
+  cursorEventCount: number
 }
 
 export interface StartRecordingRequest {
@@ -93,6 +96,9 @@ export interface StopRecordingResult {
   outputPath: string | null
   bytesWritten: number
   chunkCount: number
+  /** Cursor JSONL path (null if no events captured). */
+  cursorEventsPath: string | null
+  cursorEventCount: number
 }
 
 /** Binary chunk from renderer MediaRecorder → main temp writer. */

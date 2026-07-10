@@ -15,6 +15,7 @@ import type {
   StartRecordingResult,
   StopRecordingResult,
 } from '../../shared/ipc.js'
+import { startCursorSampler, stopCursorSampler } from './cursorSampler.js'
 
 const idleStatus = (): RecordingStatus => ({
   state: 'idle',
@@ -24,6 +25,8 @@ const idleStatus = (): RecordingStatus => ({
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cursorEventsPath: null,
+  cursorEventCount: 0,
 })
 
 let status: RecordingStatus = idleStatus()
@@ -58,14 +61,19 @@ export function startRecording(request: StartRecordingRequest): StartRecordingRe
   writeStream = fs.createWriteStream(outputPath)
   writeQueue = Promise.resolve()
 
+  const startedAt = Date.now()
+  const cursorSampler = startCursorSampler({ sessionDir, startedAt })
+
   status = {
     state: 'recording',
     sourceId,
-    startedAt: Date.now(),
+    startedAt,
     sessionDir,
     outputPath,
     bytesWritten: 0,
     chunkCount: 0,
+    cursorEventsPath: cursorSampler.eventsPath,
+    cursorEventCount: 0,
   }
 
   return { ok: true, status: getRecordingStatus() }
@@ -136,6 +144,8 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   const bytesWritten = status.bytesWritten
   const chunkCount = status.chunkCount
 
+  const cursorStats = await stopCursorSampler()
+
   // Drain pending chunk writes before closing the stream.
   await writeQueue
 
@@ -161,6 +171,8 @@ export async function stopRecording(): Promise<StopRecordingResult> {
     outputPath: chunkCount > 0 ? outputPath : null,
     bytesWritten,
     chunkCount,
+    cursorEventsPath: cursorStats.eventsPath,
+    cursorEventCount: cursorStats.eventCount,
   }
 }
 

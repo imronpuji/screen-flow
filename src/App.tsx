@@ -32,6 +32,8 @@ const idleRecording: RecordingStatus = {
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cursorEventsPath: null,
+  cursorEventCount: 0,
 }
 
 function formatBytes(bytes: number): string {
@@ -165,7 +167,7 @@ export default function App() {
         const secs = (result.durationMs / 1000).toFixed(1)
         setLastSummary(
           result.outputPath
-            ? `Saved ${size} (${result.chunkCount} chunks) in ${secs}s → ${result.outputPath}`
+            ? `Saved ${size} (${result.chunkCount} chunks, ${result.cursorEventCount} cursor events) in ${secs}s → ${result.outputPath}`
             : `Session ${secs}s with no chunks written.`,
         )
       } else {
@@ -345,7 +347,7 @@ export default function App() {
           {isRecording ? (
             <p className="shell__status" role="status">
               Live capture · {formatBytes(recording.bytesWritten)} · {recording.chunkCount}{' '}
-              chunks
+              chunks · cursor trail recording
             </p>
           ) : null}
           {lastSummary && !isRecording ? (
