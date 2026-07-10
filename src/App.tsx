@@ -1,124 +1,63 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
-import { ToastProvider } from './context/ToastContext';
-import { SplashScreen } from './pages/SplashScreen';
-import { LoginScreen } from './pages/LoginScreen';
-import { RegisterScreen } from './pages/RegisterScreen';
-import { OTPVerificationScreen } from './pages/OTPVerificationScreen';
-import { DashboardScreen } from './pages/DashboardScreen';
-import { ProfileScreen } from './pages/ProfileScreen';
-import { LoanApplicationScreen } from './pages/LoanApplicationScreen';
-import { ReviewApplicationScreen } from './pages/ReviewApplicationScreen';
-import { ApplicationStatusScreen } from './pages/ApplicationStatusScreen';
-import { ActiveLoanDetailScreen } from './pages/ActiveLoanDetailScreen';
-import { InstallmentListScreen } from './pages/InstallmentListScreen';
-import { PaymentScreen } from './pages/PaymentScreen';
-import { PaymentHistoryScreen } from './pages/PaymentHistoryScreen';
-import { NotificationsScreen } from './pages/NotificationsScreen';
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<SplashScreen />} />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/register" element={<RegisterScreen />} />
-      <Route path="/otp" element={<OTPVerificationScreen />} />
-
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <ProfileScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/notifications"
-        element={
-          <ProtectedRoute>
-            <NotificationsScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/loan/apply"
-        element={
-          <ProtectedRoute>
-            <LoanApplicationScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/loan/review"
-        element={
-          <ProtectedRoute>
-            <ReviewApplicationScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/loan/status/:id"
-        element={
-          <ProtectedRoute>
-            <ApplicationStatusScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/loan/active"
-        element={
-          <ProtectedRoute>
-            <ActiveLoanDetailScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/installments"
-        element={
-          <ProtectedRoute>
-            <InstallmentListScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/payment/:installmentId"
-        element={
-          <ProtectedRoute>
-            <PaymentScreen />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/payments/history"
-        element={
-          <ProtectedRoute>
-            <PaymentHistoryScreen />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-}
+import { useEffect, useState } from 'react'
+import type { AppInfo } from '../shared/ipc'
+import { fetchAppInfo } from './lib/runtime'
+import './App.css'
 
 export default function App() {
+  const [info, setInfo] = useState<AppInfo | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchAppInfo().then((next) => {
+      if (!cancelled) setInfo(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
-  );
+    <div className="shell">
+      <div className="shell__atmosphere" aria-hidden="true" />
+      <header className="shell__top">
+        <p className="shell__brand">Screen Flow</p>
+        <p className="shell__meta">
+          {info
+            ? `${info.runtime} · ${info.platform} · v${info.version}`
+            : 'connecting…'}
+        </p>
+      </header>
+
+      <main className="shell__stage">
+        <section className="shell__hero" aria-labelledby="hero-title">
+          <h1 id="hero-title" className="shell__title">
+            Record. Zoom. Export.
+          </h1>
+          <p className="shell__lede">
+            Desktop screen recording with cinematic auto-zoom, cursor polish, and
+            hardware-accelerated export — built for macOS first.
+          </p>
+          <div className="shell__actions">
+            <button type="button" className="btn btn--primary" disabled>
+              Start recording
+            </button>
+            <button type="button" className="btn btn--ghost" disabled>
+              Open project
+            </button>
+          </div>
+        </section>
+
+        <aside className="shell__preview" aria-label="Preview placeholder">
+          <div className="preview-frame">
+            <div className="preview-frame__glow" />
+            <p className="preview-frame__label">Preview</p>
+            <p className="preview-frame__hint">
+              Capture pipeline lands next — desktopCapturer MVP, then
+              ScreenCaptureKit.
+            </p>
+          </div>
+        </aside>
+      </main>
+    </div>
+  )
 }
