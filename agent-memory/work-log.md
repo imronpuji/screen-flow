@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 12:00] Camera snap cycle [ ] + shape cycle C (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `CAMERA_SNAP_CYCLE_ORDER` (clockwise 8 targets); `cycleCameraSnapPreset` (`[`/`]`); `cycleCameraShape` (`C` / Shift+C).
+  - `CameraBubble` — keyboard wiring + title hint; review hint updated.
+  - Smoke `smoke:camera` covers wrap, custom→nearest step, shape lock on circle.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** `5c89d18` (feature)
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; background presets polish atau zoom add-at-playhead.
+
 ## [2026-07-10 11:50] Camera size keys 1/2/3 + layout reset (FOKUS 3B)
 
 - **Dikerjakan:**

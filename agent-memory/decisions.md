@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera snap cycle [ ] + shape cycle C (FOKUS 3B)
+
+- **Keputusan:** Saat bubble focused: **`]`** / **`[`** → `cycleCameraSnapPreset` next/prev lewat `CAMERA_SNAP_CYCLE_ORDER` (clockwise: TL→top→TR→right→BR→bottom→BL→left). Layout custom memakai nearest target lalu step sekali. **`C`** → `cycleCameraShape` (circle→rounded→rectangle); Shift+C mundur. Circle memaksa `lockAspect` + height=size; rounded/rectangle mempertahankan lockAspect/height.
+- **Alasan:** Tombol posisi 8 arah sudah ada tapi orang awam sering fokus di bubble; cycle keyboard melengkapi nudge/size/reset tanpa lepas fokus; urutan clockwise lebih intuitif dari listing corners-then-edges.
+- **Status:** aktif
+
 ## [2026-07-10] Camera size keys 1/2/3 + layout reset (FOKUS 3B)
 
 - **Keputusan:** Saat bubble focused: digit **1/2/3** → `applyCameraSizePreset` S/M/L (`cameraSizePresetFromDigitKey`). **0** atau **double-click** (bukan di resize handle) → `resetCameraLayout`: pojok **bottom-right** + size **medium (22%)** + `lockAspect: true`; **tetap** device/enabled/shape/chrome/mirror/opacity/mic. Tombol **Reset** di Setup+Review di samping S/M/L.
