@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Zoom span edge resize (FOKUS 5)
+
+- **Keputusan:** Zoom spans di scrubber punya handle **start/end** (sama pola keep/camera). Start mengubah `zoomInMs` (peak tetap); end mengubah `zoomOutMs` (holdEnd tetap). Timing disimpan non-destruktif di `ZoomPointOverride` / `ManualZoomPoint` (`zoomInMs`/`holdMs`/`zoomOutMs` + `peakMs`). Apply path: `applyOneZoomOverride` → `rebuildZoomSegmentTiming` (preview ≡ export ≡ markers). Min edge **80ms** (`MIN_ZOOM_EDGE_MS`). Magnetic snap memakai target yang sama (exclude self ids). Peak-drag tetap menggeser peak dan **mempertahankan** timing fields yang sudah di-set.
+- **Alasan:** FOKUS 5 — setelah zoom-event drag (peak), orang awam sering ingin perpanjang/perpendek ease-in/out tanpa hapus+tambah; power user dapat fine control di timeline.
+- **Status:** aktif
+
 ## [2026-07-10] Zoom-event drag on timeline (FOKUS 5)
 
 - **Keputusan:** Zoom spans di scrubber bisa di-drag untuk memindah **peak time**. Auto-click zooms menyimpan `peakMs` di `ZoomPointOverride` (non-destruktif; in/hold/out digeser utuh via `shiftZoomSegmentToPeak`). Manual (Add at playhead) mengupdate `ManualZoomPoint.peakMs`. Marker scrubber memakai `zoomIndex` / `manualZoomId` (`buildZoomEventMarkers`) supaya drag tidak kehilangan identitas setelah merge. Magnetic snap memakai target yang sama dengan playhead/keep-edge (exclude self id). Preview ≡ export lewat `applyZoomPointOverrides`.

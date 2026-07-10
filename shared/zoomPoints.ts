@@ -6,6 +6,9 @@
 
 import type { ZoomSegment } from './autozoom.js'
 
+/** Minimum zoom-in / zoom-out duration when resizing scrubber edges (ms). */
+export const MIN_ZOOM_EDGE_MS = 80
+
 export interface ZoomPointOverride {
   /** Index into auto-built zoom segments (stable for a recording session). */
   index: number
@@ -18,9 +21,16 @@ export interface ZoomPointOverride {
   focusY?: number
   /**
    * Optional peak-time override (ms on the full recording timeline).
-   * When set, the whole segment (in/hold/out) shifts so relative timing stays.
+   * When set alone, the whole segment (in/hold/out) shifts so relative timing stays.
+   * Combined with zoomIn/hold/zoomOut, rebuilds absolute timing around the peak.
    */
   peakMs?: number
+  /** Optional zoom-in duration (ms before peak). Set by scrubber start-edge drag. */
+  zoomInMs?: number
+  /** Optional hold duration (ms at peak scale). */
+  holdMs?: number
+  /** Optional zoom-out duration (ms after hold). Set by scrubber end-edge drag. */
+  zoomOutMs?: number
 }
 
 /** Cardinal direction for focus nudge (frame coords, origin top-left). */
@@ -41,6 +51,10 @@ export interface ManualZoomPoint {
   focusY: number
   peakScale: number
   enabled: boolean
+  /** Optional timing overrides (omit → default manual timing). */
+  zoomInMs?: number
+  holdMs?: number
+  zoomOutMs?: number
 }
 
 export interface ManualZoomTiming {
@@ -68,6 +82,77 @@ function clamp01(value: number, fallback = 0.5): number {
   return Math.max(0, Math.min(1, value))
 }
 
+/** Extract in/hold/out timing from a segment (non-negative). */
+export function zoomSegmentTiming(segment: ZoomSegment): {
+  peakMs: number
+  zoomInMs: number
+  holdMs: number
+  zoomOutMs: number
+} {
+  return {
+    peakMs: Math.max(0, segment.peakMs),
+    zoomInMs: Math.max(0, segment.peakMs - segment.startMs),
+    holdMs: Math.max(0, segment.holdEndMs - segment.peakMs),
+    zoomOutMs: Math.max(0, segment.endMs - segment.holdEndMs),
+  }
+}
+
+/**
+ * Rebuild a segment around a peak with explicit in/hold/out durations.
+ * Omitting a timing field keeps the segment's current relative duration.
+ */
+export function rebuildZoomSegmentTiming(
+  segment: ZoomSegment,
+  timing: {
+    peakMs?: number
+    zoomInMs?: number
+    holdMs?: number
+    zoomOutMs?: number
+  },
+  durationMs = 0,
+): ZoomSegment {
+  const upper =
+    Number.isFinite(durationMs) && durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
+  const current = zoomSegmentTiming(segment)
+  const peakMs = Math.max(
+    0,
+    Math.min(
+      upper,
+      timing.peakMs != null && Number.isFinite(timing.peakMs)
+        ? timing.peakMs
+        : current.peakMs,
+    ),
+  )
+  const zoomInMs = Math.max(
+    0,
+    timing.zoomInMs != null && Number.isFinite(timing.zoomInMs)
+      ? timing.zoomInMs
+      : current.zoomInMs,
+  )
+  const holdMs = Math.max(
+    0,
+    timing.holdMs != null && Number.isFinite(timing.holdMs)
+      ? timing.holdMs
+      : current.holdMs,
+  )
+  const zoomOutMs = Math.max(
+    0,
+    timing.zoomOutMs != null && Number.isFinite(timing.zoomOutMs)
+      ? timing.zoomOutMs
+      : current.zoomOutMs,
+  )
+  const startMs = Math.max(0, peakMs - zoomInMs)
+  const holdEndMs = peakMs + holdMs
+  const endMs = Math.min(upper === Number.POSITIVE_INFINITY ? holdEndMs + zoomOutMs : upper, holdEndMs + zoomOutMs)
+  return {
+    ...segment,
+    startMs,
+    peakMs,
+    holdEndMs: Math.max(peakMs, holdEndMs),
+    endMs: Math.max(peakMs, endMs),
+  }
+}
+
 /**
  * Shift a zoom segment so its peak lands at `newPeakMs`, keeping in/hold/out
  * durations. Clamps peak into [0, durationMs] (durationMs ≤ 0 → no upper clamp).
@@ -77,21 +162,128 @@ export function shiftZoomSegmentToPeak(
   newPeakMs: number,
   durationMs = 0,
 ): ZoomSegment {
-  const peakTarget = Number.isFinite(newPeakMs) ? newPeakMs : segment.peakMs
+  return rebuildZoomSegmentTiming(segment, { peakMs: newPeakMs }, durationMs)
+}
+
+/**
+ * Resize zoom-in (start) or zoom-out (end) edge; peak + hold stay fixed.
+ * Clamps so each edge keeps at least MIN_ZOOM_EDGE_MS.
+ */
+export function resizeZoomSegmentEdge(
+  segment: ZoomSegment,
+  edge: 'start' | 'end',
+  tMs: number,
+  durationMs = 0,
+): ZoomSegment {
+  const target = Number.isFinite(tMs) ? tMs : edge === 'start' ? segment.startMs : segment.endMs
   const upper =
     Number.isFinite(durationMs) && durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
-  const peakMs = Math.max(0, Math.min(upper, peakTarget))
-  const delta = peakMs - segment.peakMs
-  if (delta === 0) {
-    return { ...segment, peakMs }
+  if (edge === 'start') {
+    const maxStart = Math.max(0, segment.peakMs - MIN_ZOOM_EDGE_MS)
+    const startMs = Math.max(0, Math.min(maxStart, target))
+    return { ...segment, startMs }
   }
-  return {
+  const minEnd = segment.holdEndMs + MIN_ZOOM_EDGE_MS
+  const endMs = Math.max(minEnd, Math.min(upper, target))
+  return { ...segment, endMs: Math.max(segment.peakMs, endMs) }
+}
+
+/**
+ * Apply one override onto a base auto segment. Returns null when disabled.
+ * Timing fields rebuild absolute in/hold/out around the (optional) peak.
+ */
+export function applyOneZoomOverride(
+  segment: ZoomSegment,
+  ov: ZoomPointOverride | null | undefined,
+  durationMs = 0,
+): ZoomSegment | null {
+  if (ov && ov.enabled === false) return null
+  if (!ov) return segment
+  let patched: ZoomSegment = {
     ...segment,
-    startMs: Math.max(0, segment.startMs + delta),
-    peakMs,
-    holdEndMs: Math.max(peakMs, segment.holdEndMs + delta),
-    endMs: Math.max(peakMs, segment.endMs + delta),
+    ...(ov.peakScale != null ? { peakScale: clampZoomPeakScale(ov.peakScale) } : {}),
+    ...(ov.focusX != null ? { focusX: clamp01(ov.focusX) } : {}),
+    ...(ov.focusY != null ? { focusY: clamp01(ov.focusY) } : {}),
   }
+  const hasTiming =
+    ov.peakMs != null ||
+    ov.zoomInMs != null ||
+    ov.holdMs != null ||
+    ov.zoomOutMs != null
+  if (hasTiming) {
+    patched = rebuildZoomSegmentTiming(
+      patched,
+      {
+        ...(ov.peakMs != null ? { peakMs: ov.peakMs } : {}),
+        ...(ov.zoomInMs != null ? { zoomInMs: ov.zoomInMs } : {}),
+        ...(ov.holdMs != null ? { holdMs: ov.holdMs } : {}),
+        ...(ov.zoomOutMs != null ? { zoomOutMs: ov.zoomOutMs } : {}),
+      },
+      durationMs,
+    )
+  }
+  return patched
+}
+
+/**
+ * Resize an auto zoom's start/end edge and upsert timing onto overrides
+ * (non-destruktif; preview ≡ export via applyZoomPointOverrides).
+ */
+export function resizeAutoZoomEdge(
+  baseSegments: ZoomSegment[],
+  overrides: ZoomPointOverride[],
+  index: number,
+  edge: 'start' | 'end',
+  tMs: number,
+  durationMs = 0,
+): ZoomPointOverride[] {
+  if (!Number.isInteger(index) || index < 0 || index >= baseSegments.length) {
+    return overrides
+  }
+  const existing = overrides.find((o) => o.index === index)
+  const current = applyOneZoomOverride(baseSegments[index]!, existing, durationMs)
+  if (!current) return overrides
+  const resized = resizeZoomSegmentEdge(current, edge, tMs, durationMs)
+  const timing = zoomSegmentTiming(resized)
+  return upsertZoomPointOverride(overrides, {
+    index,
+    enabled: existing?.enabled !== false,
+    ...(existing?.peakScale != null ? { peakScale: existing.peakScale } : {}),
+    ...(existing?.focusX != null ? { focusX: existing.focusX } : {}),
+    ...(existing?.focusY != null ? { focusY: existing.focusY } : {}),
+    peakMs: timing.peakMs,
+    zoomInMs: timing.zoomInMs,
+    holdMs: timing.holdMs,
+    zoomOutMs: timing.zoomOutMs,
+  })
+}
+
+/**
+ * Resize a manual zoom's start/end edge (stores timing on the point).
+ */
+export function resizeManualZoomEdge(
+  points: ManualZoomPoint[],
+  id: string,
+  edge: 'start' | 'end',
+  tMs: number,
+  durationMs = 0,
+): ManualZoomPoint[] {
+  const idx = points.findIndex((p) => p.id === id)
+  if (idx < 0) return points
+  const currentPoint = points[idx]!
+  const seg = manualZoomToSegment(currentPoint)
+  if (!seg) return points
+  const resized = resizeZoomSegmentEdge(seg, edge, tMs, durationMs)
+  const timing = zoomSegmentTiming(resized)
+  const copy = points.slice()
+  copy[idx] = {
+    ...currentPoint,
+    peakMs: timing.peakMs,
+    zoomInMs: timing.zoomInMs,
+    holdMs: timing.holdMs,
+    zoomOutMs: timing.zoomOutMs,
+  }
+  return copy
 }
 
 /** Move a manual zoom's peak (rebuilds timing via manualZoomToSegment). */
@@ -171,7 +363,7 @@ export function normalizeManualZoomPoint(
   point: ManualZoomPoint | null | undefined,
 ): ManualZoomPoint | null {
   if (!point || typeof point.id !== 'string' || !point.id) return null
-  return {
+  const cleaned: ManualZoomPoint = {
     id: point.id,
     peakMs: Math.max(0, Number.isFinite(point.peakMs) ? point.peakMs : 0),
     focusX: clamp01(point.focusX),
@@ -179,6 +371,16 @@ export function normalizeManualZoomPoint(
     peakScale: clampZoomPeakScale(point.peakScale ?? 1.6),
     enabled: point.enabled !== false,
   }
+  if (point.zoomInMs != null && Number.isFinite(point.zoomInMs)) {
+    cleaned.zoomInMs = Math.max(0, point.zoomInMs)
+  }
+  if (point.holdMs != null && Number.isFinite(point.holdMs)) {
+    cleaned.holdMs = Math.max(0, point.holdMs)
+  }
+  if (point.zoomOutMs != null && Number.isFinite(point.zoomOutMs)) {
+    cleaned.zoomOutMs = Math.max(0, point.zoomOutMs)
+  }
+  return cleaned
 }
 
 /** Map an enabled manual point → ZoomSegment (same timing as auto-zoom defaults). */
@@ -188,9 +390,16 @@ export function manualZoomToSegment(
 ): ZoomSegment | null {
   const normalized = normalizeManualZoomPoint(point)
   if (!normalized || !normalized.enabled) return null
-  const zoomInMs = timing.zoomInMs ?? DEFAULT_MANUAL_TIMING.zoomInMs
-  const holdMs = timing.holdMs ?? DEFAULT_MANUAL_TIMING.holdMs
-  const zoomOutMs = timing.zoomOutMs ?? DEFAULT_MANUAL_TIMING.zoomOutMs
+  const zoomInMs =
+    timing.zoomInMs ??
+    normalized.zoomInMs ??
+    DEFAULT_MANUAL_TIMING.zoomInMs
+  const holdMs =
+    timing.holdMs ?? normalized.holdMs ?? DEFAULT_MANUAL_TIMING.holdMs
+  const zoomOutMs =
+    timing.zoomOutMs ??
+    normalized.zoomOutMs ??
+    DEFAULT_MANUAL_TIMING.zoomOutMs
   const peakMs = normalized.peakMs
   const startMs = Math.max(0, peakMs - zoomInMs)
   const holdEndMs = peakMs + holdMs
@@ -269,6 +478,15 @@ function cleanOverride(item: ZoomPointOverride): ZoomPointOverride {
   if (item.peakMs != null && Number.isFinite(item.peakMs)) {
     cleaned.peakMs = Math.max(0, item.peakMs)
   }
+  if (item.zoomInMs != null && Number.isFinite(item.zoomInMs)) {
+    cleaned.zoomInMs = Math.max(0, item.zoomInMs)
+  }
+  if (item.holdMs != null && Number.isFinite(item.holdMs)) {
+    cleaned.holdMs = Math.max(0, item.holdMs)
+  }
+  if (item.zoomOutMs != null && Number.isFinite(item.zoomOutMs)) {
+    cleaned.zoomOutMs = Math.max(0, item.zoomOutMs)
+  }
   return cleaned
 }
 
@@ -286,11 +504,12 @@ function overrideMap(
 
 /**
  * Apply per-point edits onto auto-built segments.
- * Disabled points are dropped; enabled points may get custom peakScale / focus.
+ * Disabled points are dropped; enabled points may get custom peakScale / focus / timing.
  */
 export function applyZoomPointOverrides(
   segments: ZoomSegment[],
   overrides: ZoomPointOverride[] | null | undefined,
+  durationMs = 0,
 ): ZoomSegment[] {
   if (!overrides || overrides.length === 0) return segments
   const map = overrideMap(overrides)
@@ -298,21 +517,8 @@ export function applyZoomPointOverrides(
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]!
     const ov = map.get(i)
-    if (ov && !ov.enabled) continue
-    if (!ov) {
-      next.push(seg)
-      continue
-    }
-    let patched: ZoomSegment = {
-      ...seg,
-      ...(ov.peakScale != null ? { peakScale: ov.peakScale } : {}),
-      ...(ov.focusX != null ? { focusX: ov.focusX } : {}),
-      ...(ov.focusY != null ? { focusY: ov.focusY } : {}),
-    }
-    if (ov.peakMs != null) {
-      patched = shiftZoomSegmentToPeak(patched, ov.peakMs)
-    }
-    next.push(patched)
+    const patched = applyOneZoomOverride(seg, ov, durationMs)
+    if (patched) next.push(patched)
   }
   return next
 }

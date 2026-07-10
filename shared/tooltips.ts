@@ -35,6 +35,7 @@ export type TooltipId =
   | 'trim-magnetic-snap'
   | 'trim-timeline-zoom'
   | 'trim-zoom-drag'
+  | 'trim-zoom-edge'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -186,6 +187,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
     id: 'trim-zoom-drag',
     title: 'Drag zoom events · Move peaks on the timeline',
     body: 'Drag a teal zoom span to retarget when the zoom hits. Magnetic snap sticks to cuts, clicks, and camera windows. Preview and export stay in sync.',
+  },
+  'trim-zoom-edge': {
+    id: 'trim-zoom-edge',
+    title: 'Zoom edges · Trim zoom-in / zoom-out',
+    body: 'Drag the start or end handle on a teal zoom span to lengthen or shorten the ease-in and ease-out. Peak and hold stay put. Preview and export stay in sync.',
   },
 }
 

@@ -73,6 +73,15 @@ function normalizeZoomPointOverrides(raw: unknown): ZoomPointOverride[] {
     if (o.peakMs != null && Number.isFinite(Number(o.peakMs))) {
       cleaned.peakMs = Math.max(0, Number(o.peakMs))
     }
+    if (o.zoomInMs != null && Number.isFinite(Number(o.zoomInMs))) {
+      cleaned.zoomInMs = Math.max(0, Number(o.zoomInMs))
+    }
+    if (o.holdMs != null && Number.isFinite(Number(o.holdMs))) {
+      cleaned.holdMs = Math.max(0, Number(o.holdMs))
+    }
+    if (o.zoomOutMs != null && Number.isFinite(Number(o.zoomOutMs))) {
+      cleaned.zoomOutMs = Math.max(0, Number(o.zoomOutMs))
+    }
     out.push(cleaned)
   }
   return out

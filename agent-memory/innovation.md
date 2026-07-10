@@ -18,7 +18,7 @@
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight + **auto-highlight clicks** — preview + export bake + **persist prefs**
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask) + **frame layout presets (Compact/Standard/Wide/Flat)** + **persist prefs** + **export multi-stop/angle/accent fidelity**
-- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag** + **undo/redo (coalesced)** + **playhead Mark In/Out + cut keep-before/after (S/⇧S)** + **multi-segment keep-ranges (X split · Delete · ffmpeg concat)** + **preview gap-skip (playback + scrub snap + timeline shade)** + **ripple delete toggle (merge touching clips)** + **magnetic playhead snap (scrub sticky to edit points, toggle + persist)** + **keep-clip edge drag + magnetic snap** + **timeline zoom-in/out (1×–8× viewport)** + **zoom-event drag (peakMs)** + **collapsible property panels (Zoom/Cursor/Background/Camera/Timeline/Export) + hide sidebar** + **project auto-save (debounced by webmPath)**
+- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag** + **undo/redo (coalesced)** + **playhead Mark In/Out + cut keep-before/after (S/⇧S)** + **multi-segment keep-ranges (X split · Delete · ffmpeg concat)** + **preview gap-skip (playback + scrub snap + timeline shade)** + **ripple delete toggle (merge touching clips)** + **magnetic playhead snap (scrub sticky to edit points, toggle + persist)** + **keep-clip edge drag + magnetic snap** + **timeline zoom-in/out (1×–8× viewport)** + **zoom-event drag (peakMs)** + **zoom span edge resize (zoom-in/out)** + **collapsible property panels (Zoom/Cursor/Background/Camera/Timeline/Export) + hide sidebar** + **project auto-save (debounced by webmPath)**
 
 ## Nanti
 
@@ -37,5 +37,6 @@
 - [x] Project auto-save — debounced ReviewEditState by webmPath (restore/clear)
 - [x] Timeline zoom-in/out — 1×–8× scrubber viewport + prefs + shortcuts
 - [x] Zoom-event drag — move peaks on scrubber (`peakMs` override / manual) + magnetic snap
+- [x] Zoom span edge resize — start/end handles trim zoom-in/out (`zoomInMs`/`zoomOutMs`) + magnetic snap
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

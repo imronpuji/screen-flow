@@ -8,12 +8,9 @@ import type { CameraActiveRange } from './cameraSync.js'
 import { closeOpenCameraActiveRanges, normalizeCameraActiveRanges } from './cameraSync.js'
 import type { CursorEvent } from './cursor.js'
 import {
+  applyOneZoomOverride,
   isZoomPointEnabled,
   manualZoomToSegment,
-  resolveZoomPointFocus,
-  resolveZoomPointPeakMs,
-  resolveZoomPointPeakScale,
-  shiftZoomSegmentToPeak,
   type ManualZoomPoint,
   type ZoomPointOverride,
 } from './zoomPoints.js'
@@ -134,7 +131,7 @@ export function buildCameraActiveRangeMarkers(
 }
 
 /**
- * Resolve an auto zoom segment with overrides (peak time / focus / scale).
+ * Resolve an auto zoom segment with overrides (peak / timing / focus / scale).
  * Matches preview + export apply path for a single index.
  */
 export function resolveAutoZoomMarkerSegment(
@@ -142,13 +139,8 @@ export function resolveAutoZoomMarkerSegment(
   index: number,
   overrides: ZoomPointOverride[] | null | undefined,
 ): ZoomSegment {
-  const focus = resolveZoomPointFocus(segment, index, overrides)
-  const peakScale = resolveZoomPointPeakScale(segment, index, overrides)
-  const peakMs = resolveZoomPointPeakMs(segment, index, overrides)
-  return shiftZoomSegmentToPeak(
-    { ...segment, focusX: focus.focusX, focusY: focus.focusY, peakScale },
-    peakMs,
-  )
+  const ov = overrides?.find((o) => o.index === index)
+  return applyOneZoomOverride(segment, ov) ?? segment
 }
 
 /**
