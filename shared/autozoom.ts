@@ -1,6 +1,6 @@
 /**
  * Auto-zoom engine — reads cursor click events and produces smooth zoom keyframes.
- * Pure functions only; used by renderer preview and future ffmpeg composite.
+ * Pure functions only; used by renderer preview and ffmpeg export bake.
  */
 
 import type { CursorEvent } from './cursor.js'

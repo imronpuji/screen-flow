@@ -3,6 +3,7 @@
  * Keep channel names and payloads in sync — preload only exposes these.
  */
 
+import type { AutoZoomOptions } from './autozoom.js'
 import type { CursorEvent } from './cursor.js'
 
 export const IPC_CHANNELS = {
@@ -22,7 +23,7 @@ export const IPC_CHANNELS = {
   EXPORT_SAVE: 'export:save',
   /** Read cursor JSONL from a session temp path (for auto-zoom preview). */
   RECORDING_READ_CURSOR_EVENTS: 'recording:read-cursor-events',
-  /** Return a file:// URL for a temp capture file (WebM/MP4 playback). */
+  /** Return a screenflow-media:// URL for a temp capture file (WebM/MP4 playback). */
   RECORDING_GET_MEDIA_URL: 'recording:get-media-url',
 } as const
 
@@ -122,6 +123,14 @@ export interface AppendChunkResult {
   chunkCount: number
 }
 
+/** Bake auto-zoom from cursor JSONL during ffmpeg export (matches preview engine). */
+export interface ExportAutoZoomRequest {
+  /** Absolute path to cursor-events.jsonl under screen-flow temp. */
+  cursorEventsPath: string
+  /** Optional timing overrides (defaults match preview). */
+  options?: AutoZoomOptions
+}
+
 /** Transcode a finished temp WebM (under screen-flow temp) to H.264 MP4 via ffmpeg. */
 export interface ExportMp4Request {
   /** Absolute path to capture.webm from StopRecordingResult.outputPath. */
@@ -130,6 +139,8 @@ export interface ExportMp4Request {
   outputPath?: string
   /** Delete the source WebM after a successful encode. Default true. */
   cleanupTemp?: boolean
+  /** When set, ffmpeg crops/scales per click zoom keyframes before encode. */
+  autoZoom?: ExportAutoZoomRequest
 }
 
 export interface ExportMp4Result {
@@ -138,6 +149,8 @@ export interface ExportMp4Result {
   bytesWritten: number
   /** Encoder used: h264_videotoolbox | libx264 */
   codec: string
+  /** True when auto-zoom sendcmd filter was applied. */
+  autoZoomApplied?: boolean
 }
 
 /** Live encode status pushed from main while ffmpeg runs. */

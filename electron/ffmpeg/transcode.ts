@@ -14,7 +14,10 @@ import { app } from 'electron'
 import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { planAutoZoomExport } from '../../shared/ffmpegZoom.js'
 import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
+import { readCursorEventsFile } from '../recording/readCursorEvents.js'
+import { probeVideoFile } from './probe.js'
 import {
   clampPercent,
   parseFfmpegDurationSec,
@@ -130,16 +133,26 @@ function runFfmpeg(
   })
 }
 
+function escapeFfmpegFilterPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/:/g, '\\:').replace(/'/g, "\\'")
+}
+
 async function transcodeOnce(
   inputPath: string,
   outputPath: string,
   encoder: { codec: string; extraArgs: string[] },
+  videoFilter?: string,
 ): Promise<{ code: number; stderr: string }> {
   const args = [
     '-y',
     '-i',
     inputPath,
     '-an',
+  ]
+  if (videoFilter) {
+    args.push('-vf', videoFilter)
+  }
+  args.push(
     '-c:v',
     encoder.codec,
     ...encoder.extraArgs,
@@ -152,7 +165,7 @@ async function transcodeOnce(
     'pipe:2',
     '-nostats',
     outputPath,
-  ]
+  )
 
   let durationSec: number | undefined
 
@@ -220,9 +233,39 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
 
   emitProgress({ phase: 'starting', percent: 0, message: 'Starting ffmpeg…' })
 
+  let sendCmdPath: string | null = null
+  let autoZoomApplied = false
+  let videoFilter: string | undefined
+
+  if (request.autoZoom?.cursorEventsPath) {
+    const eventsPath = assertUnderScreenFlowTemp(request.autoZoom.cursorEventsPath)
+    const events = readCursorEventsFile(eventsPath)
+    const probe = await probeVideoFile(inputPath)
+    const plan = planAutoZoomExport(
+      events,
+      { width: probe.width, height: probe.height },
+      probe.durationSec * 1000,
+      request.autoZoom.options,
+    )
+    if (plan.hasZoom) {
+      sendCmdPath = path.join(path.dirname(outputPath), 'zoom-sendcmd.txt')
+      fs.writeFileSync(sendCmdPath, plan.sendCmd, 'utf8')
+      videoFilter = plan.videoFilter.replace(
+        '__SENDCMD_PATH__',
+        escapeFfmpegFilterPath(sendCmdPath),
+      )
+      autoZoomApplied = true
+      emitProgress({
+        phase: 'starting',
+        percent: 0,
+        message: `Applying auto-zoom (${plan.segments.length} segments)…`,
+      })
+    }
+  }
+
   try {
     let encoder = pickVideoEncoder()
-    let result = await transcodeOnce(inputPath, outputPath, encoder)
+    let result = await transcodeOnce(inputPath, outputPath, encoder, videoFilter)
 
     // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
     // fall back to software x264 once.
@@ -236,7 +279,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         percent: 0,
         message: 'Retrying with libx264…',
       })
-      result = await transcodeOnce(inputPath, outputPath, encoder)
+      result = await transcodeOnce(inputPath, outputPath, encoder, videoFilter)
     }
 
     if (result.code !== 0) {
@@ -274,6 +317,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       outputPath,
       bytesWritten,
       codec: encoder.codec,
+      autoZoomApplied,
     }
   } catch (err) {
     if (err instanceof ExportCancelledError) {
@@ -294,6 +338,13 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
     throw err
   } finally {
+    if (sendCmdPath) {
+      try {
+        fs.unlinkSync(sendCmdPath)
+      } catch {
+        /* best-effort */
+      }
+    }
     cancelRequested = false
     activeChild = null
   }
