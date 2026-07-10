@@ -12,6 +12,7 @@ export const IPC_CHANNELS = {
   RECORDING_STOP: 'recording:stop',
   RECORDING_GET_STATUS: 'recording:get-status',
   RECORDING_APPEND_CHUNK: 'recording:append-chunk',
+  EXPORT_WEBM_TO_MP4: 'export:webm-to-mp4',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -104,6 +105,24 @@ export interface AppendChunkResult {
   chunkCount: number
 }
 
+/** Transcode a finished temp WebM (under screen-flow temp) to H.264 MP4 via ffmpeg. */
+export interface ExportMp4Request {
+  /** Absolute path to capture.webm from StopRecordingResult.outputPath. */
+  inputPath: string
+  /** Optional destination; defaults to sibling export.mp4 in the same session dir. */
+  outputPath?: string
+  /** Delete the source WebM after a successful encode. Default true. */
+  cleanupTemp?: boolean
+}
+
+export interface ExportMp4Result {
+  ok: true
+  outputPath: string
+  bytesWritten: number
+  /** Encoder used: h264_videotoolbox | libx264 */
+  codec: string
+}
+
 export interface ScreenFlowApi {
   getAppInfo: () => Promise<AppInfo>
   getPlatform: () => Promise<AppInfo['platform']>
@@ -113,6 +132,7 @@ export interface ScreenFlowApi {
   stopRecording: () => Promise<StopRecordingResult>
   getRecordingStatus: () => Promise<RecordingStatus>
   appendRecordingChunk: (request: AppendChunkRequest) => Promise<AppendChunkResult>
+  exportWebmToMp4: (request: ExportMp4Request) => Promise<ExportMp4Result>
 }
 
 declare global {

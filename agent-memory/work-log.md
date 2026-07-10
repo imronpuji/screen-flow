@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 04:50] ffmpeg WebM → MP4 export + temp cleanup
+
+- **Dikerjakan:** Modul `electron/ffmpeg/transcode.ts` (spawn ffmpeg, VideoToolbox/libx264, path guard temp); IPC `export:webm-to-mp4`; preload + runtime bridge; tombol Export MP4 di UI setelah stop (cleanup WebM on success).
+- **Hasil:** `typecheck` + `build` + `lint` hijau; smoke ffmpeg WebM→MP4 di Linux OK.
+- **Status:** done
+- **Next:** Progress/cancel export IPC; save-dialog ke Documents; atau mulai cursor event capture untuk auto-zoom.
+
 ## [2026-07-10 04:45] Live capture stream → temp WebM writer
 
 - **Dikerjakan:** Renderer `getUserMedia` + `MediaRecorder` (timeslice 500ms) untuk source terpilih; IPC `recording:append-chunk`; main session membuat temp dir + append-only `capture.webm`; live `<video>` preview + byte/chunk status di UI.
