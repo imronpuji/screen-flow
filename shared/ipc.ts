@@ -6,6 +6,7 @@
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
+import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
@@ -162,6 +163,8 @@ export interface ExportCursorSmoothingRequest {
   /** Absolute path to cursor-events.jsonl under screen-flow temp. */
   cursorEventsPath: string
   options?: CursorSmoothingOptions
+  /** Size / style / hide / spotlight — applied at composite time. */
+  appearance?: CursorAppearance
 }
 
 /** Bake FaceTime/webcam bubble during ffmpeg export (matches live overlay layout). */

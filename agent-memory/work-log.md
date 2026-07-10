@@ -1,7 +1,23 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 07:25] Cursor appearance: size / style / hide / spotlight (FOKUS 2)
 
+- **Dikerjakan:** `shared/cursorAppearance.ts` (dot|crosshair|hidden, sizeScale 0.5–3, spotlight); preview di `AutoZoomPlayback` + kontrol review (style picker, size slider, spotlight); export bake di `ffmpegCursor` (scaled drawbox, crosshair arms, spotlight drawbox@spot, hidden → null); IPC `ExportMp4Request.cursorSmoothing.appearance`; smoke `smoke:cursor-appearance`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke cursor-appearance/smoothing/export-effects hijau.
+- **Commit:** `b95132c`
+- **Status:** done (FOKUS 2 size/style/hide MVP)
+- **Next:** Webcam FaceTime overlay (FOKUS 3) — enumerate + bubble preview + parallel camera.webm; atau auto-zoom Retina/anti-jitter polish; atau quality presets export.
+
+
+
+## [2026-07-10 07:10] FaceTime camera overlay — enumerate + bubble + parallel camera.webm
+
+- **Dikerjakan:** `shared/camera.ts` (corner/size/shape, CSS position + norm rect untuk ffmpeg nanti); `src/lib/cameraDevices.ts` (enumerate + getUserMedia + permission errors); `CameraBubble` live preview; session/IPC `track: screen|camera` + `includeCamera` → `camera.webm` sibling; UI toggle/device/corner/size/shape; smoke `smoke:camera`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:camera` hijau. Sinkronisasi: screen & camera share `startedAt` wall-clock (belum ffmpeg overlay).
+- **Commit:** `b1643f8`
+- **Status:** done (FOKUS 3 slice 1)
+- **Next:** Bake camera overlay ke ffmpeg export (overlay filter + norm rect); playback camera di review; atau cursor size/style/hide (FOKUS 2).
 
 ## [2026-07-10 07:20] Bake FaceTime camera bubble ke ffmpeg export
 

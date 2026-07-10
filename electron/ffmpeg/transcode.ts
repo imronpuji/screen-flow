@@ -331,6 +331,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     effects.cursorSmoothing = {
       events: cursorEvents,
       options: request.cursorSmoothing.options,
+      appearance: request.cursorSmoothing.appearance,
     }
   }
 

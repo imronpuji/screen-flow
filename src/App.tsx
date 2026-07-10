@@ -407,7 +407,10 @@ export default function App() {
         exportRequest.background = { style: _edit.background }
       }
       if (_edit.cursorSmoothingEnabled && lastCursorEventsPath) {
-        exportRequest.cursorSmoothing = { cursorEventsPath: lastCursorEventsPath }
+        exportRequest.cursorSmoothing = {
+          cursorEventsPath: lastCursorEventsPath,
+          appearance: _edit.cursorAppearance,
+        }
       }
       if (lastCameraPath && cameraOverlay.enabled) {
         exportRequest.camera = {

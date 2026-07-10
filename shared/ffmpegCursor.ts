@@ -2,6 +2,12 @@
  * Plan ffmpeg drawbox + sendcmd for baking cursor smoothing + click rings into export.
  */
 
+import {
+  appearanceToCursorDrawOptions,
+  DEFAULT_CURSOR_APPEARANCE,
+  type CursorAppearance,
+  type CursorStyleId,
+} from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import {
   buildClickRings,
@@ -15,15 +21,19 @@ import type { BackgroundCardLayout } from './ffmpegBackground.js'
 
 export interface CursorSendCmdOptions {
   sampleMs?: number
-  /** Cursor dot diameter in pixels. */
+  /** Cursor dot diameter in pixels (overrides appearance when set). */
   dotSizePx?: number
   /** Base click ring diameter before scale animation. */
   ringBasePx?: number
+  /** Soft spotlight diameter (0 = off). */
+  spotlightPx?: number
+  /** Cursor visual style for drawbox filters. */
+  style?: CursorStyleId
+  /** Full appearance — preferred over individual size/style fields. */
+  appearance?: CursorAppearance
 }
 
 const DEFAULT_SAMPLE_MS = 33
-const DEFAULT_DOT_PX = 14
-const DEFAULT_RING_BASE_PX = 44
 
 export interface CursorFilterPlan {
   hasCursor: boolean
@@ -32,6 +42,23 @@ export interface CursorFilterPlan {
   filterComplex: string
   inputLabel: string
   outputLabel: string
+}
+
+function resolveDrawOptions(options: CursorSmoothingOptions & CursorSendCmdOptions) {
+  const fromAppearance = appearanceToCursorDrawOptions(
+    options.appearance ?? DEFAULT_CURSOR_APPEARANCE,
+  )
+  return {
+    visible: fromAppearance.visible,
+    style: options.style ?? fromAppearance.style,
+    dotSizePx: options.dotSizePx ?? fromAppearance.dotSizePx,
+    ringBasePx: options.ringBasePx ?? fromAppearance.ringBasePx,
+    spotlightPx: options.spotlightPx ?? fromAppearance.spotlightPx,
+    spotlightEnabled:
+      options.spotlightPx != null
+        ? options.spotlightPx > 0
+        : fromAppearance.spotlightEnabled,
+  }
 }
 
 function mapCursorToFrame(
@@ -63,9 +90,13 @@ export function buildCursorSendCmd(
   layout: BackgroundCardLayout | null,
   options: CursorSmoothingOptions & CursorSendCmdOptions = {},
 ): string {
+  const draw = resolveDrawOptions(options)
+  if (!draw.visible) return ''
+
   const sampleMs = options.sampleMs ?? DEFAULT_SAMPLE_MS
-  const dotSize = options.dotSizePx ?? DEFAULT_DOT_PX
-  const ringBase = options.ringBasePx ?? DEFAULT_RING_BASE_PX
+  const dotSize = draw.dotSizePx
+  const ringBase = draw.ringBasePx
+  const spotlightSize = draw.spotlightEnabled ? draw.spotlightPx : 0
   const duration = Math.max(sampleMs, durationMs)
 
   const keyframes = buildCursorKeyframes(events)
@@ -76,6 +107,7 @@ export function buildCursorSendCmd(
   const lines: string[] = []
   let prevDotKey = ''
   let prevRingKey = ''
+  let prevSpotKey = ''
 
   for (let t = 0; t <= duration; t += sampleMs) {
     const timeSec = (t / 1000).toFixed(3)
@@ -84,12 +116,52 @@ export function buildCursorSendCmd(
     const pos = getSmoothedCursorAtTime(t, keyframes, videoSize, options)
     if (pos) {
       const { x, y } = mapCursorToFrame(pos.x, pos.y, frameW, frameH, layout)
+
+      if (spotlightSize > 0) {
+        const spotX = x - Math.floor(spotlightSize / 2)
+        const spotY = y - Math.floor(spotlightSize / 2)
+        const spotKey = `${spotX}:${spotY}:${spotlightSize}`
+        if (spotKey !== prevSpotKey) {
+          parts.push(
+            `drawbox@spot x ${spotX}`,
+            `drawbox@spot y ${spotY}`,
+            `drawbox@spot w ${spotlightSize}`,
+            `drawbox@spot h ${spotlightSize}`,
+          )
+          prevSpotKey = spotKey
+        }
+      }
+
       const dotX = x - Math.floor(dotSize / 2)
       const dotY = y - Math.floor(dotSize / 2)
-      const dotKey = `${dotX}:${dotY}`
-      if (dotKey !== prevDotKey) {
-        parts.push(`drawbox@cursor x ${dotX}`, `drawbox@cursor y ${dotY}`)
-        prevDotKey = dotKey
+      const crossArm = Math.max(2, Math.round(dotSize / 5))
+      const crossLen = Math.max(dotSize, Math.round(dotSize * 1.4))
+
+      if (draw.style === 'crosshair') {
+        const hX = x - Math.floor(crossLen / 2)
+        const hY = y - Math.floor(crossArm / 2)
+        const vX = x - Math.floor(crossArm / 2)
+        const vY = y - Math.floor(crossLen / 2)
+        const crossKey = `${hX}:${hY}:${vX}:${vY}:${crossLen}:${crossArm}`
+        if (crossKey !== prevDotKey) {
+          parts.push(
+            `drawbox@cursorh x ${hX}`,
+            `drawbox@cursorh y ${hY}`,
+            `drawbox@cursorh w ${crossLen}`,
+            `drawbox@cursorh h ${crossArm}`,
+            `drawbox@cursorv x ${vX}`,
+            `drawbox@cursorv y ${vY}`,
+            `drawbox@cursorv w ${crossArm}`,
+            `drawbox@cursorv h ${crossLen}`,
+          )
+          prevDotKey = crossKey
+        }
+      } else {
+        const dotKey = `${dotX}:${dotY}`
+        if (dotKey !== prevDotKey) {
+          parts.push(`drawbox@cursor x ${dotX}`, `drawbox@cursor y ${dotY}`)
+          prevDotKey = dotKey
+        }
       }
     }
 
@@ -138,6 +210,17 @@ export function planCursorExport(
   outputLabel = 'vout',
   sendCmdPathPlaceholder = '__CURSOR_SENDCMD_PATH__',
 ): CursorFilterPlan {
+  const draw = resolveDrawOptions(options)
+  if (!draw.visible) {
+    return {
+      hasCursor: false,
+      sendCmd: '',
+      filterComplex: `[${inputLabel}]null[${outputLabel}]`,
+      inputLabel,
+      outputLabel,
+    }
+  }
+
   const sendCmd = buildCursorSendCmd(events, videoSize, durationMs, layout, options)
   if (!sendCmd) {
     return {
@@ -149,20 +232,39 @@ export function planCursorExport(
     }
   }
 
-  const dotSize = options.dotSizePx ?? DEFAULT_DOT_PX
-  const ringBase = options.ringBasePx ?? DEFAULT_RING_BASE_PX
+  const dotSize = draw.dotSizePx
+  const ringBase = draw.ringBasePx
   const ringThickness = 3
+  const spotlightSize = draw.spotlightEnabled ? draw.spotlightPx : 0
+  const crossArm = Math.max(2, Math.round(dotSize / 5))
+  const crossLen = Math.max(dotSize, Math.round(dotSize * 1.4))
+
+  const filters: string[] = [`sendcmd=f=${sendCmdPathPlaceholder}`]
+
+  if (spotlightSize > 0) {
+    filters.push(
+      `drawbox@spot=x=0:y=0:w=${spotlightSize}:h=${spotlightSize}:color=0x3dd6c6@0.18:t=fill`,
+    )
+  }
+
+  if (draw.style === 'crosshair') {
+    filters.push(
+      `drawbox@cursorh=x=0:y=0:w=${crossLen}:h=${crossArm}:color=0x3dd6c6@0.95:t=fill`,
+      `drawbox@cursorv=x=0:y=0:w=${crossArm}:h=${crossLen}:color=0x3dd6c6@0.95:t=fill`,
+    )
+  } else {
+    filters.push(
+      `drawbox@cursor=x=0:y=0:w=${dotSize}:h=${dotSize}:color=0x3dd6c6@0.95:t=fill`,
+    )
+  }
+
+  filters.push(
+    `drawbox@ring=x=0:y=0:w=${ringBase}:h=${ringBase}:color=0xffffff@0:t=${ringThickness}`,
+  )
 
   // Output pad label must attach to the last filter WITHOUT a comma —
   // a comma before [label] makes ffmpeg parse an empty filter name.
-  const filterComplex =
-    `[${inputLabel}]` +
-    [
-      `sendcmd=f=${sendCmdPathPlaceholder}`,
-      `drawbox@cursor=x=0:y=0:w=${dotSize}:h=${dotSize}:color=0x3dd6c6@0.95:t=fill`,
-      `drawbox@ring=x=0:y=0:w=${ringBase}:h=${ringBase}:color=0xffffff@0:t=${ringThickness}`,
-    ].join(',') +
-    `[${outputLabel}]`
+  const filterComplex = `[${inputLabel}]` + filters.join(',') + `[${outputLabel}]`
 
   return {
     hasCursor: true,
