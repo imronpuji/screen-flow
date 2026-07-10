@@ -12,9 +12,13 @@ import {
   computeCameraDrift,
   createEmptyCameraSyncMeta,
   isCameraActiveAtMs,
+  isCameraActiveRangesNever,
+  materializeCameraActiveRanges,
   openCameraActiveRange,
   parseCameraSyncMeta,
+  removeCameraActiveRangeAt,
   screenTimeToCameraTimeSec,
+  toggleCameraActiveAtWallMs,
 } from '../shared/cameraSync.ts'
 import { planCameraExport } from '../dist-electron/shared/ffmpegCamera.js'
 import { DEFAULT_CAMERA_OVERLAY } from '../shared/camera.ts'
@@ -148,6 +152,52 @@ function testActiveRanges(): void {
   )
   assert(partial != null && partial.includes('between(t,'), `partial enable (got ${partial})`)
   assert(partial!.includes('+'), 'OR of windows')
+
+  // Review mute at playhead (always-on → prefix window)
+  const muted = toggleCameraActiveAtWallMs([], 2000, 5000)
+  assert(muted.length === 1 && muted[0]!.endMs === 2000, `mute always-on (got ${JSON.stringify(muted)})`)
+  assert(!isCameraActiveAtMs(muted, 2500, 5000), 'muted after playhead')
+  const unmuted = toggleCameraActiveAtWallMs(muted, 3000, 5000)
+  assert(unmuted.length === 2, `unmute adds window (got ${JSON.stringify(unmuted)})`)
+  assert(isCameraActiveAtMs(unmuted, 3500, 5000), 'active after unmute')
+
+  const never = toggleCameraActiveAtWallMs([{ startMs: 0, endMs: 5000 }], 0, 5000)
+  assert(isCameraActiveRangesNever(never), 'fully muted sentinel')
+  assert(!isCameraActiveAtMs(never, 100, 5000), 'never active')
+  assert(cameraOverlayEnableExpr(never, 0, 5000) === '0', 'enable=0 when never')
+
+  const trimmed = cameraOverlayEnableExpr(
+    [{ startMs: 6000, endMs: 8000 }],
+    0,
+    10_000,
+    { trimStartMs: 5000 },
+  )
+  assert(
+    trimmed != null && trimmed.includes('between(t,1.000,3.000)'),
+    `trim rebase enable (got ${trimmed})`,
+  )
+
+  const removed = removeCameraActiveRangeAt(
+    [
+      { startMs: 0, endMs: 1000 },
+      { startMs: 2000, endMs: 3000 },
+    ],
+    0,
+  )
+  assert(removed.length === 1 && removed[0]!.startMs === 2000, 'remove first')
+  assert(
+    isCameraActiveRangesNever(removeCameraActiveRangeAt([{ startMs: 0, endMs: 1000 }], 0)),
+    'remove last → never',
+  )
+
+  const materialized = materializeCameraActiveRanges([], 4000)
+  assert(
+    materialized.length === 1 &&
+      materialized[0]!.startMs === 0 &&
+      materialized[0]!.endMs === 4000,
+    'materialize always-on',
+  )
+
   console.log('ok camera active ranges')
 }
 

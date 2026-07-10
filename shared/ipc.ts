@@ -224,6 +224,11 @@ export interface ExportCameraOverlayRequest {
    * When omitted, export probes sibling camera-sync.json next to cameraPath.
    */
   syncPath?: string
+  /**
+   * Review-edited FaceTime active windows (wall ms). When set, overrides
+   * `activeRanges` from camera-sync.json for overlay enable (preview ≡ export).
+   */
+  activeRangesOverride?: CameraActiveRange[] | null
 }
 
 /** Trim window baked into export (matches review sliders). */

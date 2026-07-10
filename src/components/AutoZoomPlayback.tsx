@@ -30,11 +30,12 @@ import {
   DEFAULT_CAMERA_OVERLAY,
   type CameraOverlayStyle,
 } from '../../shared/camera'
-import type { CameraSyncMeta } from '../../shared/cameraSync'
+import type { CameraActiveRange, CameraSyncMeta } from '../../shared/cameraSync'
 import {
   cameraStartLagMs,
   isCameraActiveAtMs,
   screenTimeToCameraTimeSec,
+  screenTimelineMsToWallMs,
 } from '../../shared/cameraSync'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 import {
@@ -66,6 +67,11 @@ export interface AutoZoomPlaybackProps {
   cameraOverlay?: CameraOverlayStyle
   /** First-chunk sync meta — offsets review bubble seek to match export. */
   cameraSync?: CameraSyncMeta | null
+  /**
+   * Review-edited active windows (wall ms). When set, overrides sync meta
+   * ranges for bubble visibility + timeline markers (preview ≡ export).
+   */
+  cameraActiveRangesOverride?: CameraActiveRange[] | null
   /** Persist drag/snap layout from the review bubble (relative 0–1 coords). */
   onCameraLayoutChange?: (next: CameraOverlayStyle) => void
   trimStartMs?: number
@@ -87,6 +93,7 @@ export function AutoZoomPlayback({
   cameraMediaUrl = null,
   cameraOverlay = DEFAULT_CAMERA_OVERLAY,
   cameraSync = null,
+  cameraActiveRangesOverride = null,
   onCameraLayoutChange,
   trimStartMs = 0,
   trimEndMs,
@@ -150,19 +157,24 @@ export function AutoZoomPlayback({
 
   const clickCount = cursorEvents.filter((e) => e.kind === 'click' || e.kind === 'down').length
 
+  const effectiveCameraRanges =
+    cameraActiveRangesOverride !== null
+      ? cameraActiveRangesOverride
+      : cameraSync?.activeRanges
+
   const timelineMarkers = useMemo(
     () =>
       buildTimelineMarkers(segments, cursorEvents, {
-        cameraActiveRanges: cameraSync?.activeRanges,
+        cameraActiveRanges: effectiveCameraRanges,
         screenFirstChunkMs: cameraSync?.screenFirstChunkMs,
         wallDurationMs: cameraSync?.wallDurationMs ?? durationMs,
       }),
     [
-      cameraSync?.activeRanges,
       cameraSync?.screenFirstChunkMs,
       cameraSync?.wallDurationMs,
       cursorEvents,
       durationMs,
+      effectiveCameraRanges,
       segments,
     ],
   )
@@ -320,8 +332,8 @@ export function AutoZoomPlayback({
     Boolean(cameraMediaUrl) &&
     cameraOverlay.enabled &&
     isCameraActiveAtMs(
-      cameraSync?.activeRanges,
-      currentMs,
+      effectiveCameraRanges,
+      screenTimelineMsToWallMs(currentMs, cameraSync?.screenFirstChunkMs),
       cameraSync?.wallDurationMs ?? durationMs,
     )
 

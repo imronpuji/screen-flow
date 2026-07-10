@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 19:10] Camera active-range edit in review (FOKUS 3A/B)
+
+- **Dikerjakan:**
+  - `shared/cameraSync.ts` — `toggleCameraActiveAtWallMs`, `materializeCameraActiveRanges`, `removeCameraActiveRangeAt`, `CAMERA_ACTIVE_RANGES_NEVER`, trim-aware `cameraOverlayEnableExpr({ trimStartMs })`, preview wall map via `screenTimelineMsToWallMs`.
+  - Review UI — Hide/Show from playhead, Remove window, Always on, Reset; amber timeline uses override.
+  - Export — `activeRangesOverride` on `ExportCameraOverlayRequest`; preview ≡ export.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-sync/camera*/timeline-markers/beautify/export-effects/export-camera hijau.
+- **Commit:** `70d2c46`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional persist background prefs; drag-resize camera range edges on scrubber.
+
 ## [2026-07-10 14:20] Camera active-range timeline markers (FOKUS 3A/B editor)
 
 - **Dikerjakan:**
