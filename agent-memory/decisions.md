@@ -198,6 +198,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** Roadmap #11 — first-run tanpa baca manual; localStorage cukup (tanpa main-process prefs) untuk MVP.
 - **Status:** aktif
 
+## [2026-07-10] Empty-state tooltips (catalog + hover)
+
+- **Keputusan:** Copy tip terpusat di `shared/tooltips.ts` (id → title/body + resolver Start/sources). UI: `Tooltip` (hover/focus panel + native `title` fallback) untuk kontrol; `EmptyHint` selalu terlihat untuk empty sources / no-camera. Smoke `smoke:tooltips` tanpa Electron.
+- **Alasan:** Roadmap #11 — orang awam butuh alasan jelas kenapa Start disabled / sources kosong tanpa pesan teknis; catalog reusable antar-run.
+- **Status:** aktif
+
 ## [2026-07-10] Keyboard shortcuts (context-aware)
 
 - **Keputusan:** Catalog + matcher murni di `shared/shortcuts.ts`. Konteks: **setup/recording** → R/Space toggle record (Esc stop saat recording); **review** → Space play, ←/→ scrub (Shift=5s), E export, B Beautify Tutorial, Esc discard; **exporting** → Esc cancel. Abaikan saat target editable / modifier Cmd·Ctrl·Alt. Onboarding memblok shortcut setup.
