@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Zoom hold-edge resize (FOKUS 5)
+
+- **Keputusan:** Zoom spans punya handle **hold** di `holdEndMs` (tengah span). Drag hold memindah batas hold↔zoom-out: **peak + start + end tetap**, `holdMs` dan `zoomOutMs` saling trade. Zoom-out tetap ≥ `MIN_ZOOM_EDGE_MS` (80ms); hold boleh 0 (holdEnd = peak). Marker expose `holdEndMs`; magnetic snap target `${id}-hold`. Tipe edge: `ZoomSegmentEdge = 'start' | 'hold' | 'end'`. Preview ≡ export via `resizeAutoZoomEdge` / `resizeManualZoomEdge` → timing fields.
+- **Alasan:** FOKUS 5 — setelah start/end edge resize, user masih perlu atur lama hold tanpa mengubah total span atau peak; satu handle tengah lebih jelas daripada slider numerik.
+- **Status:** aktif
+
 ## [2026-07-10] Zoom span edge resize (FOKUS 5)
 
 - **Keputusan:** Zoom spans di scrubber punya handle **start/end** (sama pola keep/camera). Start mengubah `zoomInMs` (peak tetap); end mengubah `zoomOutMs` (holdEnd tetap). Timing disimpan non-destruktif di `ZoomPointOverride` / `ManualZoomPoint` (`zoomInMs`/`holdMs`/`zoomOutMs` + `peakMs`). Apply path: `applyOneZoomOverride` → `rebuildZoomSegmentTiming` (preview ≡ export ≡ markers). Min edge **80ms** (`MIN_ZOOM_EDGE_MS`). Magnetic snap memakai target yang sama (exclude self ids). Peak-drag tetap menggeser peak dan **mempertahankan** timing fields yang sudah di-set.
