@@ -11,6 +11,7 @@ export const IPC_CHANNELS = {
   RECORDING_START: 'recording:start',
   RECORDING_STOP: 'recording:stop',
   RECORDING_GET_STATUS: 'recording:get-status',
+  RECORDING_APPEND_CHUNK: 'recording:append-chunk',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
@@ -51,7 +52,7 @@ export interface CaptureSource {
 }
 
 export interface ListSourcesRequest {
-  /** Include window thumbnails (heavier). Default true for picker UX. */
+  /** Include source thumbnails (heavier). Default true for picker UX. */
   thumbnails?: boolean
 }
 
@@ -61,6 +62,12 @@ export interface RecordingStatus {
   state: RecordingState
   sourceId: string | null
   startedAt: number | null
+  /** Temp session folder under app temp (null when idle). */
+  sessionDir: string | null
+  /** Growing capture container path (WebM from MediaRecorder). */
+  outputPath: string | null
+  bytesWritten: number
+  chunkCount: number
 }
 
 export interface StartRecordingRequest {
@@ -75,8 +82,26 @@ export interface StartRecordingResult {
 export interface StopRecordingResult {
   ok: true
   status: RecordingStatus
-  /** Stub duration until real encode lands. */
   durationMs: number
+  /** Final WebM path written during the session (null if no chunks). */
+  outputPath: string | null
+  bytesWritten: number
+  chunkCount: number
+}
+
+/** Binary chunk from renderer MediaRecorder → main temp writer. */
+export interface AppendChunkRequest {
+  /**
+   * Raw MediaRecorder blob bytes (typically WebM cluster fragments).
+   * Electron IPC may deliver ArrayBuffer or a Node Buffer view.
+   */
+  data: ArrayBuffer | Uint8Array
+}
+
+export interface AppendChunkResult {
+  ok: true
+  bytesWritten: number
+  chunkCount: number
 }
 
 export interface ScreenFlowApi {
@@ -87,6 +112,7 @@ export interface ScreenFlowApi {
   startRecording: (request: StartRecordingRequest) => Promise<StartRecordingResult>
   stopRecording: () => Promise<StopRecordingResult>
   getRecordingStatus: () => Promise<RecordingStatus>
+  appendRecordingChunk: (request: AppendChunkRequest) => Promise<AppendChunkResult>
 }
 
 declare global {

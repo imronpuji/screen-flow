@@ -42,4 +42,10 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** `recording:start/stop` hanya state in-memory di main sampai frame pipeline + ffmpeg siap. Tidak menulis file.
 - **Alasan:** Validasi IPC/UX tanpa memblok progress encode; aman di CI Linux tanpa display.
-- **Status:** aktif (sementara)
+- **Status:** digantikan (lihat “Capture stream + temp WebM”)
+
+## [2026-07-10] Capture stream + temp WebM
+
+- **Keputusan:** Renderer membuka stream via `getUserMedia` + `chromeMediaSourceId` (desktopCapturer id), `MediaRecorder` timeslice 500ms; chunk `ArrayBuffer` dikirim IPC `recording:append-chunk` ke main yang append ke `app.getPath('temp')/screen-flow/<session>/capture.webm`. Preview = `<video srcObject>`.
+- **Alasan:** Chromium sudah punya capture path yang bekerja dengan source id; main tetap pemilik filesystem; tidak menahan seluruh rekaman di RAM renderer; CI Linux tetap typecheck/build tanpa GUI.
+- **Status:** aktif (pra-ffmpeg; encode/transcode belakangan)

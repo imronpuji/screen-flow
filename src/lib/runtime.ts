@@ -1,4 +1,6 @@
 import type {
+  AppendChunkRequest,
+  AppendChunkResult,
   AppInfo,
   CaptureSource,
   ListSourcesRequest,
@@ -19,6 +21,16 @@ const browserFallback: AppInfo = {
 const browserPermission: PermissionStatus = {
   screen: 'unsupported',
   message: 'Running in browser preview — Electron capture APIs are unavailable.',
+}
+
+const idleRecording: RecordingStatus = {
+  state: 'idle',
+  sourceId: null,
+  startedAt: null,
+  sessionDir: null,
+  outputPath: null,
+  bytesWritten: 0,
+  chunkCount: 0,
 }
 
 /** Prefer preload bridge; fall back so Vite preview still works without Electron. */
@@ -49,7 +61,7 @@ export async function fetchRecordingStatus(): Promise<RecordingStatus> {
   if (window.screenFlow?.getRecordingStatus) {
     return window.screenFlow.getRecordingStatus()
   }
-  return { state: 'idle', sourceId: null, startedAt: null }
+  return { ...idleRecording }
 }
 
 export async function startRecording(
@@ -66,6 +78,15 @@ export async function stopRecording(): Promise<StopRecordingResult> {
     throw new Error('Recording requires the Electron app')
   }
   return window.screenFlow.stopRecording()
+}
+
+export async function appendRecordingChunk(
+  request: AppendChunkRequest,
+): Promise<AppendChunkResult> {
+  if (!window.screenFlow?.appendRecordingChunk) {
+    throw new Error('Recording requires the Electron app')
+  }
+  return window.screenFlow.appendRecordingChunk(request)
 }
 
 export function isElectronBridgeAvailable(): boolean {
