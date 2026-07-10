@@ -2,6 +2,15 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 13:17] Fix export gagal "ffprobe could not read video duration" + preload jatuh ke browser fallback
+
+- **Gejala:** Export MP4 error `ffprobe could not read video duration`; auto-zoom nggak jalan (auto-zoom di-bake pas encode, jadi ikut gagal). Sebelumnya jendela Electron juga tampil "browser preview / Electron capture APIs unavailable".
+- **Akar masalah:** (1) WebM dari `MediaRecorder` ditulis streaming — header tak punya `format.duration` maupun stream `duration`, jadi ffprobe balikin kosong → `probeVideoFile` hard-fail → export batal. (2) `webPreferences.sandbox` sempat `true`; preload pakai ESM import lokal (`../shared/ipc.js`) yang tak jalan di sandbox → `window.screenFlow` tak ter-inject.
+- **Dikerjakan:** `electron/ffmpeg/probe.ts` — tambah fallback `probeDurationByPackets` (scan `packet=pts_time,duration_time`, ambil pts terakhir + 1 frame) saat container/stream duration kosong; juga baca `stream=duration` sebagai lapis kedua. `electron/main.ts` — balikin `sandbox: false`.
+- **Hasil:** `build:electron` hijau; probe di file capture asli balikin durasi 15.156s (sebelumnya error); `smoke:export-autozoom` hijau. App di-relaunch dengan build baru.
+- **Status:** done
+- **Next:** Pertimbangkan kirim durasi rekaman (wall-clock `StopRecordingResult.durationMs`) sebagai hint ke export biar tak selalu bergantung scan packet; lanjut review screen (playback hasil + reveal in Finder) yang sempat ketunda.
+
 ## [2026-07-10 06:10] Bake trim ke ffmpeg MP4 export
 
 - **Dikerjakan:** `shared/edit.ts` helpers (`normalizeTrim`, `applyTrimToCursorEvents`, `msToFfmpegSec`); IPC `ExportMp4Request.trim`; transcode `-ss/-to` + re-base cursor events untuk auto-zoom; UI kirim trim dari review sliders; smoke `smoke:export-trim`.
