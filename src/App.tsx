@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   AppInfo,
   CaptureSource,
@@ -82,6 +82,7 @@ import {
   exportUnsavedToast,
   makeToast,
   type ActiveToast,
+  type ToastSpec,
 } from '../shared/toast'
 import {
   TOOLTIPS,
@@ -868,6 +869,10 @@ export default function App() {
     setToast((t) => (t?.id === id ? null : t))
   }
 
+  const showToast = useCallback((spec: ToastSpec) => {
+    setToast(makeToast(spec))
+  }, [])
+
   function onToastAction(active: ActiveToast) {
     if (active.action?.id === 'reveal-export' && active.action.filePath) {
       void revealExport({ filePath: active.action.filePath }).catch((err: unknown) => {
@@ -917,6 +922,7 @@ export default function App() {
             onExport={(edit) => void onExportMp4(edit)}
             onCancelExport={() => void onCancelExport()}
             onDiscard={clearReview}
+            onToast={showToast}
           />
         </main>
         {lastSummary ? (

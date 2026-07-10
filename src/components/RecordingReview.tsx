@@ -20,6 +20,7 @@ import {
 import {
   BEAUTIFY_PRESETS,
   applyBeautifyPreset,
+  getBeautifyPreset,
   type BeautifyPresetId,
 } from '../../shared/beautify'
 import {
@@ -120,6 +121,7 @@ import { EditorPanel } from './EditorPanel'
 import { EmptyHint, Tooltip } from './Tooltip'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
 import { TOOLTIPS } from '../../shared/tooltips'
+import { beautifyAppliedToast, type ToastSpec } from '../../shared/toast'
 
 export interface RecordingReviewProps {
   mediaUrl: string
@@ -145,6 +147,8 @@ export interface RecordingReviewProps {
   onExport: (edit: ReviewEditState) => void
   onCancelExport: () => void
   onDiscard: () => void
+  /** Non-blocking feedback (Beautify applied, etc.) — App owns ToastHost. */
+  onToast?: (spec: ToastSpec) => void
 }
 
 function formatBytes(bytes: number): string {
@@ -170,6 +174,7 @@ export function RecordingReview({
   onExport,
   onCancelExport,
   onDiscard,
+  onToast,
 }: RecordingReviewProps) {
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
   const [playheadMs, setPlayheadMs] = useState(0)
@@ -229,6 +234,19 @@ export function RecordingReview({
   }
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
+
+  const applyBeautifyLook = useCallback(
+    (presetId: BeautifyPresetId | string) => {
+      if (exporting) return
+      const preset = getBeautifyPreset(presetId)
+      setEdit((prev) => applyBeautifyPreset(prev, preset.id, { hasCameraTrack }))
+      onToast?.(
+        beautifyAppliedToast({ label: preset.label, hint: preset.hint }),
+      )
+    },
+    [exporting, hasCameraTrack, onToast],
+  )
+
   const editRef = useRef(edit)
   const playheadMsRef = useRef(0)
   const durationMsRef = useRef(durationMs)
@@ -445,9 +463,7 @@ export function RecordingReview({
       }
       if (action === 'beautify') {
         event.preventDefault()
-        setEdit((prev) =>
-          applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
-        )
+        applyBeautifyLook('tutorial')
         return
       }
       if (action === 'undo') {
@@ -521,11 +537,11 @@ export function RecordingReview({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [
+    applyBeautifyLook,
     cancelDiscard,
     confirmDiscard,
     deleteSegmentAtPlayhead,
     exporting,
-    hasCameraTrack,
     onCancelExport,
     onExport,
     requestDiscard,
@@ -706,11 +722,7 @@ export function RecordingReview({
               type="button"
               className="btn btn--accent"
               disabled={exporting}
-              onClick={() =>
-                setEdit((prev) =>
-                  applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
-                )
-              }
+              onClick={() => applyBeautifyLook('tutorial')}
             >
               Beautify
             </button>
@@ -2085,13 +2097,7 @@ export function RecordingReview({
                   className="review__preset"
                   disabled={exporting}
                   title={preset.hint}
-                  onClick={() =>
-                    setEdit((prev) =>
-                      applyBeautifyPreset(prev, preset.id as BeautifyPresetId, {
-                        hasCameraTrack,
-                      }),
-                    )
-                  }
+                  onClick={() => applyBeautifyLook(preset.id as BeautifyPresetId)}
                 >
                   <span className="review__preset-label">{preset.label}</span>
                 </button>
