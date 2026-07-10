@@ -8,7 +8,8 @@ Entri terbaru di ATAS.
   - `CameraBubble` — focus on pointer-down; Arrow keys nudge (Shift = larger); stopPropagation supaya tidak bentrok scrub review; focus-visible outline.
   - Smoke `smoke:camera` covers nudge + clamp.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
-- **Status:** done — lanjut commit/push/PR + owner merge callback.
+- **Commit:** `551ce6a` (feature) / `6f59c5c` (memory)
+- **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; multi-segment only if MediaRecorder restart required; background presets polish atau zoom add-at-playhead.
 
 ## [2026-07-10 11:35] Free aspect unlock + owner merge callback WAJIB
