@@ -1,6 +1,14 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 07:50] Export quality presets (Draft / Good / High)
+
+- **Dikerjakan:** `shared/exportQuality.ts` (draft|good|high → VideoToolbox bitrate 4M/8M/16M + libx264 CRF/preset); IPC `ExportMp4Request.quality` + result; `transcode.pickVideoEncoder` + VT→x264 fallback ikut quality; `ReviewEditState.exportQuality` + picker di review; smoke `smoke:export-quality`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke export-quality/camera/export-progress hijau.
+- **Commit:** `0fb9ea9`
+- **Status:** done (export quality MVP)
+- **Next:** Auto-zoom Retina/anti-jitter polish (FOKUS 1); first-run onboarding / polish UX; one-click beautify.
+
 ## [2026-07-10 07:45] Camera bubble di review playback (FOKUS 3)
 
 - **Dikerjakan:** `CameraBubble` support `mediaUrl` + `currentTimeSec` sync (ε 80ms) + `mirrored=false` untuk recorded; `AutoZoomPlayback` overlay di luar zoom (composite / full background canvas = urutan ffmpeg); `ReviewEditState.cameraOverlay` + kontrol corner/size/shape di review; App load `camera.webm` via `getMediaUrl`; export pakai `edit.cameraOverlay`; smoke `smoke:camera` cek `defaultReviewEdit` camera seed.
