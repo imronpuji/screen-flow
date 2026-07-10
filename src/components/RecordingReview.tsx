@@ -1,6 +1,11 @@
 import { useState } from 'react'
 import type { ExportProgressEvent } from '../../shared/ipc'
 import type { CursorEvent } from '../../shared/cursor'
+import {
+  CURSOR_STYLE_OPTIONS,
+  clampCursorSizeScale,
+  type CursorStyleId,
+} from '../../shared/cursorAppearance'
 import { defaultReviewEdit, formatTimeMs, type ReviewEditState } from '../../shared/edit'
 import { BACKGROUND_PRESETS } from '../../shared/background'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
@@ -102,6 +107,7 @@ export function RecordingReview({
             cursorEvents={cursorEvents}
             autoZoomEnabled={edit.autoZoomEnabled}
             cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
+            cursorAppearance={edit.cursorAppearance}
             background={edit.background}
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
@@ -135,6 +141,89 @@ export function RecordingReview({
             />
             <span>Cursor smoothing + click rings</span>
           </label>
+
+          {edit.cursorSmoothingEnabled ? (
+            <>
+              <div className="review__field">
+                <span className="review__label">Cursor style</span>
+                <div className="review__presets" role="group" aria-label="Cursor style">
+                  {CURSOR_STYLE_OPTIONS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={`review__preset${
+                        edit.cursorAppearance.style === option.id
+                          ? ' review__preset--active'
+                          : ''
+                      }`}
+                      disabled={exporting}
+                      title={option.label}
+                      aria-label={option.label}
+                      aria-pressed={edit.cursorAppearance.style === option.id}
+                      onClick={() =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          cursorAppearance: {
+                            ...prev.cursorAppearance,
+                            style: option.id as CursorStyleId,
+                          },
+                        }))
+                      }
+                    >
+                      <span className="review__preset-label">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {edit.cursorAppearance.style !== 'hidden' ? (
+                <>
+                  <div className="review__field">
+                    <label className="review__label" htmlFor="cursor-size">
+                      Cursor size — {edit.cursorAppearance.sizeScale.toFixed(1)}×
+                    </label>
+                    <input
+                      id="cursor-size"
+                      type="range"
+                      className="review__range"
+                      min={0.5}
+                      max={3}
+                      step={0.1}
+                      value={edit.cursorAppearance.sizeScale}
+                      disabled={exporting}
+                      onChange={(e) =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          cursorAppearance: {
+                            ...prev.cursorAppearance,
+                            sizeScale: clampCursorSizeScale(Number(e.target.value)),
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <label className="review__toggle review__toggle--nested">
+                    <input
+                      type="checkbox"
+                      checked={edit.cursorAppearance.spotlightEnabled}
+                      disabled={exporting}
+                      onChange={(e) =>
+                        setEdit((prev) => ({
+                          ...prev,
+                          cursorAppearance: {
+                            ...prev.cursorAppearance,
+                            spotlightEnabled: e.target.checked,
+                          },
+                        }))
+                      }
+                    />
+                    <span>Spotlight around cursor</span>
+                  </label>
+                </>
+              ) : null}
+            </>
+          ) : null}
 
           <label className="review__toggle">
             <input
@@ -282,8 +371,8 @@ export function RecordingReview({
           <div className="review__coming">
             <p className="review__coming-title">Coming next</p>
             <ul>
+              <li>Webcam FaceTime overlay</li>
               <li>Per-click zoom points</li>
-              <li>Export GIF / WebM</li>
               <li>One-click beautify preset</li>
             </ul>
           </div>

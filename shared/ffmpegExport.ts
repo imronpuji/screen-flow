@@ -4,10 +4,11 @@
 
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
+import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import { planBackgroundExport } from './ffmpegBackground.js'
-import { planCursorExport } from './ffmpegCursor.js'
+import { planCursorExport, type CursorSendCmdOptions } from './ffmpegCursor.js'
 import { planAutoZoomExport } from './ffmpegZoom.js'
 
 export interface VideoSize {
@@ -23,7 +24,8 @@ export interface ExportEffectsRequest {
   background?: BackgroundStyle
   cursorSmoothing?: {
     events: CursorEvent[]
-    options?: CursorSmoothingOptions
+    options?: CursorSmoothingOptions & CursorSendCmdOptions
+    appearance?: CursorAppearance
   }
 }
 
@@ -84,6 +86,12 @@ export function planExportFilters(
   }
 
   const cursorEvents = effects.cursorSmoothing?.events ?? []
+  const cursorOptions = {
+    ...effects.cursorSmoothing?.options,
+    appearance:
+      effects.cursorSmoothing?.appearance ??
+      effects.cursorSmoothing?.options?.appearance,
+  }
   const cursorPlan =
     effects.cursorSmoothing && cursorEvents.length > 0
       ? planCursorExport(
@@ -91,7 +99,7 @@ export function planExportFilters(
           videoSize,
           durationMs,
           backgroundPlan?.layout ?? null,
-          effects.cursorSmoothing.options,
+          cursorOptions,
           backgroundApplied ? 'vbg' : 'vzoom',
           'vout',
           CURSOR_PATH,

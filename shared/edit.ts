@@ -1,5 +1,7 @@
 import type { BackgroundStyle } from './background.js'
 import { DEFAULT_BACKGROUND_STYLE } from './background.js'
+import type { CursorAppearance } from './cursorAppearance.js'
+import { DEFAULT_CURSOR_APPEARANCE } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 
 /** Lightweight edit state for post-record review (trim + effects). */
@@ -14,6 +16,8 @@ export interface ReviewEditState {
   trimEndMs: number
   autoZoomEnabled: boolean
   cursorSmoothingEnabled: boolean
+  /** Size / style / hide / spotlight for composited cursor. */
+  cursorAppearance: CursorAppearance
   background: BackgroundStyle
 }
 
@@ -46,6 +50,7 @@ export function defaultReviewEdit(durationMs: number): ReviewEditState {
     trimEndMs: Math.max(0, durationMs),
     autoZoomEnabled: true,
     cursorSmoothingEnabled: true,
+    cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
     background: { ...DEFAULT_BACKGROUND_STYLE },
   }
 }

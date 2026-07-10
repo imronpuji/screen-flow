@@ -139,3 +139,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Saat `recording:start`, main menulis `cursor-events.jsonl` di session temp. Event: `{ t, x, y, kind: move|down|up|click, button? }` dengan `t` = ms sejak start. Primary: `uiohook-napi` global hook (posisi + klik). Fallback: poll `screen.getCursorScreenPoint()` ~60Hz (posisi saja). Move di-throttle (≥16ms atau ≥2px). Stop menutup stream dan expose `cursorEventsPath` + `cursorEventCount` di `StopRecordingResult`.
 - **Alasan:** Metadata kursor terpisah dari WebM = fondasi auto-zoom/click effects tanpa decode video; uIOhook = global clicks di macOS/Windows; fallback polling tetap berguna jika hook gagal (permission/headless).
 - **Status:** aktif
+
+## [2026-07-10] Cursor appearance (size / style / hide / spotlight)
+
+- **Keputusan:** Appearance dipisah dari capture: `CursorAppearance` (`style: dot|crosshair|hidden`, `sizeScale` 0.5–3, `spotlightEnabled`) di review state + `ExportMp4Request.cursorSmoothing.appearance`. Preview CSS + export ffmpeg drawbox memakai helper yang sama (`appearanceToCursorDrawOptions`). Hidden → skip bake (`null` filter). Crosshair = dua drawbox orthogonal; spotlight = drawbox semi-transparan di bawah cursor.
+- **Alasan:** FOKUS 2 — cursor harus bisa dimodifikasi tanpa re-record; data JSONL tetap mentah; preview ↔ export konsisten lewat shared helpers.
+- **Status:** aktif (MVP); custom cursor image themes later
