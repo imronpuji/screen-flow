@@ -34,4 +34,4 @@ Incremental autonomous work is tracked in `agent-memory/` (`decisions.md`, `work
 
 ## Status
 
-Electron shell + source picker + live `getUserMedia` capture streaming WebM chunks to a main-process temp file. ffmpeg export / effects next.
+Electron shell + source picker + live `getUserMedia` capture streaming WebM chunks to a main-process temp file. Export MP4 via system ffmpeg (`h264_videotoolbox` on macOS, `libx264` elsewhere). Effects / timeline next.

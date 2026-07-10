@@ -8,9 +8,9 @@
 - [x] IPC typed: app info, permission status, sources list, recording stub session
 - [x] Izin TCC Screen Recording (macOS) — probe + UX saat ditolak
 - [x] Capture dasar via `desktopCapturer` (list + getUserMedia/MediaRecorder → temp WebM)
-- [ ] Simpan frame/stream via ffmpeg (child process di main) — WebM ada; remux/encode MP4 next
+- [x] Simpan frame/stream via ffmpeg (child process di main) — WebM → MP4 export
 - [~] Preview real-time (canvas) — live `<video>` preview done; canvas/WebGL later
-- [ ] Export MP4 (H.264; VideoToolbox di macOS)
+- [x] Export MP4 (H.264; VideoToolbox di macOS, libx264 fallback) — basic path done; progress/cancel + save dialog next
 
 ## Signature (Screen Studio-like)
 

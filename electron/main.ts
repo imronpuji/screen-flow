@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getScreenPermissionStatus, listCaptureSources } from './capture/index.js'
+import { exportWebmToMp4 } from './ffmpeg/transcode.js'
 import {
   appendRecordingChunk,
   getRecordingStatus,
@@ -12,6 +13,7 @@ import {
   IPC_CHANNELS,
   type AppendChunkRequest,
   type AppInfo,
+  type ExportMp4Request,
   type ListSourcesRequest,
   type StartRecordingRequest,
 } from '../shared/ipc.js'
@@ -78,6 +80,19 @@ function registerIpc(): void {
       throw new Error('Invalid append chunk payload')
     }
     return appendRecordingChunk(request)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, (_event, request: ExportMp4Request) => {
+    if (!request || typeof request.inputPath !== 'string' || !request.inputPath.trim()) {
+      throw new Error('Invalid export payload: inputPath required')
+    }
+    if (request.outputPath != null && typeof request.outputPath !== 'string') {
+      throw new Error('Invalid export payload: outputPath must be a string')
+    }
+    if (request.cleanupTemp != null && typeof request.cleanupTemp !== 'boolean') {
+      throw new Error('Invalid export payload: cleanupTemp must be a boolean')
+    }
+    return exportWebmToMp4(request)
   })
 }
 

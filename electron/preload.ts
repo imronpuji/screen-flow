@@ -5,6 +5,8 @@ import {
   type AppendChunkResult,
   type AppInfo,
   type CaptureSource,
+  type ExportMp4Request,
+  type ExportMp4Result,
   type ListSourcesRequest,
   type PermissionStatus,
   type RecordingStatus,
@@ -33,6 +35,8 @@ const api: ScreenFlowApi = {
       IPC_CHANNELS.RECORDING_APPEND_CHUNK,
       request,
     ) as Promise<AppendChunkResult>,
+  exportWebmToMp4: (request: ExportMp4Request) =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_WEBM_TO_MP4, request) as Promise<ExportMp4Result>,
 }
 
 contextBridge.exposeInMainWorld('screenFlow', api)

@@ -8,6 +8,7 @@ import type {
 import { startLiveCapture, type LiveCaptureHandle } from './lib/captureStream'
 import {
   appendRecordingChunk,
+  exportWebmToMp4,
   fetchAppInfo,
   fetchCaptureSources,
   fetchPermissionStatus,
@@ -43,6 +44,8 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastSummary, setLastSummary] = useState<string | null>(null)
+  const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
 
@@ -50,6 +53,8 @@ export default function App() {
   const isRecording = recording.state === 'recording'
   const canRecord =
     inElectron && !busy && Boolean(selectedSourceId) && permission?.screen !== 'denied'
+  const canExport =
+    inElectron && !busy && !isRecording && !exporting && Boolean(lastWebmPath)
 
   useEffect(() => {
     let cancelled = false
@@ -143,6 +148,7 @@ export default function App() {
         bindPreview(null)
         const result = await stopRecording()
         setRecording(result.status)
+        setLastWebmPath(result.outputPath)
         const size = formatBytes(result.bytesWritten)
         const secs = (result.durationMs / 1000).toFixed(1)
         setLastSummary(
@@ -152,6 +158,7 @@ export default function App() {
         )
       } else {
         setLastSummary(null)
+        setLastWebmPath(null)
         const started = await startRecording({ sourceId: selectedSourceId! })
         setRecording(started.status)
 
@@ -192,6 +199,26 @@ export default function App() {
     }
   }
 
+  async function onExportMp4() {
+    if (!lastWebmPath) return
+    setExporting(true)
+    setError(null)
+    try {
+      const result = await exportWebmToMp4({
+        inputPath: lastWebmPath,
+        cleanupTemp: true,
+      })
+      setLastWebmPath(null)
+      setLastSummary(
+        `Exported MP4 (${result.codec}) · ${formatBytes(result.bytesWritten)} → ${result.outputPath}`,
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const selected = sources.find((s) => s.id === selectedSourceId) ?? null
 
   return (
@@ -227,7 +254,15 @@ export default function App() {
             <button
               type="button"
               className="btn btn--ghost"
-              disabled={!inElectron || busy || isRecording}
+              disabled={!canExport}
+              onClick={() => void onExportMp4()}
+            >
+              {exporting ? 'Exporting…' : 'Export MP4'}
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={!inElectron || busy || isRecording || exporting}
               onClick={() => void refreshSources()}
             >
               Refresh sources
@@ -298,7 +333,7 @@ export default function App() {
                           className={
                             active ? 'source-item source-item--active' : 'source-item'
                           }
-                          disabled={busy}
+                          disabled={busy || exporting}
                           onClick={() => setSelectedSourceId(source.id)}
                         >
                           {source.thumbnailDataUrl ? (

@@ -3,6 +3,8 @@ import type {
   AppendChunkResult,
   AppInfo,
   CaptureSource,
+  ExportMp4Request,
+  ExportMp4Result,
   ListSourcesRequest,
   PermissionStatus,
   RecordingStatus,
@@ -87,6 +89,13 @@ export async function appendRecordingChunk(
     throw new Error('Recording requires the Electron app')
   }
   return window.screenFlow.appendRecordingChunk(request)
+}
+
+export async function exportWebmToMp4(request: ExportMp4Request): Promise<ExportMp4Result> {
+  if (!window.screenFlow?.exportWebmToMp4) {
+    throw new Error('Export requires the Electron app')
+  }
+  return window.screenFlow.exportWebmToMp4(request)
 }
 
 export function isElectronBridgeAvailable(): boolean {

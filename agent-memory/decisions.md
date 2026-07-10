@@ -48,4 +48,10 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** Renderer membuka stream via `getUserMedia` + `chromeMediaSourceId` (desktopCapturer id), `MediaRecorder` timeslice 500ms; chunk `ArrayBuffer` dikirim IPC `recording:append-chunk` ke main yang append ke `app.getPath('temp')/screen-flow/<session>/capture.webm`. Preview = `<video srcObject>`.
 - **Alasan:** Chromium sudah punya capture path yang bekerja dengan source id; main tetap pemilik filesystem; tidak menahan seluruh rekaman di RAM renderer; CI Linux tetap typecheck/build tanpa GUI.
-- **Status:** aktif (pra-ffmpeg; encode/transcode belakangan)
+- **Status:** aktif
+
+## [2026-07-10] ffmpeg export WebM → MP4
+
+- **Keputusan:** Main spawn system `ffmpeg` (override via `SCREEN_FLOW_FFMPEG`). IPC `export:webm-to-mp4` hanya menerima path di bawah `app.getPath('temp')/screen-flow/`. Encoder: `h264_videotoolbox` di darwin (fallback `libx264`), `libx264` di platform lain. Default output sibling `export.mp4`; `cleanupTemp` default true menghapus WebM setelah sukses.
+- **Alasan:** Encode di child process — UI tidak blok; VideoToolbox = HW accel macOS; path guard mencegah path traversal via IPC; CI Linux bisa smoke-test dengan libx264 tanpa GUI.
+- **Status:** aktif
