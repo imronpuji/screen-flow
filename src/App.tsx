@@ -45,10 +45,16 @@ import {
 import { CameraBubble } from './components/CameraBubble'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { RecordingReview } from './components/RecordingReview'
+import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
 import { isEditableTarget, matchShortcut } from '../shared/shortcuts'
+import {
+  TOOLTIPS,
+  sourcesEmptyTooltip,
+  startRecordingTooltip,
+} from '../shared/tooltips'
 import './App.css'
 
 type AppMode = 'setup' | 'recording' | 'review'
@@ -598,23 +604,34 @@ export default function App() {
             hardware-accelerated export — built for macOS first.
           </p>
           <div className="shell__actions">
-            <button
-              type="button"
-              className={isRecording ? 'btn btn--danger' : 'btn btn--primary'}
-              disabled={!canRecord && !isRecording}
-              title={isRecording ? 'R or Esc · Stop' : 'R or Space · Start'}
-              onClick={() => void onToggleRecording()}
+            <Tooltip
+              copy={startRecordingTooltip({
+                isRecording,
+                inElectron,
+                hasSource: Boolean(selectedSourceId),
+                permissionDenied: permission?.screen === 'denied',
+                busy,
+              })}
             >
-              {isRecording ? 'Stop recording' : 'Start recording'}
-            </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              disabled={!inElectron || busy || isRecording}
-              onClick={() => void refreshSources()}
-            >
-              Refresh sources
-            </button>
+              <button
+                type="button"
+                className={isRecording ? 'btn btn--danger' : 'btn btn--primary'}
+                disabled={!canRecord && !isRecording}
+                onClick={() => void onToggleRecording()}
+              >
+                {isRecording ? 'Stop recording' : 'Start recording'}
+              </button>
+            </Tooltip>
+            <Tooltip copy={TOOLTIPS['refresh-sources']}>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                disabled={!inElectron || busy || isRecording}
+                onClick={() => void refreshSources()}
+              >
+                Refresh sources
+              </button>
+            </Tooltip>
           </div>
           <p className="shell__shortcuts" aria-label="Keyboard shortcuts">
             {isRecording ? (
@@ -645,22 +662,31 @@ export default function App() {
             </p>
           ) : null}
           <div className="camera-controls" aria-label="Camera overlay">
-            <label className="camera-controls__toggle">
-              <input
-                type="checkbox"
-                checked={cameraOverlay.enabled}
-                disabled={busy || isRecording}
-                onChange={(e) => {
-                  const checked = e.target.checked
-                  if (checked) {
-                    void enableCameraPreview(cameraOverlay)
-                  } else {
-                    disableCameraPreview()
-                  }
-                }}
-              />
-              <span>FaceTime camera overlay</span>
-            </label>
+            <Tooltip
+              copy={
+                cameraOverlay.enabled && cameraDevices.length === 0
+                  ? TOOLTIPS['camera-no-device']
+                  : TOOLTIPS['camera-off']
+              }
+              block
+            >
+              <label className="camera-controls__toggle">
+                <input
+                  type="checkbox"
+                  checked={cameraOverlay.enabled}
+                  disabled={busy || isRecording}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    if (checked) {
+                      void enableCameraPreview(cameraOverlay)
+                    } else {
+                      disableCameraPreview()
+                    }
+                  }}
+                />
+                <span>FaceTime camera overlay</span>
+              </label>
+            </Tooltip>
             {cameraOverlay.enabled ? (
               <div className="camera-controls__row">
                 <label className="camera-controls__field">
@@ -792,14 +818,11 @@ export default function App() {
               <CameraBubble stream={cameraStream} style={cameraOverlay} />
             )}
             {!isRecording ? (
-              !inElectron ? (
-                <p className="preview-frame__hint">
-                  Open via Electron to list displays with desktopCapturer.
-                </p>
-              ) : sources.length === 0 ? (
-                <p className="preview-frame__hint">
-                  No sources yet. On macOS, grant Screen Recording and refresh.
-                </p>
+              sources.length === 0 ? (
+                <EmptyHint
+                  copy={sourcesEmptyTooltip(inElectron)}
+                  className="preview-frame__hint"
+                />
               ) : (
                 <ul className="source-list">
                   {sources.map((source) => {

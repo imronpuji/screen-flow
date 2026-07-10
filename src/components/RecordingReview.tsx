@@ -31,7 +31,9 @@ import {
   shortcutsForContext,
 } from '../../shared/shortcuts'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
+import { EmptyHint, Tooltip } from './Tooltip'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
+import { TOOLTIPS } from '../../shared/tooltips'
 
 export interface RecordingReviewProps {
   mediaUrl: string
@@ -159,31 +161,35 @@ export function RecordingReview({
           </p>
         </div>
         <div className="review__header-actions">
-          <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard} title="Esc">
-            New recording
-          </button>
-          <button
-            type="button"
-            className="btn btn--accent"
-            disabled={exporting}
-            title="B — Apply Tutorial look: zoom, spotlight cursor, Aurora frame"
-            onClick={() =>
-              setEdit((prev) =>
-                applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
-              )
-            }
-          >
-            Beautify
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            disabled={exporting}
-            title="E"
-            onClick={() => onExport(edit)}
-          >
-            {exporting ? 'Exporting…' : 'Export MP4'}
-          </button>
+          <Tooltip copy={TOOLTIPS['discard-review']}>
+            <button type="button" className="btn btn--ghost" disabled={exporting} onClick={onDiscard}>
+              New recording
+            </button>
+          </Tooltip>
+          <Tooltip copy={TOOLTIPS.beautify}>
+            <button
+              type="button"
+              className="btn btn--accent"
+              disabled={exporting}
+              onClick={() =>
+                setEdit((prev) =>
+                  applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
+                )
+              }
+            >
+              Beautify
+            </button>
+          </Tooltip>
+          <Tooltip copy={TOOLTIPS['export-ready']}>
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={exporting}
+              onClick={() => onExport(edit)}
+            >
+              {exporting ? 'Exporting…' : 'Export MP4'}
+            </button>
+          </Tooltip>
           {exporting ? (
             <button type="button" className="btn btn--danger" onClick={onCancelExport} title="Esc">
               Cancel
@@ -495,9 +501,7 @@ export function RecordingReview({
               ) : null}
             </>
           ) : (
-            <p className="review__hint">
-              No camera track — enable FaceTime overlay before recording to add one.
-            </p>
+            <EmptyHint copy={TOOLTIPS['camera-review-empty']} className="review__hint" />
           )}
 
           <div className="review__field">
@@ -632,7 +636,6 @@ export function RecordingReview({
             <ul>
               <li>Per-click zoom points</li>
               <li>Timeline clip markers</li>
-              <li>Empty-state tooltips</li>
             </ul>
           </div>
         </aside>
