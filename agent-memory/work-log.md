@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Review: 8 tombol posisi (4 pojok + 4 tepi); Setup: Position select mencakup edge mids + Custom.
   - Smoke camera covers edge snap + preset match.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects/camera-sync hijau.
-- **Commit:** (lihat git)
+- **Commit:** `ff6f3ab` (feature) / `875b622` (lint+memory)
 - **Status:** done (FOKUS 3B slice — mid-edge snap polish)
 - **Next:** Visual verify on Mac; multi-segment camera if MediaRecorder restart needed; optional opacity/mirror toggle.
 
