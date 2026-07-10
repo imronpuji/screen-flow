@@ -282,6 +282,12 @@ export default function App() {
       if (_edit.autoZoomEnabled && lastCursorEventsPath) {
         exportRequest.autoZoom = { cursorEventsPath: lastCursorEventsPath }
       }
+      if (_edit.background.enabled) {
+        exportRequest.background = { style: _edit.background }
+      }
+      if (_edit.cursorSmoothingEnabled && lastCursorEventsPath) {
+        exportRequest.cursorSmoothing = { cursorEventsPath: lastCursorEventsPath }
+      }
       const result = await exportWebmToMp4(exportRequest)
       clearReview()
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
@@ -289,6 +295,8 @@ export default function App() {
       const baked: string[] = []
       if (result.trimApplied) baked.push('trim')
       if (result.autoZoomApplied) baked.push('auto-zoom')
+      if (result.backgroundApplied) baked.push('background')
+      if (result.cursorApplied) baked.push('cursor')
       const bakedLabel = baked.length ? `, ${baked.join(' + ')} baked` : ''
 
       const saved = await saveExport({

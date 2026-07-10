@@ -14,7 +14,7 @@ import { app } from 'electron'
 import { type ChildProcess, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { planAutoZoomExport } from '../../shared/ffmpegZoom.js'
+import { planExportFilters, EXPORT_SENDCMD_PLACEHOLDERS } from '../../shared/ffmpegExport.js'
 import {
   applyTrimToCursorEvents,
   msToFfmpegSec,
@@ -150,6 +150,8 @@ async function transcodeOnce(
   encoder: { codec: string; extraArgs: string[] },
   options: {
     videoFilter?: string
+    filterComplex?: string
+    outputLabel?: string
     trim?: TrimRange
     /** Expected output duration for progress % when trimming. */
     expectedDurationSec?: number
@@ -164,7 +166,10 @@ async function transcodeOnce(
     args.push('-to', msToFfmpegSec(options.trim.endMs))
   }
   args.push('-an')
-  if (options.videoFilter) {
+  if (options.filterComplex) {
+    args.push('-filter_complex', options.filterComplex)
+    args.push('-map', `[${options.outputLabel ?? 'vout'}]`)
+  } else if (options.videoFilter) {
     args.push('-vf', options.videoFilter)
   }
   args.push(
@@ -273,42 +278,117 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
   }
 
-  let sendCmdPath: string | null = null
+  let zoomSendCmdPath: string | null = null
+  let cursorSendCmdPath: string | null = null
   let autoZoomApplied = false
+  let backgroundApplied = false
+  let cursorApplied = false
   let videoFilter: string | undefined
+  let filterComplex: string | undefined
+  let outputLabel: string | undefined
 
-  if (request.autoZoom?.cursorEventsPath) {
-    const eventsPath = assertUnderScreenFlowTemp(request.autoZoom.cursorEventsPath)
-    let events = readCursorEventsFile(eventsPath)
-    if (trimRange) {
-      events = applyTrimToCursorEvents(events, trimRange)
+  const sessionDir = path.dirname(outputPath)
+  const cursorEventsPath =
+    request.autoZoom?.cursorEventsPath ?? request.cursorSmoothing?.cursorEventsPath
+  let cursorEvents =
+    cursorEventsPath != null
+      ? readCursorEventsFile(assertUnderScreenFlowTemp(cursorEventsPath))
+      : []
+
+  if (trimRange && cursorEvents.length > 0) {
+    cursorEvents = applyTrimToCursorEvents(cursorEvents, trimRange)
+  }
+
+  const exportDurationMs = trimRange ? trimDurationMs(trimRange) : fullDurationMs
+  const effects: Parameters<typeof planExportFilters>[2] = {}
+
+  if (request.autoZoom?.cursorEventsPath && cursorEvents.length > 0) {
+    effects.autoZoom = {
+      events: cursorEvents,
+      options: request.autoZoom.options,
     }
-    const exportDurationMs = trimRange ? trimDurationMs(trimRange) : fullDurationMs
-    const plan = planAutoZoomExport(
-      events,
+  }
+  if (request.background?.style) {
+    effects.background = request.background.style
+  }
+  if (request.cursorSmoothing?.cursorEventsPath && cursorEvents.length > 0) {
+    effects.cursorSmoothing = {
+      events: cursorEvents,
+      options: request.cursorSmoothing.options,
+    }
+  }
+
+  const hasEffects =
+    effects.autoZoom != null || effects.background != null || effects.cursorSmoothing != null
+
+  if (hasEffects) {
+    const plan = planExportFilters(
       { width: probe.width, height: probe.height },
       exportDurationMs,
-      request.autoZoom.options,
+      effects,
     )
-    if (plan.hasZoom) {
-      sendCmdPath = path.join(path.dirname(outputPath), 'zoom-sendcmd.txt')
-      fs.writeFileSync(sendCmdPath, plan.sendCmd, 'utf8')
-      videoFilter = plan.videoFilter.replace(
-        '__SENDCMD_PATH__',
-        escapeFfmpegFilterPath(sendCmdPath),
-      )
-      autoZoomApplied = true
+    autoZoomApplied = plan.autoZoomApplied
+    backgroundApplied = plan.backgroundApplied
+    cursorApplied = plan.cursorApplied
+
+    if (plan.zoomSendCmd) {
+      zoomSendCmdPath = path.join(sessionDir, 'zoom-sendcmd.txt')
+      fs.writeFileSync(zoomSendCmdPath, plan.zoomSendCmd, 'utf8')
+    }
+    if (plan.cursorSendCmd) {
+      cursorSendCmdPath = path.join(sessionDir, 'cursor-sendcmd.txt')
+      fs.writeFileSync(cursorSendCmdPath, plan.cursorSendCmd, 'utf8')
+    }
+
+    if (plan.filterComplex) {
+      let graph = plan.filterComplex
+      if (zoomSendCmdPath) {
+        graph = graph.replace(
+          EXPORT_SENDCMD_PLACEHOLDERS.zoom,
+          escapeFfmpegFilterPath(zoomSendCmdPath),
+        )
+      }
+      if (cursorSendCmdPath) {
+        graph = graph.replace(
+          EXPORT_SENDCMD_PLACEHOLDERS.cursor,
+          escapeFfmpegFilterPath(cursorSendCmdPath),
+        )
+      }
+      filterComplex = graph
+      outputLabel = plan.outputLabel
+    } else if (plan.videoFilter) {
+      let vf = plan.videoFilter
+      if (zoomSendCmdPath) {
+        vf = vf.replace(
+          EXPORT_SENDCMD_PLACEHOLDERS.zoom,
+          escapeFfmpegFilterPath(zoomSendCmdPath),
+        )
+      }
+      videoFilter = vf
+    }
+
+    const baked: string[] = []
+    if (autoZoomApplied) baked.push('auto-zoom')
+    if (backgroundApplied) baked.push('background')
+    if (cursorApplied) baked.push('cursor')
+    if (baked.length > 0) {
       emitProgress({
         phase: 'starting',
         percent: 0,
-        message: `Applying auto-zoom (${plan.segments.length} segments)…`,
+        message: `Applying ${baked.join(' + ')}…`,
       })
     }
   }
 
   try {
     let encoder = pickVideoEncoder()
-    const transcodeOptions = { videoFilter, trim: trimRange, expectedDurationSec }
+    const transcodeOptions = {
+      videoFilter,
+      filterComplex,
+      outputLabel,
+      trim: trimRange,
+      expectedDurationSec,
+    }
     let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 
     // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
@@ -362,6 +442,8 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       bytesWritten,
       codec: encoder.codec,
       autoZoomApplied,
+      backgroundApplied,
+      cursorApplied,
       trimApplied,
     }
   } catch (err) {
@@ -383,9 +465,16 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
     throw err
   } finally {
-    if (sendCmdPath) {
+    if (zoomSendCmdPath) {
       try {
-        fs.unlinkSync(sendCmdPath)
+        fs.unlinkSync(zoomSendCmdPath)
+      } catch {
+        /* best-effort */
+      }
+    }
+    if (cursorSendCmdPath) {
+      try {
+        fs.unlinkSync(cursorSendCmdPath)
       } catch {
         /* best-effort */
       }

@@ -282,9 +282,9 @@ export function RecordingReview({
           <div className="review__coming">
             <p className="review__coming-title">Coming next</p>
             <ul>
-              <li>Bake background + cursor into export</li>
               <li>Per-click zoom points</li>
               <li>Export GIF / WebM</li>
+              <li>One-click beautify preset</li>
             </ul>
           </div>
         </aside>

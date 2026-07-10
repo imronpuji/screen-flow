@@ -86,17 +86,23 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
 - **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
+## [2026-07-10] Background + cursor export bake (ffmpeg filter_complex)
+
+- **Keputusan:** Export MP4 memanggil `planExportFilters` → auto-zoom (`sendcmd+crop`) → background (`gradients` + `scale` + `overlay` + optional `geq` rounded + `boxblur` shadow) → cursor (`sendcmd` + `drawbox@cursor` + `drawbox@ring`). IPC `ExportMp4Request.background.style` + `cursorSmoothing.cursorEventsPath`. UI meneruskan review toggles saat export.
+- **Alasan:** Hasil export match preview signature #2/#3; satu pass ffmpeg dengan progress/cancel; pure planners smoke-testable di CI (`smoke:export-effects`).
+- **Status:** aktif (MVP); refine gradient fidelity & multi-ring overlap later
+
 ## [2026-07-10] Background frame preview
 
 - **Keputusan:** `shared/background.ts` mendefinisikan preset gradient (Midnight/Aurora/Sunset/Slate/Minimal), padding %, corner radius, shadow. Renderer membungkus video di `AutoZoomPlayback` dengan kartu ber-padding di atas gradient; toggle + preset picker + padding slider di review. Export bake belum — preview only.
 - **Alasan:** Signature feature #3 terlihat langsung setelah stop tanpa decode video; pure functions smoke-testable; auto-zoom tetap pada stage dalam kartu agar fokus selaras dengan Screen Studio.
-- **Status:** aktif (preview); export bake = follow-up
+- **Status:** aktif (preview + export bake); refine preset fidelity later
 
 ## [2026-07-10] Cursor smoothing preview
 
 - **Keputusan:** `shared/cursorSmoothing.ts` membangun keyframes dari JSONL, smoothing weighted window (~48ms), click ring animasi cubic fade (~450ms). Renderer overlay di `AutoZoomPlayback` (dot + ring, ikut zoom transform). Toggle `cursorSmoothingEnabled` di review (default on). Export bake belum — preview only.
 - **Alasan:** Signature feature #2 terlihat langsung setelah stop tanpa decode video; pure functions smoke-testable; overlay dalam stage yang sama dengan auto-zoom agar fokus selaras.
-- **Status:** aktif (preview); export bake = follow-up
+- **Status:** aktif (preview + export bake); refine ring overlap later
 
 ## [2026-07-10] Export trim bake (ffmpeg -ss/-to)
 
