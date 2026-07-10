@@ -68,22 +68,32 @@ export function circleAlphaExpr(opaque = 255): string {
 }
 
 /**
- * Rounded-square alpha (~22% CSS border-radius on the bubble).
+ * Rounded-square / rounded-rect alpha (~22% CSS border-radius on min side).
  * Commas stay inside single quotes so filter_complex does not split them.
+ * Works for non-square bubbles (free aspect) via W/H independently.
  */
-export function roundedBubbleAlphaExpr(sizePx: number, opaque = 255): string {
+export function roundedBubbleAlphaExpr(
+  widthPx: number,
+  heightPx: number = widthPx,
+  opaque = 255,
+): string {
   const a = Math.max(0, Math.min(255, Math.round(opaque)))
-  const r = Math.max(2, Math.round(sizePx * 0.22))
+  const r = Math.max(2, Math.round(Math.min(widthPx, heightPx) * 0.22))
   return (
     `if(gt(abs(W/2-X),W/2-${r})*gt(abs(H/2-Y),H/2-${r}),` +
     `if(lte(hypot(abs(W/2-X)-(W/2-${r}),abs(H/2-Y)-(H/2-${r})),${r}),${a},0),${a})`
   )
 }
 
-function shapeAlphaExpr(shape: CameraShape, sizePx: number, opaque = 255): string | null {
+function shapeAlphaExpr(
+  shape: CameraShape,
+  widthPx: number,
+  heightPx: number,
+  opaque = 255,
+): string | null {
   if (shape === 'rectangle') return null
   if (shape === 'circle') return circleAlphaExpr(opaque)
-  return roundedBubbleAlphaExpr(sizePx, opaque)
+  return roundedBubbleAlphaExpr(widthPx, heightPx, opaque)
 }
 
 /** ffmpeg color=c= expects 0xRRGGBB (no #). */
@@ -184,7 +194,7 @@ export function planCameraExport(
     const withShadow = `${outputLabel}_bgs`
     const shadowX = x - CAMERA_SHADOW_PAD_PX + CAMERA_SHADOW_OFFSET_X
     const shadowY = y - CAMERA_SHADOW_PAD_PX + CAMERA_SHADOW_OFFSET_Y
-    const alpha = shapeAlphaExpr(normalized.shape, bubbleW, shadowAlpha)
+    const alpha = shapeAlphaExpr(normalized.shape, bubbleW, bubbleH, shadowAlpha)
     const blur = `boxblur=${CAMERA_SHADOW_BLUR_PX}:${Math.max(1, Math.floor(CAMERA_SHADOW_BLUR_PX / 2))}`
     const pad = `pad=${shadowW}:${shadowH}:(ow-iw)/2:(oh-ih)/2:color=0x00000000`
 
@@ -212,7 +222,7 @@ export function planCameraExport(
     const plateStill = `${outputLabel}_platestill`
     const plateLoop = `${outputLabel}_bord`
     const withBorder = `${outputLabel}_bb`
-    const plateAlpha = shapeAlphaExpr(normalized.shape, bubbleW, plateOpaque)
+    const plateAlpha = shapeAlphaExpr(normalized.shape, bubbleW, bubbleH, plateOpaque)
 
     if (plateAlpha == null) {
       if (opacityApplied) {
@@ -279,7 +289,7 @@ export function planCameraExport(
     const alphaExpr =
       normalized.shape === 'circle'
         ? circleAlphaExpr(plateOpaque)
-        : roundedBubbleAlphaExpr(innerW, plateOpaque)
+        : roundedBubbleAlphaExpr(innerW, innerH, plateOpaque)
 
     lines.push(`${camScaled},format=rgba[${camRaw}]`)
     // alphamerge reads the mask's LUMA (not its alpha channel), so the mask must

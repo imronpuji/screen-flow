@@ -36,7 +36,11 @@ export interface BeautifyPreset {
     | 'borderColor'
     | 'mirrored'
     | 'opacity'
-  >
+  > & {
+    /** Beautify always re-locks aspect (square bubble). */
+    lockAspect?: boolean
+    heightPercent?: number
+  }
   exportQuality: ExportQualityId
 }
 
@@ -166,6 +170,8 @@ export function applyBeautifyPreset(
         // Beautify turns the bubble on whenever a camera track exists.
         enabled: hasCamera,
         sizePercent: preset.camera.sizePercent,
+        heightPercent: preset.camera.sizePercent,
+        lockAspect: true,
         shape: preset.camera.shape,
         shadowEnabled: preset.camera.shadowEnabled,
         borderEnabled: preset.camera.borderEnabled,

@@ -89,7 +89,13 @@ export function CameraBubble({
   } | null>(null)
 
   const displayStyle = dragStyle ?? style
-  const pos = cameraBubblePosition(displayStyle)
+  const posAspect =
+    frameAspect && frameAspect > 0
+      ? frameAspect
+      : dragAspect && dragAspect > 0
+        ? dragAspect
+        : 16 / 9
+  const pos = cameraBubblePosition(displayStyle, posAspect)
   const mirrorVideo = mirrored ?? displayStyle.mirrored
   const useRecorded = Boolean(mediaUrl)
   const active = style.enabled && (useRecorded || Boolean(stream))
@@ -288,6 +294,8 @@ export function CameraBubble({
       drag.originY + dy,
       style.sizePercent,
       drag.aspect,
+      undefined,
+      style.heightPercent,
     )
     setSnapTarget(snapped.snapped ? snapped.target : null)
     setDragStyle(
@@ -343,6 +351,8 @@ export function CameraBubble({
       drag.originY + dy,
       style.sizePercent,
       drag.aspect,
+      undefined,
+      style.heightPercent,
     )
 
     const next = normalizeCameraOverlay(
@@ -364,11 +374,16 @@ export function CameraBubble({
   const guideAspect = dragAspect ?? frameAspect ?? 16 / 9
   const guideTargets =
     dragging && guideParent
-      ? cameraSnapTargets(displayStyle.sizePercent, guideAspect)
+      ? cameraSnapTargets(
+          displayStyle.sizePercent,
+          guideAspect,
+          displayStyle.heightPercent,
+        )
       : []
   const { w: guideW, h: guideH } = cameraBubbleSizeNorm(
     displayStyle.sizePercent,
     guideAspect,
+    displayStyle.heightPercent,
   )
 
   return (
@@ -384,6 +399,8 @@ export function CameraBubble({
           top: pos.top,
           left: pos.left,
           width: pos.width,
+          height: pos.height,
+          aspectRatio: pos.aspectRatio,
           borderRadius: pos.borderRadius,
           border: pos.border,
           boxShadow: pos.boxShadow,
@@ -392,7 +409,9 @@ export function CameraBubble({
         aria-label={label}
         title={
           interactive
-            ? 'Drag to reposition — snaps to corners & edges · corner handles resize'
+            ? displayStyle.lockAspect
+              ? 'Drag to reposition — snaps to corners & edges · corner handles resize (aspect locked)'
+              : 'Drag to reposition — snaps to corners & edges · corner handles free resize'
             : undefined
         }
         onPointerDown={interactive ? onMovePointerDown : undefined}

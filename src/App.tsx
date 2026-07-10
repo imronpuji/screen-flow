@@ -11,6 +11,7 @@ import {
   CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_SNAP_PRESETS,
   applyCameraSnapPreset,
+  cameraShapeAllowsFreeAspect,
   cameraSnapPresetLabel,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
@@ -932,7 +933,11 @@ export default function App() {
                   </select>
                 </label>
                 <label className="camera-controls__field">
-                  <span>Size {cameraOverlay.sizePercent}%</span>
+                  <span>
+                    {cameraOverlay.lockAspect
+                      ? `Size ${cameraOverlay.sizePercent}%`
+                      : `Width ${cameraOverlay.sizePercent}%`}
+                  </span>
                   <input
                     type="range"
                     min={12}
@@ -944,11 +949,36 @@ export default function App() {
                         normalizeCameraOverlay({
                           ...prev,
                           sizePercent: Number(e.target.value),
+                          heightPercent: prev.lockAspect
+                            ? Number(e.target.value)
+                            : prev.heightPercent,
                         }),
                       )
                     }
                   />
                 </label>
+                {!cameraOverlay.lockAspect &&
+                cameraShapeAllowsFreeAspect(cameraOverlay.shape) ? (
+                  <label className="camera-controls__field">
+                    <span>Height {cameraOverlay.heightPercent}%</span>
+                    <input
+                      type="range"
+                      min={12}
+                      max={40}
+                      value={cameraOverlay.heightPercent}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setCameraOverlay((prev) =>
+                          normalizeCameraOverlay({
+                            ...prev,
+                            lockAspect: false,
+                            heightPercent: Number(e.target.value),
+                          }),
+                        )
+                      }
+                    />
+                  </label>
+                ) : null}
                 <label className="camera-controls__field">
                   <span>Shape</span>
                   <select
@@ -968,6 +998,27 @@ export default function App() {
                     <option value="rectangle">Rectangle</option>
                   </select>
                 </label>
+                {cameraShapeAllowsFreeAspect(cameraOverlay.shape) ? (
+                  <label className="camera-controls__toggle">
+                    <input
+                      type="checkbox"
+                      checked={cameraOverlay.lockAspect}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setCameraOverlay((prev) =>
+                          normalizeCameraOverlay({
+                            ...prev,
+                            lockAspect: e.target.checked,
+                            heightPercent: e.target.checked
+                              ? prev.sizePercent
+                              : prev.heightPercent,
+                          }),
+                        )
+                      }
+                    />
+                    <span>Lock aspect (square)</span>
+                  </label>
+                ) : null}
                 <label className="camera-controls__toggle">
                   <input
                     type="checkbox"

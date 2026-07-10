@@ -1269,7 +1269,7 @@
 .camera-bubble {
   position: absolute;
   z-index: 4;
-  aspect-ratio: 1;
+  /* aspect-ratio / height come from cameraBubblePosition (square vs free) */
   overflow: hidden;
   /* border + box-shadow come from cameraBubblePosition (preview ≡ export) */
   border: none;
