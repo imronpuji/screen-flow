@@ -338,6 +338,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         ...request.autoZoom.options,
         ...(geometry ? { geometry } : {}),
       },
+      zoomOverrides: request.autoZoom.zoomOverrides,
     }
   }
   if (request.background?.style) {

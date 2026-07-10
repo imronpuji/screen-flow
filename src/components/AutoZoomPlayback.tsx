@@ -11,6 +11,10 @@ import {
   type VideoSize,
 } from '../../shared/autozoom'
 import {
+  applyZoomPointOverrides,
+  type ZoomPointOverride,
+} from '../../shared/zoomPoints'
+import {
   buildClickRings,
   buildCursorKeyframes,
   getActiveClickRings,
@@ -42,6 +46,8 @@ export interface AutoZoomPlaybackProps {
   /** Display DIP geometry for Retina/multi-monitor cursor→frame mapping. */
   captureGeometry?: CaptureGeometry | null
   autoZoomEnabled?: boolean
+  /** Per-click enable/disable + peak scale (from review editor). */
+  zoomPointOverrides?: ZoomPointOverride[]
   cursorSmoothingEnabled?: boolean
   cursorAppearance?: CursorAppearance
   background?: BackgroundStyle
@@ -59,6 +65,7 @@ export function AutoZoomPlayback({
   cursorEvents,
   captureGeometry = null,
   autoZoomEnabled = true,
+  zoomPointOverrides = [],
   cursorSmoothingEnabled = true,
   cursorAppearance = DEFAULT_CURSOR_APPEARANCE,
   background,
@@ -88,7 +95,7 @@ export function AutoZoomPlayback({
   )
   const showCursor = cursorSmoothingEnabled && cursorDraw.visible
 
-  const segments = useMemo(
+  const baseSegments = useMemo(
     () =>
       autoZoomEnabled
         ? buildZoomSegments(cursorEvents, videoSize, {
@@ -96,6 +103,11 @@ export function AutoZoomPlayback({
           })
         : [],
     [autoZoomEnabled, captureGeometry, cursorEvents, videoSize],
+  )
+
+  const segments = useMemo(
+    () => applyZoomPointOverrides(baseSegments, zoomPointOverrides),
+    [baseSegments, zoomPointOverrides],
   )
 
   const cursorKeyframes = useMemo(

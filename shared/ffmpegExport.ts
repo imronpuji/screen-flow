@@ -12,6 +12,7 @@ import { planBackgroundExport } from './ffmpegBackground.js'
 import { planCameraExport } from './ffmpegCamera.js'
 import { planCursorExport, type CursorSendCmdOptions } from './ffmpegCursor.js'
 import { planAutoZoomExport } from './ffmpegZoom.js'
+import type { ZoomPointOverride } from './zoomPoints.js'
 
 export interface VideoSize {
   width: number
@@ -22,6 +23,8 @@ export interface ExportEffectsRequest {
   autoZoom?: {
     events: CursorEvent[]
     options?: AutoZoomOptions
+    /** Per-click enable/disable + peak scale (matches review editor). */
+    zoomOverrides?: ZoomPointOverride[]
   }
   background?: BackgroundStyle
   cursorSmoothing?: {
@@ -79,6 +82,8 @@ export function planExportFilters(
         videoSize,
         durationMs,
         effects.autoZoom.options,
+        {},
+        effects.autoZoom.zoomOverrides,
       )
     : null
 
