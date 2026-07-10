@@ -19,6 +19,7 @@ import {
   removeCameraActiveRangeAt,
   screenTimeToCameraTimeSec,
   toggleCameraActiveAtWallMs,
+  resizeCameraActiveRangeEdge,
 } from '../shared/cameraSync.ts'
 import { planCameraExport } from '../dist-electron/shared/ffmpegCamera.js'
 import { DEFAULT_CAMERA_OVERLAY } from '../shared/camera.ts'
@@ -196,6 +197,72 @@ function testActiveRanges(): void {
       materialized[0]!.startMs === 0 &&
       materialized[0]!.endMs === 4000,
     'materialize always-on',
+  )
+
+  // Scrubber edge drag: resize start/end with neighbor clamps
+  const resizedEnd = resizeCameraActiveRangeEdge(
+    [{ startMs: 1000, endMs: 4000 }],
+    0,
+    'end',
+    3000,
+    5000,
+  )
+  assert(
+    resizedEnd.length === 1 && resizedEnd[0]!.endMs === 3000,
+    `resize end (got ${JSON.stringify(resizedEnd)})`,
+  )
+  const resizedStart = resizeCameraActiveRangeEdge(resizedEnd, 0, 'start', 1500, 5000)
+  assert(
+    resizedStart.length === 1 && resizedStart[0]!.startMs === 1500,
+    `resize start (got ${JSON.stringify(resizedStart)})`,
+  )
+  const clampedNeighbor = resizeCameraActiveRangeEdge(
+    [
+      { startMs: 0, endMs: 1000 },
+      { startMs: 2000, endMs: 4000 },
+    ],
+    1,
+    'start',
+    1500,
+    5000,
+  )
+  assert(
+    clampedNeighbor.length === 2 && clampedNeighbor[1]!.startMs === 1500,
+    `resize start between neighbors (got ${JSON.stringify(clampedNeighbor)})`,
+  )
+  const mergeIntoPrev = resizeCameraActiveRangeEdge(
+    [
+      { startMs: 0, endMs: 1000 },
+      { startMs: 2000, endMs: 4000 },
+    ],
+    1,
+    'start',
+    500,
+    5000,
+  )
+  assert(
+    mergeIntoPrev.length === 1 &&
+      mergeIntoPrev[0]!.startMs === 0 &&
+      mergeIntoPrev[0]!.endMs === 4000,
+    `drag into prev merges (got ${JSON.stringify(mergeIntoPrev)})`,
+  )
+  const minLen = resizeCameraActiveRangeEdge(
+    [{ startMs: 1000, endMs: 4000 }],
+    0,
+    'end',
+    1005,
+    5000,
+  )
+  assert(
+    minLen[0]!.endMs === 1020,
+    `min window 20ms (got ${JSON.stringify(minLen)})`,
+  )
+  const fromAlwaysOn = resizeCameraActiveRangeEdge([], 0, 'end', 2500, 5000)
+  assert(
+    fromAlwaysOn.length === 1 &&
+      fromAlwaysOn[0]!.startMs === 0 &&
+      fromAlwaysOn[0]!.endMs === 2500,
+    `materialize then resize always-on (got ${JSON.stringify(fromAlwaysOn)})`,
   )
 
   console.log('ok camera active ranges')

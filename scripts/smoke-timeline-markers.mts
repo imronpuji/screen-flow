@@ -121,11 +121,14 @@ function testCameraRanges(): void {
     openClosed[0]?.kind === 'camera' &&
       openClosed[0]?.startMs === 100 &&
       openClosed[0]?.endMs === 1100 &&
-      openClosed[0]?.tMs === 100,
+      openClosed[0]?.tMs === 100 &&
+      openClosed[0]?.rangeIndex === 0,
     'first range mapped to screen timeline',
   )
   assert(
-    openClosed[1]?.startMs === 2900 && openClosed[1]?.endMs === 4900,
+    openClosed[1]?.startMs === 2900 &&
+      openClosed[1]?.endMs === 4900 &&
+      openClosed[1]?.rangeIndex === 1,
     'open range closed at wallDuration',
   )
 
