@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:48] Zoom hold-edge resize (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/zoomPoints.ts` — `ZoomSegmentEdge` includes `'hold'`; `resizeZoomSegmentEdge` trades hold↔zoom-out (peak/start/end fixed); auto/manual upsert paths.
+  - `shared/timelineMarkers.ts` — `holdEndMs` on zoom markers.
+  - `shared/timelineSnap.ts` — snap target `${id}-hold`.
+  - `AutoZoomPlayback` — middle hold handle on teal spans; magnetic exclude hold id.
+  - Tooltip `trim-zoom-hold` + review hint; smoke hold cases in zoom-points.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/tooltips/timeline-snap/markers/zoom/project-autosave hijau.
+- **Commit:** `b4c2729`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; FaceTime polish after editor solid; keyboard overlay / auto-cut silence.
+
 ## [2026-07-10 14:55] Zoom span edge resize (FOKUS 5)
 
 - **Dikerjakan:**
@@ -10,8 +23,8 @@ Entri terbaru di ATAS.
   - Markers/autosave normalize timing; smoke edge-resize cases.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/tooltips/project-autosave/timeline-snap/timeline-zoom hijau.
 - **Commit:** `19f8720`
-- **Status:** done — lanjut push/PR + owner merge callback.
-- **Next:** Visual verify on Mac; FaceTime polish after editor solid; optional hold-edge resize / keyboard overlay.
+- **Status:** done — PR #81 merged (`125ebec`); hold-edge follow-up in `b4c2729`.
+- **Next:** Visual verify on Mac; FaceTime polish after editor solid; keyboard overlay.
 
 ## [2026-07-10 14:45] Zoom-event drag on timeline (FOKUS 5)
 
