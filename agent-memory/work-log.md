@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 15:20] Empty-state CTAs + discard confirm (FOKUS 4)
+
+- **Dikerjakan:**
+  - `EmptyHint` — optional action CTA (label/onClick/disabled).
+  - Setup: sources empty → **Refresh sources** button.
+  - Review Zoom: empty → catalog `zoom-empty` + **Add zoom at playhead**.
+  - Destructive: **New recording** / Esc → confirm dialog (`discard-confirm`); Esc lagi batal.
+  - Smoke tooltips covers new ids.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:tooltips` + shortcuts/keep-ranges/timeline-snap/edit-history hijau.
+- **Commit:** `db143ae`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Toast feedback / export dialog polish; visual verify on Mac.
+
 ## [2026-07-10 15:00] Keep-clip edge drag snap (FOKUS 5)
 
 - **Dikerjakan:**

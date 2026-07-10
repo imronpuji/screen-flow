@@ -30,5 +30,6 @@
 - [x] Auto-highlight klik — soft filled pulse (preview + export bake) + toggle + persist + Beautify on
 - [x] Keyboard shortcuts — setup R/Space; review Space/E/B/Z/⌘Z/←→/Esc; exporting Esc
 - [x] Empty-state tooltips — catalog + hover tips + empty source/camera hints
+- [x] Empty-state CTAs — Refresh sources · Add zoom at playhead + discard confirm dialog
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path
