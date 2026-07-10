@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:40] Camera outline color picker (FOKUS 3E)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — `CAMERA_BORDER_COLOR_PRESETS` (Frost/White/Ink/Teal/Amber/Rose).
+  - Setup + review UI: swatch row + native `input[type=color]` when outline on; live bubble updates via existing `borderColor`.
+  - Beautify: Tutorial frost, Product demo teal, Social amber.
+  - Smoke camera/beautify cover presets + apply colors.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/beautify/export-camera/export-effects hijau.
+- **Commit:** `a1731ae`
+- **Status:** done (FOKUS 3E slice — outline color picker)
+- **Next:** Visual verify on Mac; optional mid-edge snap polish; multi-segment camera if MediaRecorder restart needed.
+
 ## [2026-07-10 09:55] Mid-recording FaceTime camera toggle (FOKUS 3A)
 
 - **Dikerjakan:**
