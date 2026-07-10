@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:05] Camera hot-plug + soft inactive (FOKUS 3A)
+
+- **Dikerjakan:**
+  - `src/lib/cameraDevices.ts` — `pickCameraDeviceId`, `isCameraDevicePresent`, `CAMERA_INACTIVE_STATUS`.
+  - `App.tsx` — `devicechange` → refresh + reopen-if-lost; video track `ended` → soft inactive (setup disable / recording mute+close ranges); intentional-stop guard.
+  - Smoke `smoke:camera-devices`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-devices/camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
+- **Commit:** `971bbcd`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional persist background prefs; camera active-range markers on timeline.
+
 ## [2026-07-10 13:10] Background frame layout presets
 
 - **Dikerjakan:**

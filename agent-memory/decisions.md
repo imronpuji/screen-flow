@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera hot-plug + soft inactive (FOKUS 3A)
+
+- **Keputusan:** `navigator.mediaDevices` `devicechange` memanggil `refreshCameraDevices({ reopenIfLost })`: `pickCameraDeviceId` mempertahankan device terpilih bila masih ada, else fallback device pertama. Kalau kamera armed di setup dan device hilang → reopen ke fallback; kalau tidak ada device → matikan overlay + status lembut `CAMERA_INACTIVE_STATUS` ("Camera inactive — device disconnected."). Video track `ended` (unplug / Continuity drop) memakai handler yang sama: saat recording → mute tracks + close `activeRanges` (tanpa stop MediaRecorder); saat setup → disable preview. Stop sengaja memakai `cameraIntentionalStopRef` supaya `ended` dari `track.stop()` tidak salah dianggap unplug.
+- **Alasan:** FOKUS 3A — Continuity Camera / USB webcam sering muncul/hilang; orang awam butuh status "kamera tidak aktif" bukan error teknis MediaStream.
+- **Status:** aktif
+
 ## [2026-07-10] Background frame layout presets
 
 - **Keputusan:** Framing kartu video punya preset cepat terpisah dari warna gradient: `BACKGROUND_FRAME_LAYOUTS` = **Compact** (pad 6% / r 10 / shadow), **Standard** (10 / 14 / shadow — default), **Wide** (16 / 20 / shadow), **Flat** (8 / 0 / no shadow). `applyBackgroundFrameLayout` hanya mengubah padding/radius/shadow; `presetId` warna tetap. `matchBackgroundFrameLayout` exact-match untuk highlight tombol. Review menambah slider corner radius (0–28 UI; clamp normalize 0–32). Preview CSS + ffmpeg `planBackgroundExport` tetap satu sumber `BackgroundStyle`.
