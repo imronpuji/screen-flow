@@ -100,6 +100,7 @@ export function RecordingReview({
             mediaUrl={mediaUrl}
             cursorEvents={cursorEvents}
             autoZoomEnabled={edit.autoZoomEnabled}
+            cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             onDurationMs={onDurationMs}
@@ -119,6 +120,18 @@ export function RecordingReview({
               }
             />
             <span>Auto-zoom on clicks</span>
+          </label>
+
+          <label className="review__toggle">
+            <input
+              type="checkbox"
+              checked={edit.cursorSmoothingEnabled}
+              disabled={exporting}
+              onChange={(e) =>
+                setEdit((prev) => ({ ...prev, cursorSmoothingEnabled: e.target.checked }))
+              }
+            />
+            <span>Cursor smoothing + click rings</span>
           </label>
 
           <div className="review__field">
@@ -178,8 +191,8 @@ export function RecordingReview({
             <p className="review__coming-title">Coming next</p>
             <ul>
               <li>Background & padding</li>
-              <li>Cursor smoothing</li>
               <li>Per-click zoom points</li>
+              <li>Export GIF / WebM</li>
             </ul>
           </div>
         </aside>

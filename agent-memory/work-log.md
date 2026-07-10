@@ -2,6 +2,13 @@
 
 Entri terbaru di ATAS.
 
+## [2026-07-10 06:15] Cursor smoothing + click ring preview
+
+- **Dikerjakan:** `shared/cursorSmoothing.ts` (weighted smoothing, click ring animation); overlay kursor + ring di `AutoZoomPlayback` (stage aspect-ratio + zoom transform); toggle `cursorSmoothingEnabled` di review editor; smoke `smoke:cursor-smoothing`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke cursor-smoothing/autozoom/export-trim hijau.
+- **Status:** done (preview MVP)
+- **Next:** Background padding/gradient preview; bake cursor + rings ke ffmpeg export.
+
 ## [2026-07-10 06:10] Bake trim ke ffmpeg MP4 export
 
 - **Dikerjakan:** `shared/edit.ts` helpers (`normalizeTrim`, `applyTrimToCursorEvents`, `msToFfmpegSec`); IPC `ExportMp4Request.trim`; transcode `-ss/-to` + re-base cursor events untuk auto-zoom; UI kirim trim dari review sliders; smoke `smoke:export-trim`.
