@@ -29,6 +29,6 @@
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik
 - [x] Keyboard shortcuts — setup R/Space; review Space/E/B/arrows/Esc; exporting Esc
-- [ ] Empty-state tooltips
+- [x] Empty-state tooltips — catalog + hover tips + empty source/camera hints
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

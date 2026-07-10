@@ -29,7 +29,8 @@
     "smoke:export-quality": "node --experimental-strip-types scripts/smoke-export-quality.mts",
     "smoke:beautify": "node --experimental-strip-types scripts/smoke-beautify.mts",
     "smoke:onboarding": "node --experimental-strip-types scripts/smoke-onboarding.mts",
-    "smoke:shortcuts": "node --experimental-strip-types scripts/smoke-shortcuts.mts"
+    "smoke:shortcuts": "node --experimental-strip-types scripts/smoke-shortcuts.mts",
+    "smoke:tooltips": "node --experimental-strip-types scripts/smoke-tooltips.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

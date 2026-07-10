@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 08:56] Empty-state tooltips (polish)
+
+- **Dikerjakan:**
+  - `shared/tooltips.ts` — catalog + `startRecordingTooltip` / `sourcesEmptyTooltip` resolvers.
+  - `Tooltip` + `EmptyHint` components; wire setup (Start/Refresh/camera/sources empty) + review (Export/Beautify/discard/no-camera).
+  - Smoke `smoke:tooltips`; remove “Empty-state tooltips” from Coming next.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke tooltips/shortcuts/onboarding/beautify/camera/export-effects hijau.
+- **Commit:** `a1e64b7`
+- **Status:** done (polish slice 3)
+- **Next:** Timeline clip markers; per-click zoom points; visual verify Retina zoom on Mac.
+
 ## [2026-07-10 08:20] Fix FaceTime double + export 234
 
 - **Dikerjakan:**
