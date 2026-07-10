@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 26:10] FaceTime layout map clickable snap guides (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `CameraLayoutMap` — 8 snap guide dots **selalu** terlihat saat interaktif; klik guide → `applyCameraSnapPreset` (exact preset, tidak free-drag).
+  - CSS hover/active + `guides--dragging` highlight lebih kuat saat drag; review hint diperbarui.
+  - Smoke `place at point` covers guide-click path untuk semua `CAMERA_SNAP_PRESETS`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera*/export-camera/camera-sync/beautify/export-effects hijau.
+- **Commit:** `48b7165`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; optional ScreenCaptureKit.
+
 ## [2026-07-10 25:40] FaceTime layout map snap guides (FOKUS 3B)
 
 - **Dikerjakan:**
