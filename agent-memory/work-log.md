@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:10] Camera layout: free drag + snap (FOKUS 3B)
+
+- **Dikerjakan:**
+  - `shared/camera.ts` — relative `x`/`y` (0–1 top-left), `anchor` corner|free, snap targets (4 corners + 4 edge mids), safe margin 3%, size 12–40%.
+  - `CameraBubble` drag-and-drop (pointer capture) + snap on release; interactive CSS grab cursor.
+  - Review: corner preset buttons + drag hint; setup live bubble also draggable; beautify uses `applyCameraCornerPreset`.
+  - Smoke `smoke:camera` covers free layout, snap, presets.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/beautify/export-effects hijau.
+- **Commit:** `30bb4b0`
+- **Status:** done (FOKUS 3B slice — free position + snap)
+- **Next:** Resize handles (aspect lock); rectangle shape; configurable border/shadow bake; drift compensation A/V.
+
 ## [2026-07-10 09:05] Per-click zoom points (manual edit)
 
 - **Dikerjakan:**

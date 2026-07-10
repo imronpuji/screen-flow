@@ -24,7 +24,7 @@
 
 - [ ] Preset background
 - [ ] Export GIF / WebM
-- [x] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake
+- [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + **free drag/snap relative layout**; resize handles / rect shape / border bake still open
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik
