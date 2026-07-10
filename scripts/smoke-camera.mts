@@ -9,9 +9,11 @@ import {
   CAMERA_MIN_SIZE_PERCENT,
   CAMERA_SAFE_MARGIN,
   CAMERA_SHAPES,
+  CAMERA_SIZE_PRESETS,
   CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
+  applyCameraSizePreset,
   applyCameraSnapPreset,
   cameraBubbleChromeStyle,
   cameraBubbleNormRect,
@@ -22,14 +24,18 @@ import {
   cameraSnapTargets,
   clampCameraLayout,
   layoutFromCorner,
+  matchCameraSizePreset,
   matchCameraSnapTarget,
   normalizeCameraBorderColor,
   normalizeCameraOverlay,
   nudgeCameraLayout,
+  nudgeCameraSize,
   resizeCameraFromHandle,
   snapCameraLayout,
   CAMERA_NUDGE_STEP,
   CAMERA_NUDGE_STEP_SHIFT,
+  CAMERA_SIZE_NUDGE_STEP,
+  CAMERA_SIZE_NUDGE_STEP_SHIFT,
 } from '../shared/camera.ts'
 import { defaultReviewEdit } from '../dist-electron/shared/edit.js'
 
@@ -396,6 +402,69 @@ function testNudge(): void {
   console.log('ok nudge')
 }
 
+function testSizeNudgeAndPresets(): void {
+  const start = normalizeCameraOverlay({
+    enabled: true,
+    corner: 'bottom-right',
+    sizePercent: 22,
+    shape: 'circle',
+  })
+  assert(matchCameraSizePreset(start) === 'medium', 'default matches M')
+
+  const grown = nudgeCameraSize(start, 'grow')
+  assert(grown.sizePercent === start.sizePercent + CAMERA_SIZE_NUDGE_STEP, 'grow +1')
+  assert(grown.heightPercent === grown.sizePercent, 'locked height follows grow')
+  assert(matchCameraSizePreset(grown) == null, 'off-preset after nudge')
+
+  const shrunkShift = nudgeCameraSize(start, 'shrink', { shift: true })
+  assert(
+    shrunkShift.sizePercent === start.sizePercent - CAMERA_SIZE_NUDGE_STEP_SHIFT,
+    'shift shrink −4',
+  )
+
+  const atMin = nudgeCameraSize(
+    normalizeCameraOverlay({ ...start, sizePercent: CAMERA_MIN_SIZE_PERCENT }),
+    'shrink',
+  )
+  assert(atMin.sizePercent === CAMERA_MIN_SIZE_PERCENT, 'size nudge clamps min')
+
+  const atMax = nudgeCameraSize(
+    normalizeCameraOverlay({ ...start, sizePercent: CAMERA_MAX_SIZE_PERCENT }),
+    'grow',
+    { shift: true },
+  )
+  assert(atMax.sizePercent === CAMERA_MAX_SIZE_PERCENT, 'size nudge clamps max')
+
+  const unlocked = normalizeCameraOverlay({
+    ...start,
+    shape: 'rectangle',
+    lockAspect: false,
+    sizePercent: 20,
+    heightPercent: 30,
+  })
+  const unlockedGrow = nudgeCameraSize(unlocked, 'grow')
+  assert(unlockedGrow.sizePercent === 21, 'unlocked grows width')
+  assert(unlockedGrow.heightPercent === 30, 'unlocked keeps height')
+
+  for (const preset of CAMERA_SIZE_PRESETS) {
+    const applied = applyCameraSizePreset(start, preset.id)
+    assert(applied.sizePercent === preset.sizePercent, `preset ${preset.id} size`)
+    assert(matchCameraSizePreset(applied) === preset.id, `match ${preset.id}`)
+  }
+
+  const freeLarge = applyCameraSizePreset(unlocked, 'large')
+  assert(freeLarge.sizePercent === 32, 'large preset width')
+  assert(freeLarge.heightPercent === 30, 'large keeps unlocked height')
+
+  // Growing a corner-anchored bubble should re-layout within safe margin.
+  const corner = applyCameraCornerPreset({ sizePercent: 16 }, 'top-left')
+  const bigger = applyCameraSizePreset(corner, 'large')
+  assert(nearly(bigger.x, CAMERA_SAFE_MARGIN), 'size preset keeps TL x')
+  assert(nearly(bigger.y, CAMERA_SAFE_MARGIN), 'size preset keeps TL y')
+
+  console.log('ok size nudge + presets')
+}
+
 function testReviewEditCamera(): void {
   const plain = defaultReviewEdit(5000)
   assert(plain.cameraOverlay.enabled === false, 'default review camera off')
@@ -428,5 +497,6 @@ testNormRect()
 testSnapAndPresets()
 testResizeHandles()
 testNudge()
+testSizeNudgeAndPresets()
 testReviewEditCamera()
 console.log('smoke-camera: all ok')

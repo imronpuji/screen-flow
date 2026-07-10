@@ -9,10 +9,13 @@ import type {
 import type { ReviewEditState } from '../shared/edit'
 import {
   CAMERA_BORDER_COLOR_PRESETS,
+  CAMERA_SIZE_PRESETS,
   CAMERA_SNAP_PRESETS,
+  applyCameraSizePreset,
   applyCameraSnapPreset,
   cameraShapeAllowsFreeAspect,
   cameraSnapPresetLabel,
+  matchCameraSizePreset,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
   type CameraOverlayStyle,
@@ -957,6 +960,33 @@ export default function App() {
                     }
                   />
                 </label>
+                <div
+                  className="camera-controls__size-presets"
+                  role="group"
+                  aria-label="Camera size presets"
+                >
+                  {CAMERA_SIZE_PRESETS.map((preset) => {
+                    const active = matchCameraSizePreset(cameraOverlay) === preset.id
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`camera-controls__size-preset${
+                          active ? ' camera-controls__size-preset--active' : ''
+                        }`}
+                        disabled={busy}
+                        title={`${preset.label} · ${preset.sizePercent}%`}
+                        onClick={() =>
+                          setCameraOverlay((prev) =>
+                            applyCameraSizePreset(prev, preset.id),
+                          )
+                        }
+                      >
+                        {preset.label}
+                      </button>
+                    )
+                  })}
+                </div>
                 {!cameraOverlay.lockAspect &&
                 cameraShapeAllowsFreeAspect(cameraOverlay.shape) ? (
                   <label className="camera-controls__field">
