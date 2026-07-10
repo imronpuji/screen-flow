@@ -12,6 +12,8 @@ import {
 } from '../../shared/autozoom'
 import {
   applyZoomPointOverrides,
+  mergeZoomSegments,
+  type ManualZoomPoint,
   type ZoomPointOverride,
 } from '../../shared/zoomPoints'
 import {
@@ -54,6 +56,8 @@ export interface AutoZoomPlaybackProps {
   autoZoomEnabled?: boolean
   /** Per-click enable/disable + peak scale (from review editor). */
   zoomPointOverrides?: ZoomPointOverride[]
+  /** User-added zooms at playhead (merged with click segments). */
+  manualZoomPoints?: ManualZoomPoint[]
   cursorSmoothingEnabled?: boolean
   cursorAppearance?: CursorAppearance
   background?: BackgroundStyle
@@ -76,6 +80,7 @@ export function AutoZoomPlayback({
   captureGeometry = null,
   autoZoomEnabled = true,
   zoomPointOverrides = [],
+  manualZoomPoints = [],
   cursorSmoothingEnabled = true,
   cursorAppearance = DEFAULT_CURSOR_APPEARANCE,
   background,
@@ -118,8 +123,14 @@ export function AutoZoomPlayback({
   )
 
   const segments = useMemo(
-    () => applyZoomPointOverrides(baseSegments, zoomPointOverrides),
-    [baseSegments, zoomPointOverrides],
+    () =>
+      autoZoomEnabled
+        ? mergeZoomSegments(
+            applyZoomPointOverrides(baseSegments, zoomPointOverrides),
+            manualZoomPoints,
+          )
+        : [],
+    [autoZoomEnabled, baseSegments, manualZoomPoints, zoomPointOverrides],
   )
 
   const cursorKeyframes = useMemo(

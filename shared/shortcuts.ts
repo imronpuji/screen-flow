@@ -11,6 +11,7 @@ export type ShortcutAction =
   | 'export'
   | 'cancel-export'
   | 'beautify'
+  | 'add-zoom'
   | 'scrub-back'
   | 'scrub-forward'
   | 'discard'
@@ -47,6 +48,12 @@ export const SHORTCUTS: readonly ShortcutBinding[] = [
     keys: 'B',
     contexts: ['review'],
     description: 'Apply Beautify (Tutorial)',
+  },
+  {
+    id: 'add-zoom',
+    keys: 'Z',
+    contexts: ['review'],
+    description: 'Add zoom at playhead',
   },
   {
     id: 'scrub-back',
@@ -139,6 +146,7 @@ export function matchShortcut(
   if (key === ' ' || key === 'Spacebar' || event.code === 'Space') return 'toggle-play'
   if (lower === 'e') return 'export'
   if (lower === 'b') return 'beautify'
+  if (lower === 'z') return 'add-zoom'
   if (key === 'ArrowLeft') return 'scrub-back'
   if (key === 'ArrowRight') return 'scrub-forward'
   if (key === 'Escape') return 'discard'

@@ -863,6 +863,19 @@
   gap: 0.35rem;
 }
 
+.review__zoom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.review__zoom-add,
+.review__zoom-remove {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.55rem;
+  align-self: flex-start;
+}
+
 .review__zoom-list {
   list-style: none;
   margin: 0;

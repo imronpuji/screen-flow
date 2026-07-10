@@ -10,9 +10,15 @@ import { planAutoZoomExport } from '../dist-electron/shared/ffmpegZoom.js'
 import {
   applyZoomPointOverrides,
   clampZoomPeakScale,
+  countEnabledManualZoomPoints,
   countEnabledZoomPoints,
+  createManualZoomPoint,
   isZoomPointEnabled,
+  manualZoomToSegment,
+  mergeZoomSegments,
+  removeManualZoomPoint,
   resolveZoomPointPeakScale,
+  upsertManualZoomPoint,
   upsertZoomPointOverride,
 } from '../dist-electron/shared/zoomPoints.js'
 
@@ -130,10 +136,15 @@ function testEditDefaults(): void {
   const edit = defaultReviewEdit(5000)
   assert(Array.isArray(edit.zoomPointOverrides), 'overrides array')
   assert(edit.zoomPointOverrides.length === 0, 'empty by default')
+  assert(Array.isArray(edit.manualZoomPoints), 'manual array')
+  assert(edit.manualZoomPoints.length === 0, 'manual empty by default')
 
   const withEdits = {
     ...edit,
     zoomPointOverrides: [{ index: 0, enabled: false }],
+    manualZoomPoints: [
+      createManualZoomPoint({ peakMs: 1200, focusX: 0.3, focusY: 0.4, id: 'mz-keep' }),
+    ],
   }
   const beautified = applyBeautifyPreset(withEdits, 'tutorial')
   assert(
@@ -141,7 +152,64 @@ function testEditDefaults(): void {
       beautified.zoomPointOverrides[0]!.enabled === false,
     'beautify preserves zoom overrides',
   )
+  assert(
+    beautified.manualZoomPoints.length === 1 &&
+      beautified.manualZoomPoints[0]!.id === 'mz-keep',
+    'beautify preserves manual zooms',
+  )
   console.log('ok edit defaults')
+}
+
+function testManualZoomAtPlayhead(): void {
+  const point = createManualZoomPoint({
+    peakMs: 2000,
+    focusX: 0.25,
+    focusY: 0.75,
+    peakScale: 2,
+    id: 'mz-1',
+  })
+  assert(point.enabled, 'manual enabled')
+  const seg = manualZoomToSegment(point)
+  assert(seg != null, 'segment built')
+  assert(seg!.peakMs === 2000, 'peak at playhead')
+  assert(seg!.startMs === 1600, 'zoom-in 400ms before peak')
+  assert(seg!.focusX === 0.25 && seg!.focusY === 0.75, 'focus kept')
+  assert(seg!.peakScale === 2, 'scale kept')
+
+  const disabled = manualZoomToSegment({ ...point, enabled: false })
+  assert(disabled === null, 'disabled drops')
+
+  const auto = buildZoomSegments(sampleEvents(), videoSize)
+  const merged = mergeZoomSegments(auto, [point])
+  assert(merged.length === auto.length + 1, 'merged adds one')
+  assert(
+    merged.some((s) => s.peakMs === 2000 && s.focusX === 0.25),
+    'manual in merge',
+  )
+
+  let points = upsertManualZoomPoint([], point)
+  points = upsertManualZoomPoint(points, { ...point, peakScale: 2.5 })
+  assert(points.length === 1 && points[0]!.peakScale === 2.5, 'upsert replaces')
+  points = removeManualZoomPoint(points, 'mz-1')
+  assert(points.length === 0, 'remove')
+  assert(countEnabledManualZoomPoints([point, { ...point, id: 'mz-2', enabled: false }]) === 1, 'count')
+
+  const exportPlan = planAutoZoomExport(
+    sampleEvents(),
+    videoSize,
+    8000,
+    {},
+    {},
+    [],
+    [point],
+  )
+  assert(exportPlan.hasZoom, 'manual alone with clicks zooms')
+  assert(exportPlan.segments.length === 4, '3 auto + 1 manual')
+
+  const manualOnly = planAutoZoomExport([], videoSize, 5000, {}, {}, [], [point])
+  assert(manualOnly.hasZoom, 'manual-only export zooms')
+  assert(manualOnly.segments.length === 1, 'one manual segment')
+  console.log('ok manual playhead')
 }
 
 testClamp()
@@ -149,4 +217,5 @@ testApplyOverrides()
 testUpsertAndResolve()
 testExportPlan()
 testEditDefaults()
+testManualZoomAtPlayhead()
 console.log('smoke-zoom-points: all ok')

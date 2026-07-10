@@ -41,10 +41,18 @@ import {
 } from '../../shared/shortcuts'
 import { buildZoomSegments } from '../../shared/autozoom'
 import {
+  buildCursorKeyframes,
+  getSmoothedCursorAtTime,
+} from '../../shared/cursorSmoothing'
+import {
   clampZoomPeakScale,
+  countEnabledManualZoomPoints,
   countEnabledZoomPoints,
+  createManualZoomPoint,
   isZoomPointEnabled,
+  removeManualZoomPoint,
   resolveZoomPointPeakScale,
+  upsertManualZoomPoint,
   upsertZoomPointOverride,
 } from '../../shared/zoomPoints'
 import { AutoZoomPlayback } from './AutoZoomPlayback'
@@ -103,6 +111,7 @@ export function RecordingReview({
   onDiscard,
 }: RecordingReviewProps) {
   const [durationMs, setDurationMs] = useState(recordedDurationMs)
+  const [playheadMs, setPlayheadMs] = useState(0)
   const [edit, setEdit] = useState<ReviewEditState>(() =>
     defaultReviewEdit(recordedDurationMs, {
       ...initialCameraOverlay,
@@ -113,6 +122,7 @@ export function RecordingReview({
 
   const hasCameraTrack = Boolean(cameraMediaUrl)
   const editRef = useRef(edit)
+  const playheadMsRef = useRef(0)
   const onCameraOverlayChangeRef = useRef(onCameraOverlayChange)
 
   const zoomSegments = useMemo(
@@ -127,14 +137,20 @@ export function RecordingReview({
     [captureGeometry, cursorEvents, edit.autoZoomEnabled],
   )
 
-  const enabledZoomCount = countEnabledZoomPoints(
-    zoomSegments.length,
-    edit.zoomPointOverrides,
-  )
+  const enabledZoomCount =
+    countEnabledZoomPoints(zoomSegments.length, edit.zoomPointOverrides) +
+    countEnabledManualZoomPoints(edit.manualZoomPoints)
+
+  const totalZoomSlots =
+    zoomSegments.length + edit.manualZoomPoints.length
 
   useEffect(() => {
     editRef.current = edit
   }, [edit])
+
+  useEffect(() => {
+    playheadMsRef.current = playheadMs
+  }, [playheadMs])
 
   useEffect(() => {
     onCameraOverlayChangeRef.current = onCameraOverlayChange
@@ -148,6 +164,42 @@ export function RecordingReview({
       : { ...edit.cameraOverlay, enabled: initialCameraOverlay.enabled }
     onCameraOverlayChangeRef.current?.(normalizeCameraOverlay(forSetup))
   }, [edit.cameraOverlay, hasCameraTrack, initialCameraOverlay.enabled])
+
+  function focusAtPlayhead(tMs: number): { focusX: number; focusY: number } {
+    const keyframes = buildCursorKeyframes(cursorEvents)
+    if (keyframes.length === 0) return { focusX: 0.5, focusY: 0.5 }
+    const pos = getSmoothedCursorAtTime(
+      tMs,
+      keyframes,
+      { width: 1920, height: 1080 },
+      captureGeometry ? { geometry: captureGeometry } : {},
+    )
+    if (!pos) return { focusX: 0.5, focusY: 0.5 }
+    return { focusX: pos.x, focusY: pos.y }
+  }
+
+  function addZoomAtPlayhead() {
+    if (exporting) return
+    const tMs = playheadMsRef.current
+    const focus = focusAtPlayhead(tMs)
+    setEdit((prev) => ({
+      ...prev,
+      autoZoomEnabled: true,
+      manualZoomPoints: upsertManualZoomPoint(
+        prev.manualZoomPoints,
+        createManualZoomPoint({
+          peakMs: tMs,
+          focusX: focus.focusX,
+          focusY: focus.focusY,
+        }),
+      ),
+    }))
+  }
+
+  const addZoomAtPlayheadRef = useRef(addZoomAtPlayhead)
+  useEffect(() => {
+    addZoomAtPlayheadRef.current = addZoomAtPlayhead
+  })
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -173,6 +225,11 @@ export function RecordingReview({
         setEdit((prev) =>
           applyBeautifyPreset(prev, 'tutorial', { hasCameraTrack }),
         )
+        return
+      }
+      if (action === 'add-zoom') {
+        event.preventDefault()
+        addZoomAtPlayheadRef.current()
         return
       }
       if (action === 'discard') {
@@ -268,6 +325,7 @@ export function RecordingReview({
             captureGeometry={captureGeometry}
             autoZoomEnabled={edit.autoZoomEnabled}
             zoomPointOverrides={edit.zoomPointOverrides}
+            manualZoomPoints={edit.manualZoomPoints}
             cursorSmoothingEnabled={edit.cursorSmoothingEnabled}
             cursorAppearance={edit.cursorAppearance}
             background={edit.background}
@@ -283,6 +341,7 @@ export function RecordingReview({
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             onDurationMs={onDurationMs}
+            onTimeMs={setPlayheadMs}
           />
         </section>
 
@@ -305,11 +364,22 @@ export function RecordingReview({
             <div className="review__zoom-points" aria-label="Zoom points">
               <div className="review__field">
                 <span className="review__label">
-                  Zoom points · {enabledZoomCount}/{zoomSegments.length} on
+                  Zoom points · {enabledZoomCount}/{totalZoomSlots} on
                 </span>
-                {zoomSegments.length === 0 ? (
+                <div className="review__zoom-actions">
+                  <button
+                    type="button"
+                    className="btn btn--ghost review__zoom-add"
+                    disabled={exporting}
+                    title={`Add zoom at ${formatTimeMs(playheadMs)} (Z)`}
+                    onClick={addZoomAtPlayhead}
+                  >
+                    Add at playhead · {formatTimeMs(playheadMs)}
+                  </button>
+                </div>
+                {zoomSegments.length === 0 && edit.manualZoomPoints.length === 0 ? (
                   <p className="review__hint">
-                    No click zooms yet — record with clicks to generate points.
+                    No zooms yet — record with clicks, or press Z / Add at playhead.
                   </p>
                 ) : (
                   <ul className="review__zoom-list">
@@ -388,11 +458,90 @@ export function RecordingReview({
                         </li>
                       )
                     })}
+                    {edit.manualZoomPoints.map((point, manualIndex) => (
+                      <li
+                        key={point.id}
+                        className={`review__zoom-item${
+                          point.enabled ? '' : ' review__zoom-item--off'
+                        }`}
+                      >
+                        <label className="review__toggle review__toggle--nested">
+                          <input
+                            type="checkbox"
+                            checked={point.enabled}
+                            disabled={exporting}
+                            onChange={(e) =>
+                              setEdit((prev) => ({
+                                ...prev,
+                                manualZoomPoints: upsertManualZoomPoint(
+                                  prev.manualZoomPoints,
+                                  { ...point, enabled: e.target.checked },
+                                ),
+                              }))
+                            }
+                          />
+                          <span>
+                            Manual {manualIndex + 1} · {formatTimeMs(point.peakMs)}
+                          </span>
+                        </label>
+                        {point.enabled ? (
+                          <div className="review__field review__field--compact">
+                            <label
+                              className="review__label"
+                              htmlFor={`manual-zoom-scale-${point.id}`}
+                            >
+                              Scale {point.peakScale.toFixed(1)}×
+                            </label>
+                            <input
+                              id={`manual-zoom-scale-${point.id}`}
+                              className="review__range"
+                              type="range"
+                              min={1.1}
+                              max={3}
+                              step={0.1}
+                              value={point.peakScale}
+                              disabled={exporting}
+                              onChange={(e) =>
+                                setEdit((prev) => ({
+                                  ...prev,
+                                  manualZoomPoints: upsertManualZoomPoint(
+                                    prev.manualZoomPoints,
+                                    {
+                                      ...point,
+                                      peakScale: clampZoomPeakScale(
+                                        Number(e.target.value),
+                                      ),
+                                    },
+                                  ),
+                                }))
+                              }
+                            />
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="btn btn--ghost review__zoom-remove"
+                          disabled={exporting}
+                          onClick={() =>
+                            setEdit((prev) => ({
+                              ...prev,
+                              manualZoomPoints: removeManualZoomPoint(
+                                prev.manualZoomPoints,
+                                point.id,
+                              ),
+                            }))
+                          }
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 )}
-                {zoomSegments.length > 0 ? (
+                {totalZoomSlots > 0 ? (
                   <p className="review__hint">
                     Toggle points or tweak scale — preview and export stay in sync.
+                    Press Z to add a zoom at the playhead (focus follows cursor).
                   </p>
                 ) : null}
               </div>
