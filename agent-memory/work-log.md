@@ -4,7 +4,7 @@ Entri terbaru di ATAS.
 ## [2026-07-10 09:30] Allow owner ngrok merge callback
 
 - **Dikerjakan:** `decisions.md` — ganti blokir callback eksternal; izinkan `POST …/merge` ke tunnel ngrok owner (`pr-auto-merge`). Curl merge setelah PR.
-- **Commit:** (pending)
+- **Commit:** `083b87c`
 - **Status:** done
 - **Next:** Rectangle camera shape; border/shadow bake; A/V drift compensation.
 
