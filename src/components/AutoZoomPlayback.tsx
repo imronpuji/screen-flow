@@ -15,6 +15,7 @@ import {
   mergeZoomSegments,
   type ManualZoomPoint,
   type ZoomPointOverride,
+  type ZoomSegmentEdge,
 } from '../../shared/zoomPoints'
 import {
   buildClickRings,
@@ -131,13 +132,13 @@ export interface AutoZoomPlaybackProps {
       | { kind: 'manual'; id: string; peakMs: number },
   ) => void
   /**
-   * Drag-resize zoom-event start/end edges on the scrubber (FOKUS 5).
-   * Start = zoom-in duration; end = zoom-out duration; peak/hold stay fixed.
+   * Drag-resize zoom-event start/hold/end edges on the scrubber (FOKUS 5).
+   * Start = zoom-in; hold = hold↔out split (peak+end fixed); end = zoom-out.
    */
   onZoomEdgeChange?: (
     change:
-      | { kind: 'auto'; index: number; edge: 'start' | 'end'; tMs: number }
-      | { kind: 'manual'; id: string; edge: 'start' | 'end'; tMs: number },
+      | { kind: 'auto'; index: number; edge: ZoomSegmentEdge; tMs: number }
+      | { kind: 'manual'; id: string; edge: ZoomSegmentEdge; tMs: number },
   ) => void
   /**
    * When true, scrubber seeks stick to nearby edit points (FOKUS 5 magnetic
@@ -210,7 +211,7 @@ export function AutoZoomPlayback({
     kind: 'auto' | 'manual'
     index?: number
     id?: string
-    edge: 'start' | 'end'
+    edge: ZoomSegmentEdge
     markerId: string
     pointerId: number
   } | null>(null)
@@ -780,7 +781,7 @@ export function AutoZoomPlayback({
       source:
         | { kind: 'auto'; index: number; markerId: string }
         | { kind: 'manual'; id: string; markerId: string },
-      edge: 'start' | 'end',
+      edge: ZoomSegmentEdge,
     ) => {
       if (!onZoomEdgeChange || durationMs <= 0) return
       const track = markersTrackRef.current
@@ -807,6 +808,7 @@ export function AutoZoomPlayback({
           [
             source.markerId,
             `${source.markerId}-start`,
+            `${source.markerId}-hold`,
             `${source.markerId}-end`,
             `${source.markerId}-peak`,
           ],
@@ -839,7 +841,7 @@ export function AutoZoomPlayback({
       source:
         | { kind: 'auto'; index: number; markerId: string }
         | { kind: 'manual'; id: string; markerId: string },
-      edge: 'start' | 'end',
+      edge: ZoomSegmentEdge,
     ) => {
       if (!onZoomEdgeChange || Boolean(loadError)) return
       event.preventDefault()
@@ -1327,7 +1329,7 @@ export function AutoZoomPlayback({
                           role="listitem"
                           className="zoom-playback__marker zoom-playback__marker--zoom zoom-playback__marker--zoom-editable"
                           style={{ left: `${span.left}%`, width: `${span.width}%` }}
-                          title={`${marker.label} · drag to move · edges to trim in/out · ${formatTimeMs(marker.tMs)}`}
+                          title={`${marker.label} · drag to move · edges to trim in/hold/out · ${formatTimeMs(marker.tMs)}`}
                         >
                           {onZoomPeakChange ? (
                             <button
@@ -1367,6 +1369,29 @@ export function AutoZoomPlayback({
                                 onPointerUp={onZoomEdgePointerUp}
                                 onPointerCancel={onZoomEdgePointerUp}
                               />
+                              {marker.holdEndMs != null &&
+                              marker.startMs != null &&
+                              marker.endMs != null &&
+                              marker.endMs > marker.startMs ? (
+                                <span
+                                  className="zoom-playback__marker-handle zoom-playback__marker-handle--hold"
+                                  role="slider"
+                                  aria-label={`${marker.label} hold end`}
+                                  aria-valuemin={0}
+                                  aria-valuemax={durationMs}
+                                  aria-valuenow={marker.holdEndMs}
+                                  tabIndex={-1}
+                                  style={{
+                                    left: `calc(${((marker.holdEndMs - marker.startMs) / (marker.endMs - marker.startMs)) * 100}% - 4px)`,
+                                  }}
+                                  onPointerDown={(e) =>
+                                    onZoomEdgePointerDown(e, zoomSource, 'hold')
+                                  }
+                                  onPointerMove={onZoomEdgePointerMove}
+                                  onPointerUp={onZoomEdgePointerUp}
+                                  onPointerCancel={onZoomEdgePointerUp}
+                                />
+                              ) : null}
                               <span
                                 className="zoom-playback__marker-handle zoom-playback__marker-handle--end"
                                 role="slider"

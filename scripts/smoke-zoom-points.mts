@@ -499,6 +499,86 @@ function testEdgeResize(): void {
     exported.endMs === mid.holdEndMs + 750,
     'export bakes zoom-out edge',
   )
+
+  // Hold edge: peak + end fixed; trades holdMs ↔ zoomOutMs.
+  const holdTarget = mid.peakMs + Math.max(MIN_ZOOM_EDGE_MS, Math.floor(hold / 2))
+  const holdResized = resizeZoomSegmentEdge(mid, 'hold', holdTarget, 8000)
+  assert(holdResized.peakMs === mid.peakMs, 'hold keeps peak')
+  assert(holdResized.startMs === mid.startMs, 'hold keeps start')
+  assert(holdResized.endMs === mid.endMs, 'hold keeps end')
+  assert(holdResized.holdEndMs === holdTarget, 'hold moves holdEnd')
+  assert(
+    holdResized.endMs - holdResized.holdEndMs >= MIN_ZOOM_EDGE_MS,
+    'hold keeps min zoom-out',
+  )
+
+  const minHold = resizeZoomSegmentEdge(mid, 'hold', mid.peakMs - 100, 8000)
+  assert(minHold.holdEndMs === mid.peakMs, 'hold clamps to peak (0 hold)')
+
+  const maxHold = resizeZoomSegmentEdge(mid, 'hold', mid.endMs, 8000)
+  assert(
+    maxHold.endMs - maxHold.holdEndMs === MIN_ZOOM_EDGE_MS,
+    'hold clamps to leave min zoom-out',
+  )
+
+  let holdOverrides = resizeAutoZoomEdge(
+    segments,
+    [],
+    1,
+    'hold',
+    holdTarget,
+    8000,
+  )
+  assert(holdOverrides[0]!.holdMs === holdTarget - mid.peakMs, 'stores holdMs')
+  assert(
+    holdOverrides[0]!.zoomOutMs === mid.endMs - holdTarget,
+    'stores traded zoomOutMs',
+  )
+  const holdApplied = applyZoomPointOverrides(segments, holdOverrides)
+  const holdMid = holdApplied.find((s) => s.peakMs === mid.peakMs)!
+  assert(holdMid.holdEndMs === holdTarget, 'apply hold edge')
+  assert(holdMid.endMs === mid.endMs, 'apply hold keeps end')
+
+  const holdManual = createManualZoomPoint({
+    peakMs: 4000,
+    id: 'mz-hold',
+    focusX: 0.4,
+    focusY: 0.6,
+  })
+  const holdManualSeg = manualZoomToSegment(holdManual)!
+  const holdManualTarget =
+    holdManualSeg.peakMs +
+    Math.max(MIN_ZOOM_EDGE_MS, Math.floor((holdManualSeg.holdEndMs - holdManualSeg.peakMs) / 2))
+  const resizedHoldManual = resizeManualZoomEdge(
+    [holdManual],
+    'mz-hold',
+    'hold',
+    holdManualTarget,
+    8000,
+  )
+  assert(
+    resizedHoldManual[0]!.holdMs === holdManualTarget - holdManualSeg.peakMs,
+    'manual holdMs stored',
+  )
+  const holdManualApplied = manualZoomToSegment(resizedHoldManual[0]!)!
+  assert(holdManualApplied.holdEndMs === holdManualTarget, 'manual hold applied')
+  assert(holdManualApplied.endMs === holdManualSeg.endMs, 'manual hold keeps end')
+
+  const holdMarkers = buildZoomEventMarkers(segments, holdOverrides, resizedHoldManual)
+  assert(
+    holdMarkers.some(
+      (m) =>
+        m.zoomIndex === 1 &&
+        m.holdEndMs === holdTarget &&
+        m.endMs === mid.endMs,
+    ),
+    'markers expose holdEndMs',
+  )
+  assert(
+    holdMarkers.some((m) => m.manualZoomId === 'mz-hold' && m.holdEndMs === holdManualTarget),
+    'manual markers expose holdEndMs',
+  )
+
   console.log('ok edge resize')
 }
 

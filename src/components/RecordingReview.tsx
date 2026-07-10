@@ -1025,9 +1025,10 @@ export function RecordingReview({
                 <span className="review__label">
                   Zoom points · {enabledZoomCount}/{totalZoomSlots} on
                 </span>
-                <Tooltip copy={TOOLTIPS['trim-zoom-edge']}>
+                <Tooltip copy={TOOLTIPS['trim-zoom-hold']}>
                   <p className="review__hint">
-                    Drag teal zoom spans to move peaks; drag edges to trim zoom-in/out
+                    Drag teal zoom spans to move peaks; edges trim in/out; middle
+                    handle splits hold vs zoom-out
                     {timelinePrefs.magneticSnapEnabled ? ' (magnetic snap on)' : ''}.
                   </p>
                 </Tooltip>

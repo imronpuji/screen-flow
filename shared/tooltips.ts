@@ -36,6 +36,7 @@ export type TooltipId =
   | 'trim-timeline-zoom'
   | 'trim-zoom-drag'
   | 'trim-zoom-edge'
+  | 'trim-zoom-hold'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -192,6 +193,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
     id: 'trim-zoom-edge',
     title: 'Zoom edges · Trim zoom-in / zoom-out',
     body: 'Drag the start or end handle on a teal zoom span to lengthen or shorten the ease-in and ease-out. Peak and hold stay put. Preview and export stay in sync.',
+  },
+  'trim-zoom-hold': {
+    id: 'trim-zoom-hold',
+    title: 'Hold edge · Split hold vs zoom-out',
+    body: 'Drag the middle hold handle on a teal zoom span to trade hold time for zoom-out (or the reverse). Peak, start, and end stay put. Preview and export stay in sync.',
   },
 }
 

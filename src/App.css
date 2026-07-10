@@ -695,9 +695,20 @@
   right: -3px;
 }
 
+.zoom-playback__marker-handle--hold {
+  width: 6px;
+  background: color-mix(in srgb, #7dd3c0 82%, #1a1a1a);
+  z-index: 4;
+}
+
 .zoom-playback__marker-handle:hover,
 .zoom-playback__marker-handle:active {
   background: #f0a05a;
+}
+
+.zoom-playback__marker-handle--hold:hover,
+.zoom-playback__marker-handle--hold:active {
+  background: #7dd3c0;
 }
 
 .zoom-playback__marker-handle--keep:hover,

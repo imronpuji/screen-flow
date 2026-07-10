@@ -27,7 +27,7 @@ export interface ZoomPointOverride {
   peakMs?: number
   /** Optional zoom-in duration (ms before peak). Set by scrubber start-edge drag. */
   zoomInMs?: number
-  /** Optional hold duration (ms at peak scale). */
+  /** Optional hold duration (ms at peak scale). Set by scrubber hold-edge drag. */
   holdMs?: number
   /** Optional zoom-out duration (ms after hold). Set by scrubber end-edge drag. */
   zoomOutMs?: number
@@ -165,23 +165,41 @@ export function shiftZoomSegmentToPeak(
   return rebuildZoomSegmentTiming(segment, { peakMs: newPeakMs }, durationMs)
 }
 
+/** Scrubber edge kind: start=zoom-in, hold=hold/out split, end=zoom-out. */
+export type ZoomSegmentEdge = 'start' | 'hold' | 'end'
+
 /**
- * Resize zoom-in (start) or zoom-out (end) edge; peak + hold stay fixed.
- * Clamps so each edge keeps at least MIN_ZOOM_EDGE_MS.
+ * Resize zoom-in (start), hold/out split (hold), or zoom-out (end) edge.
+ * - start: peak + hold stay fixed; clamps zoom-in ≥ MIN_ZOOM_EDGE_MS
+ * - hold: peak + end stay fixed; trades holdMs ↔ zoomOutMs (zoom-out ≥ MIN)
+ * - end: peak + hold stay fixed; clamps zoom-out ≥ MIN_ZOOM_EDGE_MS
  */
 export function resizeZoomSegmentEdge(
   segment: ZoomSegment,
-  edge: 'start' | 'end',
+  edge: ZoomSegmentEdge,
   tMs: number,
   durationMs = 0,
 ): ZoomSegment {
-  const target = Number.isFinite(tMs) ? tMs : edge === 'start' ? segment.startMs : segment.endMs
+  const fallback =
+    edge === 'start'
+      ? segment.startMs
+      : edge === 'hold'
+        ? segment.holdEndMs
+        : segment.endMs
+  const target = Number.isFinite(tMs) ? tMs : fallback
   const upper =
     Number.isFinite(durationMs) && durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
   if (edge === 'start') {
     const maxStart = Math.max(0, segment.peakMs - MIN_ZOOM_EDGE_MS)
     const startMs = Math.max(0, Math.min(maxStart, target))
     return { ...segment, startMs }
+  }
+  if (edge === 'hold') {
+    // Peak + end fixed: move hold/out boundary inside the span.
+    const minHoldEnd = segment.peakMs
+    const maxHoldEnd = Math.max(minHoldEnd, segment.endMs - MIN_ZOOM_EDGE_MS)
+    const holdEndMs = Math.max(minHoldEnd, Math.min(maxHoldEnd, target))
+    return { ...segment, holdEndMs }
   }
   const minEnd = segment.holdEndMs + MIN_ZOOM_EDGE_MS
   const endMs = Math.max(minEnd, Math.min(upper, target))
@@ -226,14 +244,14 @@ export function applyOneZoomOverride(
 }
 
 /**
- * Resize an auto zoom's start/end edge and upsert timing onto overrides
+ * Resize an auto zoom's start/hold/end edge and upsert timing onto overrides
  * (non-destruktif; preview ≡ export via applyZoomPointOverrides).
  */
 export function resizeAutoZoomEdge(
   baseSegments: ZoomSegment[],
   overrides: ZoomPointOverride[],
   index: number,
-  edge: 'start' | 'end',
+  edge: ZoomSegmentEdge,
   tMs: number,
   durationMs = 0,
 ): ZoomPointOverride[] {
@@ -259,12 +277,12 @@ export function resizeAutoZoomEdge(
 }
 
 /**
- * Resize a manual zoom's start/end edge (stores timing on the point).
+ * Resize a manual zoom's start/hold/end edge (stores timing on the point).
  */
 export function resizeManualZoomEdge(
   points: ManualZoomPoint[],
   id: string,
-  edge: 'start' | 'end',
+  edge: ZoomSegmentEdge,
   tMs: number,
   durationMs = 0,
 ): ManualZoomPoint[] {

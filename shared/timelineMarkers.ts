@@ -26,6 +26,11 @@ export interface TimelineMarker {
   startMs?: number
   /** Visual span end for zoom/camera markers; omitted for point markers. */
   endMs?: number
+  /**
+   * Hold→zoom-out boundary (ms) for zoom markers — scrubber hold-edge handle.
+   * Omitted for camera/click markers.
+   */
+  holdEndMs?: number
   label: string
   /**
    * Index into materialized camera active ranges (camera markers only).
@@ -165,6 +170,7 @@ export function buildZoomEventMarkers(
       tMs: seg.peakMs,
       startMs: seg.startMs,
       endMs: seg.endMs,
+      holdEndMs: seg.holdEndMs,
       label: `Zoom ${labelN}`,
       zoomIndex: i,
     })
@@ -181,6 +187,7 @@ export function buildZoomEventMarkers(
         tMs: seg.peakMs,
         startMs: seg.startMs,
         endMs: seg.endMs,
+        holdEndMs: seg.holdEndMs,
         label: `Zoom ${labelN}`,
         manualZoomId: point.id,
       })
@@ -222,6 +229,7 @@ export function buildTimelineMarkers(
         tMs: seg.peakMs,
         startMs: seg.startMs,
         endMs: seg.endMs,
+        holdEndMs: seg.holdEndMs,
         label: `Zoom ${i + 1}`,
       })
     }

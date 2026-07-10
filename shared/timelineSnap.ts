@@ -114,6 +114,7 @@ export function collectTimelineSnapTargets(
       if (m.kind === 'zoom') {
         pushTarget(raw, m.tMs, 'zoom', m.id)
         if (m.startMs != null) pushTarget(raw, m.startMs, 'zoom', `${m.id}-start`)
+        if (m.holdEndMs != null) pushTarget(raw, m.holdEndMs, 'zoom', `${m.id}-hold`)
         if (m.endMs != null) pushTarget(raw, m.endMs, 'zoom', `${m.id}-end`)
       } else if (m.kind === 'click') {
         pushTarget(raw, m.tMs, 'click', m.id)
