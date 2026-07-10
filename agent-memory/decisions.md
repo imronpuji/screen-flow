@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Project auto-save (FOKUS 5)
+
+- **Keputusan:** Satu slot `localStorage` (`screen-flow:project-autosave`) menyimpan snapshot `{ version:1, webmPath, savedAt, durationMs, edit: ReviewEditState }`. Debounce **800ms** di `RecordingReview` setelah edit berubah. Restore hanya jika `webmPath` cocok; `normalizeReviewEditState` clamp keep/zoom/camera. Clear saat discard atau export sukses. Subtitle tenang: “Restored draft” / “Saving…” / “Saved just now”.
+- **Alasan:** FOKUS 5 item 9h — auto-save berkala supaya trim/zoom/kamera tidak hilang saat remount; non-destruktif (metadata saja, WebM utuh). Satu slot menghindari orphan keys.
+- **Status:** aktif
+
 ## [2026-07-10] Beautify toast feedback (FOKUS 4)
 
 - **Keputusan:** Setelah one-click Beautify (header button, preset chips, shortcut **B**), review memanggil `onToast(beautifyAppliedToast({ label, hint }))`. Spec murni di `shared/toast.ts` (tanpa import beautify — smoke strip-types aman). App `showToast` → `ToastHost` single-slot; tone success, durasi info (4.2s), body = preset hint.
