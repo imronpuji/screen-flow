@@ -7,7 +7,23 @@ import type {
   RecordingStatus,
 } from '../shared/ipc'
 import type { ReviewEditState } from '../shared/edit'
-import { startLiveCapture, type LiveCaptureHandle } from './lib/captureStream'
+import {
+  CAMERA_CORNERS,
+  DEFAULT_CAMERA_OVERLAY,
+  normalizeCameraOverlay,
+  type CameraOverlayStyle,
+} from '../shared/camera'
+import {
+  startCameraCapture,
+  startLiveCapture,
+  type LiveCaptureHandle,
+} from './lib/captureStream'
+import {
+  listCameraDevices,
+  openCameraStream,
+  stopMediaStream,
+  type CameraDevice,
+} from './lib/cameraDevices'
 import {
   appendRecordingChunk,
   cancelExport,
@@ -25,6 +41,7 @@ import {
   startRecording,
   stopRecording,
 } from './lib/runtime'
+import { CameraBubble } from './components/CameraBubble'
 import { RecordingReview } from './components/RecordingReview'
 import type { CursorEvent } from '../shared/cursor'
 import './App.css'
@@ -39,6 +56,9 @@ const idleRecording: RecordingStatus = {
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cameraOutputPath: null,
+  cameraBytesWritten: 0,
+  cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
 }
@@ -69,8 +89,14 @@ export default function App() {
   const [reviewCursorEventCount, setReviewCursorEventCount] = useState(0)
   const [exporting, setExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState<ExportProgressEvent | null>(null)
+  const [cameraOverlay, setCameraOverlay] = useState<CameraOverlayStyle>(DEFAULT_CAMERA_OVERLAY)
+  const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([])
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [cameraError, setCameraError] = useState<string | null>(null)
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
+  const cameraCaptureRef = useRef<LiveCaptureHandle | null>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
 
   const inElectron = isElectronBridgeAvailable()
   const isRecording = mode === 'recording' || recording.state === 'recording'
@@ -112,6 +138,13 @@ export default function App() {
             return preferred?.id ?? null
           })
         }
+
+        try {
+          const devices = await listCameraDevices()
+          if (!cancelled) setCameraDevices(devices)
+        } catch {
+          /* camera enumerate is best-effort before permission */
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to initialize capture UI')
@@ -129,8 +162,56 @@ export default function App() {
     return () => {
       void captureRef.current?.stop()
       captureRef.current = null
+      void cameraCaptureRef.current?.stop()
+      cameraCaptureRef.current = null
+      stopMediaStream(cameraStreamRef.current)
+      cameraStreamRef.current = null
     }
   }, [])
+
+  async function refreshCameraDevices() {
+    try {
+      const devices = await listCameraDevices()
+      setCameraDevices(devices)
+      setCameraOverlay((prev) => {
+        if (prev.deviceId && devices.some((d) => d.deviceId === prev.deviceId)) return prev
+        return normalizeCameraOverlay({
+          ...prev,
+          deviceId: devices[0]?.deviceId ?? null,
+        })
+      })
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : 'Failed to list cameras')
+    }
+  }
+
+  async function enableCameraPreview(next: CameraOverlayStyle) {
+    setCameraError(null)
+    try {
+      const stream = await openCameraStream(next.deviceId)
+      stopMediaStream(cameraStreamRef.current)
+      cameraStreamRef.current = stream
+      setCameraStream(stream)
+      await refreshCameraDevices()
+      setCameraOverlay(normalizeCameraOverlay({ ...next, enabled: true }))
+    } catch (err) {
+      stopMediaStream(cameraStreamRef.current)
+      cameraStreamRef.current = null
+      setCameraStream(null)
+      setCameraOverlay(normalizeCameraOverlay({ ...next, enabled: false }))
+      setCameraError(err instanceof Error ? err.message : 'Camera unavailable')
+    }
+  }
+
+  function disableCameraPreview() {
+    void cameraCaptureRef.current?.stop()
+    cameraCaptureRef.current = null
+    stopMediaStream(cameraStreamRef.current)
+    cameraStreamRef.current = null
+    setCameraStream(null)
+    setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: false }))
+    setCameraError(null)
+  }
 
   function clearReview() {
     setMode('setup')
@@ -188,7 +269,10 @@ export default function App() {
       if (isRecording) {
         const handle = captureRef.current
         captureRef.current = null
+        const cameraHandle = cameraCaptureRef.current
+        cameraCaptureRef.current = null
         await handle?.stop()
+        await cameraHandle?.stop()
         bindPreview(null)
         const result = await stopRecording()
         setRecording(result.status)
@@ -215,7 +299,11 @@ export default function App() {
           setPlaybackUrl(media.url)
           setPlaybackCursorEvents(cursor.events)
           setMode('review')
-          setLastSummary(null)
+          setLastSummary(
+            result.cameraChunkCount > 0
+              ? `Camera track saved (${formatBytes(result.cameraBytesWritten)}) — overlay bake next.`
+              : null,
+          )
         } catch (loadErr) {
           setMode('setup')
           setError(
@@ -225,14 +313,18 @@ export default function App() {
       } else {
         clearReview()
         setMode('recording')
-        const started = await startRecording({ sourceId: selectedSourceId! })
+        const wantCamera = cameraOverlay.enabled && Boolean(cameraStreamRef.current)
+        const started = await startRecording({
+          sourceId: selectedSourceId!,
+          includeCamera: wantCamera,
+        })
         setRecording(started.status)
 
         try {
           const handle = await startLiveCapture({
             sourceId: selectedSourceId!,
             onChunk: async (data) => {
-              const chunkResult = await appendRecordingChunk({ data })
+              const chunkResult = await appendRecordingChunk({ data, track: 'screen' })
               setRecording((prev) =>
                 prev.state === 'recording'
                   ? {
@@ -247,7 +339,28 @@ export default function App() {
           })
           captureRef.current = handle
           bindPreview(handle.stream)
+
+          if (wantCamera && cameraStreamRef.current) {
+            cameraCaptureRef.current = startCameraCapture({
+              stream: cameraStreamRef.current,
+              onChunk: async (data) => {
+                const chunkResult = await appendRecordingChunk({ data, track: 'camera' })
+                setRecording((prev) =>
+                  prev.state === 'recording'
+                    ? {
+                        ...prev,
+                        cameraBytesWritten: chunkResult.bytesWritten,
+                        cameraChunkCount: chunkResult.chunkCount,
+                      }
+                    : prev,
+                )
+              },
+              onError: (err) => setCameraError(err.message),
+            })
+          }
         } catch (captureErr) {
+          void cameraCaptureRef.current?.stop()
+          cameraCaptureRef.current = null
           try {
             await stopRecording()
           } catch {
@@ -436,10 +549,118 @@ export default function App() {
               {error}
             </p>
           ) : null}
+          <div className="camera-controls" aria-label="Camera overlay">
+            <label className="camera-controls__toggle">
+              <input
+                type="checkbox"
+                checked={cameraOverlay.enabled}
+                disabled={busy || isRecording}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  if (checked) {
+                    void enableCameraPreview(cameraOverlay)
+                  } else {
+                    disableCameraPreview()
+                  }
+                }}
+              />
+              <span>FaceTime camera overlay</span>
+            </label>
+            {cameraOverlay.enabled ? (
+              <div className="camera-controls__row">
+                <label className="camera-controls__field">
+                  <span>Camera</span>
+                  <select
+                    value={cameraOverlay.deviceId ?? ''}
+                    disabled={busy || isRecording || cameraDevices.length === 0}
+                    onChange={(e) => {
+                      const deviceId = e.target.value || null
+                      void enableCameraPreview({ ...cameraOverlay, deviceId })
+                    }}
+                  >
+                    {cameraDevices.length === 0 ? (
+                      <option value="">No camera found</option>
+                    ) : (
+                      cameraDevices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </label>
+                <label className="camera-controls__field">
+                  <span>Corner</span>
+                  <select
+                    value={cameraOverlay.corner}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          corner: e.target.value as CameraOverlayStyle['corner'],
+                        }),
+                      )
+                    }
+                  >
+                    {CAMERA_CORNERS.map((c) => (
+                      <option key={c} value={c}>
+                        {c.replace('-', ' ')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="camera-controls__field">
+                  <span>Size {cameraOverlay.sizePercent}%</span>
+                  <input
+                    type="range"
+                    min={12}
+                    max={40}
+                    value={cameraOverlay.sizePercent}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          sizePercent: Number(e.target.value),
+                        }),
+                      )
+                    }
+                  />
+                </label>
+                <label className="camera-controls__field">
+                  <span>Shape</span>
+                  <select
+                    value={cameraOverlay.shape}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setCameraOverlay((prev) =>
+                        normalizeCameraOverlay({
+                          ...prev,
+                          shape: e.target.value as CameraOverlayStyle['shape'],
+                        }),
+                      )
+                    }
+                  >
+                    <option value="circle">Circle</option>
+                    <option value="rounded">Rounded</option>
+                  </select>
+                </label>
+              </div>
+            ) : null}
+            {cameraError ? (
+              <p className="shell__status shell__status--warn" role="alert">
+                {cameraError}
+              </p>
+            ) : null}
+          </div>
           {isRecording ? (
             <p className="shell__status" role="status">
               Live capture · {formatBytes(recording.bytesWritten)} · {recording.chunkCount}{' '}
-              chunks · cursor trail recording
+              chunks · cursor trail
+              {recording.cameraOutputPath
+                ? ` · camera ${formatBytes(recording.cameraBytesWritten)}`
+                : ''}
             </p>
           ) : null}
           {lastSummary && !isRecording ? (
@@ -464,6 +685,7 @@ export default function App() {
               playsInline
               autoPlay
             />
+            <CameraBubble stream={cameraStream} style={cameraOverlay} />
             {!isRecording ? (
               !inElectron ? (
                 <p className="preview-frame__hint">

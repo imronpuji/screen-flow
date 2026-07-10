@@ -84,6 +84,10 @@ export interface RecordingStatus {
   outputPath: string | null
   bytesWritten: number
   chunkCount: number
+  /** Parallel FaceTime/webcam WebM (null when camera off or idle). */
+  cameraOutputPath: string | null
+  cameraBytesWritten: number
+  cameraChunkCount: number
   /** JSONL cursor trail for auto-zoom (null when idle or sampler inactive). */
   cursorEventsPath: string | null
   cursorEventCount: number
@@ -91,6 +95,8 @@ export interface RecordingStatus {
 
 export interface StartRecordingRequest {
   sourceId: string
+  /** When true, main opens a sibling camera.webm writer (renderer streams webcam chunks). */
+  includeCamera?: boolean
 }
 
 export interface StartRecordingResult {
@@ -106,10 +112,17 @@ export interface StopRecordingResult {
   outputPath: string | null
   bytesWritten: number
   chunkCount: number
+  /** Parallel webcam WebM (null if camera was off or no chunks). */
+  cameraOutputPath: string | null
+  cameraBytesWritten: number
+  cameraChunkCount: number
   /** Cursor JSONL path (null if no events captured). */
   cursorEventsPath: string | null
   cursorEventCount: number
 }
+
+/** Which MediaRecorder stream a chunk belongs to. */
+export type RecordingTrack = 'screen' | 'camera'
 
 /** Binary chunk from renderer MediaRecorder → main temp writer. */
 export interface AppendChunkRequest {
@@ -118,12 +131,16 @@ export interface AppendChunkRequest {
    * Electron IPC may deliver ArrayBuffer or a Node Buffer view.
    */
   data: ArrayBuffer | Uint8Array
+  /** Default `screen`. Camera track writes to session camera.webm. */
+  track?: RecordingTrack
 }
 
 export interface AppendChunkResult {
   ok: true
   bytesWritten: number
   chunkCount: number
+  /** Echo of the track that was written. */
+  track: RecordingTrack
 }
 
 /** Bake auto-zoom from cursor JSONL during ffmpeg export (matches preview engine). */

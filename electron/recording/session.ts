@@ -1,7 +1,10 @@
 /**
- * Recording session: temp dir + append-only WebM writer.
+ * Recording session: temp dir + append-only WebM writers (screen + optional camera).
  * Frames are captured in the renderer (getUserMedia + MediaRecorder);
  * main owns filesystem so we never hold the full recording in renderer RAM.
+ *
+ * Screen and camera share the same `startedAt` wall-clock so later ffmpeg overlay
+ * can align streams without relying on frame order.
  */
 
 import { app } from 'electron'
@@ -11,6 +14,7 @@ import type {
   AppendChunkRequest,
   AppendChunkResult,
   RecordingStatus,
+  RecordingTrack,
   StartRecordingRequest,
   StartRecordingResult,
   StopRecordingResult,
@@ -25,19 +29,54 @@ const idleStatus = (): RecordingStatus => ({
   outputPath: null,
   bytesWritten: 0,
   chunkCount: 0,
+  cameraOutputPath: null,
+  cameraBytesWritten: 0,
+  cameraChunkCount: 0,
   cursorEventsPath: null,
   cursorEventCount: 0,
 })
 
 let status: RecordingStatus = idleStatus()
 let writeStream: fs.WriteStream | null = null
+let cameraWriteStream: fs.WriteStream | null = null
 /** Serialize chunk writes so IPC handlers don't interleave on the same stream. */
 let writeQueue: Promise<void> = Promise.resolve()
+let cameraWriteQueue: Promise<void> = Promise.resolve()
 
 function assertRecording(): void {
   if (status.state !== 'recording' || !status.outputPath || !writeStream) {
     throw new Error('No active recording session')
   }
+}
+
+function toBuffer(data: AppendChunkRequest['data']): Buffer {
+  if (Buffer.isBuffer(data)) {
+    return data
+  }
+  if (data instanceof Uint8Array) {
+    return Buffer.from(data.buffer, data.byteOffset, data.byteLength)
+  }
+  if (data instanceof ArrayBuffer) {
+    return Buffer.from(data)
+  }
+  throw new Error('Invalid chunk payload')
+}
+
+async function appendToStream(
+  stream: fs.WriteStream,
+  queueRef: { current: Promise<void> },
+  buffer: Buffer,
+): Promise<void> {
+  queueRef.current = queueRef.current.then(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        stream.write(buffer, (err) => {
+          if (err) reject(err)
+          else resolve()
+        })
+      }),
+  )
+  await queueRef.current
 }
 
 export function getRecordingStatus(): RecordingStatus {
@@ -61,6 +100,17 @@ export function startRecording(request: StartRecordingRequest): StartRecordingRe
   writeStream = fs.createWriteStream(outputPath)
   writeQueue = Promise.resolve()
 
+  const includeCamera = Boolean(request.includeCamera)
+  let cameraOutputPath: string | null = null
+  if (includeCamera) {
+    cameraOutputPath = path.join(sessionDir, 'camera.webm')
+    cameraWriteStream = fs.createWriteStream(cameraOutputPath)
+    cameraWriteQueue = Promise.resolve()
+  } else {
+    cameraWriteStream = null
+    cameraWriteQueue = Promise.resolve()
+  }
+
   const startedAt = Date.now()
   const cursorSampler = startCursorSampler({ sessionDir, startedAt })
 
@@ -72,6 +122,9 @@ export function startRecording(request: StartRecordingRequest): StartRecordingRe
     outputPath,
     bytesWritten: 0,
     chunkCount: 0,
+    cameraOutputPath,
+    cameraBytesWritten: 0,
+    cameraChunkCount: 0,
     cursorEventsPath: cursorSampler.eventsPath,
     cursorEventCount: 0,
   }
@@ -83,44 +136,46 @@ export async function appendRecordingChunk(
   request: AppendChunkRequest,
 ): Promise<AppendChunkResult> {
   assertRecording()
-  const stream = writeStream
-  if (!stream) {
-    throw new Error('Write stream missing')
-  }
-
-  const data = request?.data
-  // Electron IPC may deliver ArrayBuffer, Buffer, or a typed-array view.
-  let buffer: Buffer
-  if (Buffer.isBuffer(data)) {
-    buffer = data
-  } else if (data instanceof Uint8Array) {
-    buffer = Buffer.from(data.buffer, data.byteOffset, data.byteLength)
-  } else if (data instanceof ArrayBuffer) {
-    buffer = Buffer.from(data)
-  } else {
-    throw new Error('Invalid chunk payload')
-  }
+  const track: RecordingTrack = request.track === 'camera' ? 'camera' : 'screen'
+  const buffer = toBuffer(request?.data)
 
   if (buffer.byteLength === 0) {
     return {
       ok: true,
-      bytesWritten: status.bytesWritten,
-      chunkCount: status.chunkCount,
+      bytesWritten: track === 'camera' ? status.cameraBytesWritten : status.bytesWritten,
+      chunkCount: track === 'camera' ? status.cameraChunkCount : status.chunkCount,
+      track,
     }
   }
 
-  // Queue writes: Electron may deliver IPC chunks faster than disk flush.
-  writeQueue = writeQueue.then(
-    () =>
-      new Promise<void>((resolve, reject) => {
-        stream.write(buffer, (err) => {
-          if (err) reject(err)
-          else resolve()
-        })
-      }),
-  )
+  if (track === 'camera') {
+    const stream = cameraWriteStream
+    if (!stream || !status.cameraOutputPath) {
+      throw new Error('Camera track not enabled for this session')
+    }
+    const queueRef = { current: cameraWriteQueue }
+    await appendToStream(stream, queueRef, buffer)
+    cameraWriteQueue = queueRef.current
+    status = {
+      ...status,
+      cameraBytesWritten: status.cameraBytesWritten + buffer.byteLength,
+      cameraChunkCount: status.cameraChunkCount + 1,
+    }
+    return {
+      ok: true,
+      bytesWritten: status.cameraBytesWritten,
+      chunkCount: status.cameraChunkCount,
+      track,
+    }
+  }
 
-  await writeQueue
+  const stream = writeStream
+  if (!stream) {
+    throw new Error('Write stream missing')
+  }
+  const queueRef = { current: writeQueue }
+  await appendToStream(stream, queueRef, buffer)
+  writeQueue = queueRef.current
   status = {
     ...status,
     bytesWritten: status.bytesWritten + buffer.byteLength,
@@ -131,7 +186,18 @@ export async function appendRecordingChunk(
     ok: true,
     bytesWritten: status.bytesWritten,
     chunkCount: status.chunkCount,
+    track,
   }
+}
+
+async function closeStream(stream: fs.WriteStream | null): Promise<void> {
+  if (!stream) return
+  await new Promise<void>((resolve, reject) => {
+    stream.end((err: Error | null | undefined) => {
+      if (err) reject(err)
+      else resolve()
+    })
+  })
 }
 
 export async function stopRecording(): Promise<StopRecordingResult> {
@@ -143,25 +209,23 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   const outputPath = status.outputPath
   const bytesWritten = status.bytesWritten
   const chunkCount = status.chunkCount
+  const cameraOutputPath = status.cameraOutputPath
+  const cameraBytesWritten = status.cameraBytesWritten
+  const cameraChunkCount = status.cameraChunkCount
 
   const cursorStats = await stopCursorSampler()
 
-  // Drain pending chunk writes before closing the stream.
+  // Drain pending chunk writes before closing streams.
   await writeQueue
+  await cameraWriteQueue
 
-  await new Promise<void>((resolve, reject) => {
-    if (!writeStream) {
-      resolve()
-      return
-    }
-    writeStream.end((err: Error | null | undefined) => {
-      if (err) reject(err)
-      else resolve()
-    })
-  })
+  await closeStream(writeStream)
+  await closeStream(cameraWriteStream)
 
   writeStream = null
+  cameraWriteStream = null
   writeQueue = Promise.resolve()
+  cameraWriteQueue = Promise.resolve()
   status = idleStatus()
 
   return {
@@ -171,6 +235,9 @@ export async function stopRecording(): Promise<StopRecordingResult> {
     outputPath: chunkCount > 0 ? outputPath : null,
     bytesWritten,
     chunkCount,
+    cameraOutputPath: cameraChunkCount > 0 ? cameraOutputPath : null,
+    cameraBytesWritten,
+    cameraChunkCount,
     cursorEventsPath: cursorStats.eventsPath,
     cursorEventCount: cursorStats.eventCount,
   }
