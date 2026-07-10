@@ -1,0 +1,12 @@
+{
+  "name": "pr-auto-merge",
+  "version": "1.0.0",
+  "description": "Server yang auto-merge PR open terbaru saat dipanggil via curl",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
