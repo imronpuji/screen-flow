@@ -618,6 +618,21 @@ function testPlaceAtPoint(): void {
   const shrunk = nudgeCameraSize(grown, 'shrink', { shift: true })
   assert(shrunk.sizePercent === grown.sizePercent - 4, 'map wheel shift shrink -4')
 
+  // Layout-map keyboard parity (mid-recording bubble hidden): arrows / [ ] / C / 0.
+  const nudged = nudgeCameraLayout(dragged, 'left', { shift: true })
+  assert(nudged.anchor === 'free', 'map arrow nudge → free')
+  assert(nudged.x < dragged.x, 'map arrow left moves x')
+  const cycled = cycleCameraSnapPreset(nudged, 'next')
+  assert(typeof cycled.anchor === 'string', 'map ] snap cycle returns layout')
+  const shaped = cycleCameraShape(cycled, 'next')
+  assert(CAMERA_SHAPES.includes(shaped.shape), 'map C shape cycle')
+  const reset = resetCameraLayout(shaped)
+  assert(matchCameraSnapTarget(reset) === 'bottom-right', 'map 0/dblclick → BR')
+  assert(
+    reset.sizePercent === CAMERA_SIZE_PRESETS.find((p) => p.id === 'medium')!.sizePercent,
+    'map reset → medium',
+  )
+
   console.log('ok place at point')
 }
 

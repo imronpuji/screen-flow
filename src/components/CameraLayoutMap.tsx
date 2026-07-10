@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from 'react'
@@ -12,15 +13,20 @@ import {
   cameraBubbleChromeStyle,
   cameraBubblePosition,
   cameraSnapPresetLabel,
+  cycleCameraShape,
+  cycleCameraSnapPreset,
   matchCameraSnapTarget,
+  nudgeCameraLayout,
   nudgeCameraSize,
   placeCameraAtPoint,
+  resetCameraLayout,
+  type CameraNudgeDirection,
   type CameraOverlayStyle,
 } from '../../shared/camera'
 
 export interface CameraLayoutMapProps {
   style: CameraOverlayStyle
-  /** When set, clicks/drag/wheel place or resize the bubble (preview ≡ export coords). */
+  /** When set, clicks/drag/wheel/keys place or resize the bubble (preview ≡ export coords). */
   onLayoutChange?: (next: CameraOverlayStyle) => void
   disabled?: boolean
   /** Frame aspect for the schematic (default 16:9). */
@@ -33,9 +39,11 @@ export interface CameraLayoutMapProps {
  * Lives outside the capture preview so mid-recording layout edits stay visible
  * without burning the live camera into screen WebM.
  *
- * Interaction (FOKUS 3B):
- * - Click or drag to place (magnetic snap, same as live bubble)
- * - Scroll wheel to resize (Shift = larger steps) via nudgeCameraSize
+ * Interaction (FOKUS 3B) — full keyboard parity with live bubble because the
+ * bubble is hidden on the capture preview while recording:
+ * - Click or drag to place (magnetic snap)
+ * - Scroll wheel to resize (Shift = larger steps)
+ * - Arrows nudge · +/- resize · [ ] snap cycle · C shape · 0 / double-click reset
  * - Numpad-style 7/9/1/3/5 for quick corners + center
  */
 export function CameraLayoutMap({
@@ -96,21 +104,84 @@ export function CameraLayoutMap({
   }
 
   function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
-    if (!interactive) return
-    // Nudge via existing arrow handling lives on the live bubble; map uses
-    // number-pad-style corners: 7/9/1/3 ≈ TL/TR/BL/BR for quick place.
-    const map: Record<string, { x: number; y: number }> = {
+    if (!interactive || !onLayoutChange) return
+
+    const arrowMap: Record<string, CameraNudgeDirection> = {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+    }
+    const arrow = arrowMap[e.key]
+    if (arrow) {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        nudgeCameraLayout(styleRef.current, arrow, {
+          shift: e.shiftKey,
+          frameAspect,
+        }),
+      )
+      return
+    }
+
+    if (e.key === ']' || e.key === '[') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        cycleCameraSnapPreset(
+          styleRef.current,
+          e.key === ']' ? 'next' : 'prev',
+          frameAspect,
+        ),
+      )
+      return
+    }
+
+    if (e.key === 'c' || e.key === 'C') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        cycleCameraShape(styleRef.current, e.shiftKey ? 'prev' : 'next', frameAspect),
+      )
+      return
+    }
+
+    if (e.key === '0') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(resetCameraLayout(styleRef.current, frameAspect))
+      return
+    }
+
+    const grow = e.key === '+' || e.key === '=' || e.key === 'Add'
+    const shrink = e.key === '-' || e.key === '_' || e.key === 'Subtract'
+    if (grow || shrink) {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        nudgeCameraSize(styleRef.current, grow ? 'grow' : 'shrink', {
+          shift: e.shiftKey,
+          frameAspect,
+        }),
+      )
+      return
+    }
+
+    // Numpad-style corners: 7/9/1/3 ≈ TL/TR/BL/BR; 5 = center.
+    // (Digits 1/2/3 size presets stay on the live bubble — 1/3 conflict here.)
+    const placeMap: Record<string, { x: number; y: number }> = {
       '7': { x: 0.08, y: 0.08 },
       '9': { x: 0.92, y: 0.08 },
       '1': { x: 0.08, y: 0.92 },
       '3': { x: 0.92, y: 0.92 },
       '5': { x: 0.5, y: 0.5 },
     }
-    const hit = map[e.key]
+    const hit = placeMap[e.key]
     if (!hit) return
     e.preventDefault()
     e.stopPropagation()
-    onLayoutChange?.(placeCameraAtPoint(style, hit.x, hit.y, frameAspect))
+    onLayoutChange(placeCameraAtPoint(styleRef.current, hit.x, hit.y, frameAspect))
   }
 
   function onWheel(e: ReactWheelEvent<HTMLDivElement>) {
@@ -128,6 +199,13 @@ export function CameraLayoutMap({
     )
   }
 
+  function onDoubleClick(e: ReactMouseEvent<HTMLDivElement>) {
+    if (!interactive || !onLayoutChange) return
+    e.preventDefault()
+    e.stopPropagation()
+    onLayoutChange(resetCameraLayout(styleRef.current, frameAspect))
+  }
+
   return (
     <div
       className={`camera-layout-map${interactive ? ' camera-layout-map--interactive' : ''}${
@@ -142,7 +220,7 @@ export function CameraLayoutMap({
         tabIndex={interactive ? 0 : undefined}
         title={
           interactive
-            ? 'Drag to place FaceTime bubble · scroll to resize (Shift = larger steps)'
+            ? 'Drag to place · scroll or +/- resize · arrows nudge · [ ] snap · C shape · 0 / double-click reset'
             : undefined
         }
         onPointerDown={onPointerDown}
@@ -151,6 +229,7 @@ export function CameraLayoutMap({
         onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
         onWheel={onWheel}
+        onDoubleClick={onDoubleClick}
       >
         <div
           className="camera-layout-map__bubble"
@@ -172,7 +251,7 @@ export function CameraLayoutMap({
       </div>
       <span className="camera-layout-map__label" role="status">
         Layout · {label}
-        {interactive ? ' · drag / scroll' : ''}
+        {interactive ? ' · drag / keys / scroll' : ''}
       </span>
     </div>
   )
