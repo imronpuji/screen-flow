@@ -401,6 +401,7 @@ export default function App() {
       const exportRequest: Parameters<typeof exportWebmToMp4>[0] = {
         inputPath: lastWebmPath,
         cleanupTemp: true,
+        quality: _edit.exportQuality,
         trim: {
           startMs: _edit.trimStartMs,
           endMs: _edit.trimEndMs,
@@ -435,6 +436,7 @@ export default function App() {
       if (result.cursorApplied) baked.push('cursor')
       if (result.cameraApplied) baked.push('camera')
       const bakedLabel = baked.length ? `, ${baked.join(' + ')} baked` : ''
+      const qualityLabel = result.quality ? `, ${result.quality}` : ''
 
       const saved = await saveExport({
         sourcePath: result.outputPath,
@@ -442,11 +444,11 @@ export default function App() {
       })
       if (saved.cancelled) {
         setLastSummary(
-          `Exported MP4 (${result.codec}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
+          `Exported MP4 (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(result.bytesWritten)} (not saved to Documents)`,
         )
       } else {
         setLastSummary(
-          `Saved MP4 (${result.codec}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
+          `Saved MP4 (${result.codec}${qualityLabel}${bakedLabel}) · ${formatBytes(saved.bytesWritten)} → ${saved.outputPath}`,
         )
       }
       setExportProgress({ phase: 'done', percent: 100 })

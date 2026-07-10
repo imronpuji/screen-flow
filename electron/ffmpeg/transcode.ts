@@ -22,6 +22,12 @@ import {
   trimDurationMs,
   type TrimRange,
 } from '../../shared/edit.js'
+import {
+  encoderArgsForQuality,
+  libx264FallbackArgs,
+  normalizeExportQuality,
+  type ExportQualityId,
+} from '../../shared/exportQuality.js'
 import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../../shared/ipc.js'
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
 import { probeVideoFile } from './probe.js'
@@ -77,18 +83,8 @@ export function assertUnderScreenFlowTemp(filePath: string): string {
   return resolved
 }
 
-function pickVideoEncoder(): { codec: string; extraArgs: string[] } {
-  if (process.platform === 'darwin') {
-    return {
-      codec: 'h264_videotoolbox',
-      // bitrate target; VideoToolbox ignores CRF-style flags
-      extraArgs: ['-b:v', '8M'],
-    }
-  }
-  return {
-    codec: 'libx264',
-    extraArgs: ['-preset', 'veryfast', '-crf', '20'],
-  }
+function pickVideoEncoder(quality: ExportQualityId): { codec: string; extraArgs: string[] } {
+  return encoderArgsForQuality(quality, process.platform)
 }
 
 function runFfmpeg(
@@ -416,7 +412,8 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   }
 
   try {
-    let encoder = pickVideoEncoder()
+    const quality = normalizeExportQuality(request.quality)
+    let encoder = pickVideoEncoder(quality)
     const transcodeOptions = {
       videoFilter,
       filterComplex,
@@ -428,11 +425,11 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 
     // VideoToolbox may be missing on older macOS / non-Apple Silicon CI images —
-    // fall back to software x264 once.
+    // fall back to software x264 once (same quality CRF).
     if (result.code !== 0 && encoder.codec === 'h264_videotoolbox' && !cancelRequested) {
       encoder = {
         codec: 'libx264',
-        extraArgs: ['-preset', 'veryfast', '-crf', '20'],
+        extraArgs: libx264FallbackArgs(quality),
       }
       emitProgress({
         phase: 'encoding',
@@ -484,6 +481,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       outputPath,
       bytesWritten,
       codec: encoder.codec,
+      quality,
       autoZoomApplied,
       backgroundApplied,
       cursorApplied,
