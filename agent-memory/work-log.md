@@ -8,8 +8,8 @@ Entri terbaru di ATAS.
   - Review UI — pad ↑←→↓ per zoom point (click + manual); Shift = langkah lebih besar; hint diperbarui.
   - Smoke `smoke:zoom-points` covers nudge clamp + focus override + export bake.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke zoom-points/beautify/export-autozoom/shortcuts/export-effects/camera* hijau.
-- **Commit:** `599b972`
-- **Status:** done — lanjut push/PR + owner merge callback.
+- **Commit:** `599b972` (feature) / `7f3b0e9` (memory)
+- **Status:** done — PR #47 merged via owner callback (`317b170`).
 - **Next:** Visual verify on Mac; background presets polish (FOKUS 3 camera layout solid).
 
 ## [2026-07-10 12:15] Add zoom at playhead (Z) — editor follow-up
