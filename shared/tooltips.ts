@@ -28,6 +28,7 @@ export type TooltipId =
   | 'trim-cut-before'
   | 'trim-split'
   | 'trim-delete-segment'
+  | 'trim-ripple-delete'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -143,6 +144,11 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'trim-delete-segment': {
     id: 'trim-delete-segment',
     title: 'Delete · Remove keep-range under playhead',
+  },
+  'trim-ripple-delete': {
+    id: 'trim-ripple-delete',
+    title: 'Ripple delete · Merge touching clips after Delete',
+    body: 'When on, deleting a segment pulls the neighbors together (razor edit points collapse). When off, survivors stay separate for fine edits.',
   },
 }
 

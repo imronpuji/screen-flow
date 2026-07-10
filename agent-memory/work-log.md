@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:05] Ripple-delete toggle (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/keepRanges.ts` — `deleteKeepRangeWithRipple` (merge touching survivors via `mergeAdjacentKeepRanges` + playhead snap).
+  - `shared/timelinePrefs.ts` — persist `rippleDeleteEnabled` (`screen-flow:timeline-prefs`).
+  - `RecordingReview` Timeline panel — Ripple delete checkbox + hint; Delete/Backspace wired through helper.
+  - Tooltip `trim-ripple-delete` + smoke ripple cases.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:keep-ranges` + `smoke:tooltips` + `smoke:shortcuts` hijau.
+- **Commit:** `c9188f3`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; magnetic timeline snapping.
+
 ## [2026-07-10 13:55] Preview gap-skip for keep-ranges (FOKUS 5)
 
 - **Dikerjakan:**
