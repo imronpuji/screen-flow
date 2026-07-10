@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 13:10] Background frame layout presets
+
+- **Dikerjakan:**
+  - `shared/background.ts` — `BACKGROUND_FRAME_LAYOUTS` Compact/Standard/Wide/Flat (padding + cornerRadius + shadow); `applyBackgroundFrameLayout` / `matchBackgroundFrameLayout` (warna `presetId` tetap independen).
+  - Review UI — tombol Frame layout + slider Corner radius (0–28px); hint Compact/Standard/Wide/Flat.
+  - Smoke `smoke:background` covers layout apply/match + default=standard.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke background/beautify/export-effects/camera/zoom-points hijau.
+- **Commit:** `e81ebb6`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Visual verify on Mac; persist background prefs (opsional); background gradient fidelity export vs CSS.
+
 ## [2026-07-10 12:55] Zoom focus nudge (arrow pad) — editor follow-up
 
 - **Dikerjakan:**
