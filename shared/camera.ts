@@ -14,6 +14,8 @@
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
  * - Opacity: bubble fade 35–100% (preview CSS opacity ≡ ffmpeg alpha / colorchannelmixer).
+ * - Mic: optional audio captured on the same MediaRecorder as camera video (one A/V track);
+ *   export maps camera audio into the MP4; mid-recording mute disables audio+video tracks.
  */
 
 export type CameraCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
@@ -62,6 +64,12 @@ export interface CameraOverlayStyle {
   mirrored: boolean
   /** Bubble opacity 0.35–1 (preview CSS ≡ ffmpeg alpha on camera/chrome). */
   opacity: number
+  /**
+   * Include microphone on the camera MediaRecorder (same WebM as FaceTime video).
+   * Preview stays muted locally; export maps this audio into the MP4.
+   * Falls back to video-only if mic permission is denied.
+   */
+  micEnabled: boolean
 }
 
 export const CAMERA_CORNERS: readonly CameraCorner[] = [
@@ -94,6 +102,8 @@ export const CAMERA_MAX_OPACITY = 1
 export const CAMERA_DEFAULT_OPACITY = 1
 /** Default FaceTime selfie mirror (live + export). */
 export const CAMERA_DEFAULT_MIRRORED = true
+/** Default: capture mic with camera so voiceover stays locked to the face track. */
+export const CAMERA_DEFAULT_MIC_ENABLED = true
 
 /** Quick outline swatches (preview ≡ export via borderColor). */
 export const CAMERA_BORDER_COLOR_PRESETS: readonly {
@@ -128,6 +138,7 @@ export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
     borderColor: CAMERA_DEFAULT_BORDER_COLOR,
     mirrored: CAMERA_DEFAULT_MIRRORED,
     opacity: CAMERA_DEFAULT_OPACITY,
+    micEnabled: CAMERA_DEFAULT_MIC_ENABLED,
   }
 })()
 
@@ -585,6 +596,10 @@ export function normalizeCameraOverlay(
       CAMERA_MIN_OPACITY,
       CAMERA_MAX_OPACITY,
     ),
+    micEnabled:
+      typeof partial?.micEnabled === 'boolean'
+        ? partial.micEnabled
+        : DEFAULT_CAMERA_OVERLAY.micEnabled,
   }
 }
 

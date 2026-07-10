@@ -5,6 +5,7 @@ import { getScreenPermissionStatus, listCaptureSources } from './capture/index.j
 import {
   installMediaPermissionHandlers,
   requestCameraAccess,
+  requestMicrophoneAccess,
 } from './capture/cameraPermission.js'
 import {
   installScreenFlowMediaProtocol,
@@ -86,6 +87,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.PERMISSION_GET_STATUS, () => getScreenPermissionStatus())
 
   ipcMain.handle(IPC_CHANNELS.PERMISSION_REQUEST_CAMERA, () => requestCameraAccess())
+  ipcMain.handle(IPC_CHANNELS.PERMISSION_REQUEST_MICROPHONE, () => requestMicrophoneAccess())
 
   ipcMain.handle(IPC_CHANNELS.SOURCES_LIST, (_event, request?: ListSourcesRequest) =>
     listCaptureSources(request ?? {}),

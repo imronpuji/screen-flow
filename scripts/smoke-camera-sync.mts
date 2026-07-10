@@ -5,6 +5,7 @@ import {
   CAMERA_SYNC_OFFSET_EPSILON_MS,
   cameraDriftNeedsCompensation,
   cameraDriftSetptsExpr,
+  cameraMicAudioFilter,
   cameraOverlayEnableExpr,
   cameraStartLagMs,
   closeOpenCameraActiveRanges,
@@ -111,6 +112,18 @@ function testSetptsAndReviewMap(): void {
   console.log('ok setpts + review map')
 }
 
+function testMicAudioFilter(): void {
+  assert(cameraMicAudioFilter(1, 0) == null, 'no filter when aligned')
+  assert(cameraMicAudioFilter(1, 20) == null, 'epsilon skip')
+  const delay = cameraMicAudioFilter(1, 250)
+  assert(delay != null && delay.includes('adelay=250|250'), `adelay (got ${delay})`)
+  assert(delay!.includes('[aout]'), 'default out label')
+  const trim = cameraMicAudioFilter(1, -400, 'mic')
+  assert(trim != null && trim.includes('atrim=start=0.400'), `atrim (got ${trim})`)
+  assert(trim!.includes('[mic]'), 'custom label')
+  console.log('ok camera mic audio filter')
+}
+
 function testActiveRanges(): void {
   let ranges = openCameraActiveRange([], 100)
   assert(ranges.length === 1 && ranges[0]!.endMs == null, 'open range')
@@ -174,6 +187,7 @@ testParseMeta()
 testStartLag()
 testComputeDrift()
 testSetptsAndReviewMap()
+testMicAudioFilter()
 testActiveRanges()
 testPlanInjectsSetpts()
 console.log('smoke:camera-sync passed')

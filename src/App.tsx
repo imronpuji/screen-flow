@@ -43,6 +43,7 @@ import {
   onExportProgress,
   readCursorEvents,
   requestCameraAccess,
+  requestMicrophoneAccess,
   saveExport,
   setCameraActiveRanges,
   startRecording,
@@ -123,6 +124,8 @@ export default function App() {
   const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([])
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [micNote, setMicNote] = useState<string | null>(null)
+  const [micLive, setMicLive] = useState(false)
   /** Live FaceTime arm during an active recording (mute/unmute without stopping MediaRecorder). */
   const [cameraLive, setCameraLive] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding())
@@ -223,28 +226,44 @@ export default function App() {
 
   async function enableCameraPreview(next: CameraOverlayStyle) {
     setCameraError(null)
+    setMicNote(null)
     try {
       const access = await requestCameraAccess()
       if (!access.ok) {
         throw new Error(access.message)
       }
-      const stream = await openCameraStream(next.deviceId)
-      const liveTracks = stream.getVideoTracks().filter((t) => t.readyState === 'live')
+      const wantMic = next.micEnabled !== false
+      if (wantMic) {
+        // Non-fatal — openCameraStream falls back to video-only if mic is denied.
+        await requestMicrophoneAccess()
+      }
+      const opened = await openCameraStream(next.deviceId, { includeMic: wantMic })
+      const liveTracks = opened.stream.getVideoTracks().filter((t) => t.readyState === 'live')
       if (liveTracks.length === 0) {
-        stopMediaStream(stream)
+        stopMediaStream(opened.stream)
         throw new Error(
           'Camera opened but no live video track. Check System Settings → Privacy & Security → Camera.',
         )
       }
       stopMediaStream(cameraStreamRef.current)
-      cameraStreamRef.current = stream
-      setCameraStream(stream)
+      cameraStreamRef.current = opened.stream
+      setCameraStream(opened.stream)
+      setMicLive(opened.micActive)
+      setMicNote(opened.micNote)
       await refreshCameraDevices()
-      setCameraOverlay(normalizeCameraOverlay({ ...next, enabled: true }))
+      setCameraOverlay(
+        normalizeCameraOverlay({
+          ...next,
+          enabled: true,
+          micEnabled: wantMic,
+        }),
+      )
     } catch (err) {
       stopMediaStream(cameraStreamRef.current)
       cameraStreamRef.current = null
       setCameraStream(null)
+      setMicLive(false)
+      setMicNote(null)
       setCameraOverlay(normalizeCameraOverlay({ ...next, enabled: false }))
       setCameraError(err instanceof Error ? err.message : 'Camera unavailable')
     }
@@ -257,6 +276,8 @@ export default function App() {
     cameraStreamRef.current = null
     setCameraStream(null)
     setCameraLive(false)
+    setMicLive(false)
+    setMicNote(null)
     setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: false }))
     setCameraError(null)
   }
@@ -270,7 +291,8 @@ export default function App() {
   function setCameraTracksEnabled(enabled: boolean) {
     const stream = cameraStreamRef.current
     if (!stream) return
-    for (const track of stream.getVideoTracks()) {
+    // Mute video + mic together so FaceTime A/V stay one logical track.
+    for (const track of stream.getTracks()) {
       track.enabled = enabled
     }
   }
@@ -845,6 +867,24 @@ export default function App() {
                     )}
                   </select>
                 </label>
+                <label className="camera-controls__toggle camera-controls__toggle--inline">
+                  <input
+                    type="checkbox"
+                    checked={cameraOverlay.micEnabled}
+                    disabled={busy || isRecording}
+                    onChange={(e) => {
+                      const micEnabled = e.target.checked
+                      void enableCameraPreview({ ...cameraOverlay, micEnabled })
+                    }}
+                  />
+                  <span>
+                    {micLive
+                      ? 'Microphone (with camera)'
+                      : cameraOverlay.micEnabled
+                        ? 'Microphone (off — fallback)'
+                        : 'Microphone'}
+                  </span>
+                </label>
                 <label className="camera-controls__field">
                   <span>Position</span>
                   <select
@@ -1054,13 +1094,20 @@ export default function App() {
                 {cameraError}
               </p>
             ) : null}
+            {micNote && !cameraError ? (
+              <p className="shell__status" role="status">
+                {micNote}
+              </p>
+            ) : null}
           </div>
           {isRecording ? (
             <p className="shell__status" role="status">
               Live capture · {formatBytes(recording.bytesWritten)} · {recording.chunkCount}{' '}
               chunks · cursor trail
               {recording.cameraChunkCount > 0
-                ? ` · camera ${formatBytes(recording.cameraBytesWritten)}${cameraLive ? '' : ' (muted)'}`
+                ? ` · camera ${formatBytes(recording.cameraBytesWritten)}${cameraLive ? '' : ' (muted)'}${
+                    micLive && cameraLive ? ' + mic' : ''
+                  }`
                 : ''}
             </p>
           ) : null}

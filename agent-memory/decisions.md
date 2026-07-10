@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera mic on same MediaRecorder track (FOKUS 3A)
+
+- **Keputusan:** Microphone direkam **bersama** FaceTime video dalam satu `camera.webm` (satu MediaRecorder, codecs `vp8/vp9,opus` bila ada audio). `CameraOverlayStyle.micEnabled` (default **true**); getUserMedia `{ audio, video }` dengan fallback video-only jika mic ditolak. Preview bubble tetap `muted` (anti feedback). Mid-recording mute: `track.enabled=false` pada **semua** track (A+V). Export: `probeHasAudioStream(camera.webm)` → `-map` AAC; start lag memakai `cameraMicAudioFilter` (`adelay` / `atrim`) sama dengan offset video — **tanpa** atempo (voice tetap natural meski video di-setpts stretch).
+- **Alasan:** Brief FOKUS 3A — mic selaras kamera, jangan sinkron terpisah dari layar; satu container = A/V kamera tidak drift relatif.
+- **Status:** aktif
+
 ## [2026-07-10] Camera mirror + opacity (preview ≡ export)
 
 - **Keputusan:** `CameraOverlayStyle` menambah `mirrored` (default **true**, FaceTime selfie) dan `opacity` (clamp **0.35–1.0**, default 1). Preview: CSS `scaleX(-1)` + `opacity` pada bubble. Export: `hflip` setelah crop; opacity di-bake ke alpha shadow/border/mask (`geq` opaque×opacity) atau `colorchannelmixer=aa=` untuk rectangle tanpa mask. Satu sumber data di style → setup/live/review/export sama.

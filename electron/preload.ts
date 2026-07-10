@@ -36,6 +36,10 @@ const api: ScreenFlowApi = {
     ipcRenderer.invoke(IPC_CHANNELS.PERMISSION_GET_STATUS) as Promise<PermissionStatus>,
   requestCameraAccess: () =>
     ipcRenderer.invoke(IPC_CHANNELS.PERMISSION_REQUEST_CAMERA) as Promise<CameraAccessResult>,
+  requestMicrophoneAccess: () =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.PERMISSION_REQUEST_MICROPHONE,
+    ) as Promise<CameraAccessResult>,
   listSources: (request?: ListSourcesRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.SOURCES_LIST, request) as Promise<CaptureSource[]>,
   startRecording: (request: StartRecordingRequest) =>

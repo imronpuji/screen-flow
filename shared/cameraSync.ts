@@ -289,3 +289,27 @@ export function cameraDriftSetptsExpr(
   }
   return `PTS+${offsetSec.toFixed(3)}/TB`
 }
+
+/**
+ * Align camera mic audio with the same start lag as camera video (FOKUS 3A).
+ * Returns a filter_complex fragment ending in `[outputLabel]`, or null when
+ * no delay/trim is needed (caller can `-map N:a:0` directly).
+ * Rate stretch is omitted — atempo ≠ video setpts; voice stays natural.
+ */
+export function cameraMicAudioFilter(
+  cameraInputIndex: number,
+  offsetMs: number,
+  outputLabel = 'aout',
+): string | null {
+  const lag = Number.isFinite(offsetMs) ? offsetMs : 0
+  if (Math.abs(lag) < CAMERA_SYNC_OFFSET_EPSILON_MS) return null
+  const idx = Math.max(0, Math.floor(cameraInputIndex))
+  const label = outputLabel.replace(/[^a-zA-Z0-9_]/g, '') || 'aout'
+  if (lag > 0) {
+    const ms = Math.round(Math.min(CAMERA_SYNC_OFFSET_MAX_MS, lag))
+    // adelay is per-channel (ms); stereo gets two values.
+    return `[${idx}:a]adelay=${ms}|${ms},asetpts=PTS-STARTPTS[${label}]`
+  }
+  const trimSec = Math.min(CAMERA_SYNC_OFFSET_MAX_MS, Math.abs(lag)) / 1000
+  return `[${idx}:a]atrim=start=${trimSec.toFixed(3)},asetpts=PTS-STARTPTS[${label}]`
+}
