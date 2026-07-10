@@ -46,11 +46,20 @@ function testApplyCameraLayout(): void {
   assert(next.cameraOverlay.sizePercent === 28, 'social size')
   assert(next.cameraOverlay.borderEnabled === true, 'social border on')
   assert(next.cameraOverlay.borderWidthPx === 3, 'social border width')
+  assert(next.cameraOverlay.borderColor === '#F0A05A', 'social amber outline')
   assert(next.cameraOverlay.shadowEnabled === true, 'social shadow on')
   assert(next.cursorAppearance.style === 'crosshair', 'social crosshair')
   assert(next.cursorAppearance.spotlightEnabled === true, 'social spotlight')
   assert(next.exportQuality === 'draft', 'social draft')
   console.log('ok apply camera layout')
+}
+
+function testDemoBorderColor(): void {
+  const base = defaultReviewEdit(4_000)
+  const next = applyBeautifyPreset(base, 'demo', { hasCameraTrack: true })
+  assert(next.cameraOverlay.borderColor === '#3DD6C6', 'demo teal outline')
+  assert(next.cameraOverlay.shape === 'rectangle', 'demo rectangle')
+  console.log('ok demo border color')
 }
 
 function testTutorialSpotlight(): void {
@@ -65,5 +74,6 @@ function testTutorialSpotlight(): void {
 testPresets()
 testApplyPreservesTrim()
 testApplyCameraLayout()
+testDemoBorderColor()
 testTutorialSpotlight()
 console.log('smoke-beautify: all ok')

@@ -2,6 +2,7 @@
  * Smoke checks for FaceTime/webcam overlay layout helpers (no Electron).
  */
 import {
+  CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_CORNERS,
   CAMERA_MAX_SIZE_PERCENT,
   CAMERA_MIN_SIZE_PERCENT,
@@ -72,6 +73,11 @@ function testNormalize(): void {
   assert(chrome.borderWidthPx === 6, 'border width clamped high')
   assert(chrome.borderColor === '#AABBCC', 'short hex expanded')
   assert(normalizeCameraBorderColor('nope') === '#E8EEF4', 'bad color falls back')
+  assert(
+    CAMERA_BORDER_COLOR_PRESETS.some((p) => p.color === '#E8EEF4'),
+    'frost preset present',
+  )
+  assert(CAMERA_BORDER_COLOR_PRESETS.length >= 5, 'enough outline swatches')
 
   const free = normalizeCameraOverlay({
     enabled: true,

@@ -18,6 +18,7 @@ import {
   getExportQualityPreset,
 } from '../../shared/exportQuality'
 import {
+  CAMERA_BORDER_COLOR_PRESETS,
   CAMERA_CORNERS,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraCornerPreset,
@@ -673,24 +674,72 @@ export function RecordingReview({
                   </label>
 
                   {edit.cameraOverlay.borderEnabled ? (
-                    <div className="review__field">
-                      <label className="review__label" htmlFor="cam-border">
-                        Outline {edit.cameraOverlay.borderWidthPx}px
-                      </label>
-                      <input
-                        id="cam-border"
-                        className="review__range"
-                        type="range"
-                        min={1}
-                        max={6}
-                        step={1}
-                        value={edit.cameraOverlay.borderWidthPx}
-                        disabled={exporting}
-                        onChange={(e) =>
-                          patchCamera({ borderWidthPx: Number(e.target.value) })
-                        }
-                      />
-                    </div>
+                    <>
+                      <div className="review__field">
+                        <label className="review__label" htmlFor="cam-border">
+                          Outline {edit.cameraOverlay.borderWidthPx}px
+                        </label>
+                        <input
+                          id="cam-border"
+                          className="review__range"
+                          type="range"
+                          min={1}
+                          max={6}
+                          step={1}
+                          value={edit.cameraOverlay.borderWidthPx}
+                          disabled={exporting}
+                          onChange={(e) =>
+                            patchCamera({ borderWidthPx: Number(e.target.value) })
+                          }
+                        />
+                      </div>
+                      <div className="review__field">
+                        <span className="review__label" id="cam-border-color-label">
+                          Outline color
+                        </span>
+                        <div
+                          className="review__color-swatches"
+                          role="listbox"
+                          aria-labelledby="cam-border-color-label"
+                        >
+                          {CAMERA_BORDER_COLOR_PRESETS.map((preset) => {
+                            const active =
+                              edit.cameraOverlay.borderColor.toUpperCase() ===
+                              preset.color.toUpperCase()
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                role="option"
+                                aria-selected={active}
+                                aria-label={preset.label}
+                                title={preset.label}
+                                className={
+                                  active
+                                    ? 'review__color-swatch review__color-swatch--active'
+                                    : 'review__color-swatch'
+                                }
+                                style={{ background: preset.color }}
+                                disabled={exporting}
+                                onClick={() => patchCamera({ borderColor: preset.color })}
+                              />
+                            )
+                          })}
+                          <label
+                            className="review__color-swatch review__color-swatch--custom"
+                            title="Custom color"
+                          >
+                            <span className="visually-hidden">Custom outline color</span>
+                            <input
+                              type="color"
+                              value={edit.cameraOverlay.borderColor}
+                              disabled={exporting}
+                              onChange={(e) => patchCamera({ borderColor: e.target.value })}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </>
                   ) : null}
                 </>
               ) : null}

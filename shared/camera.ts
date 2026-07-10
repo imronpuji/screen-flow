@@ -78,6 +78,20 @@ export const CAMERA_MAX_BORDER_PX = 6
 export const CAMERA_DEFAULT_BORDER_COLOR = '#E8EEF4'
 export const CAMERA_DEFAULT_BORDER_WIDTH_PX = 2
 
+/** Quick outline swatches (preview ≡ export via borderColor). */
+export const CAMERA_BORDER_COLOR_PRESETS: readonly {
+  id: string
+  label: string
+  color: string
+}[] = [
+  { id: 'frost', label: 'Frost', color: '#E8EEF4' },
+  { id: 'white', label: 'White', color: '#FFFFFF' },
+  { id: 'ink', label: 'Ink', color: '#1A1F26' },
+  { id: 'teal', label: 'Teal', color: '#3DD6C6' },
+  { id: 'amber', label: 'Amber', color: '#F0A05A' },
+  { id: 'rose', label: 'Rose', color: '#E879A9' },
+] as const
+
 export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
   const corner: CameraCorner = 'bottom-right'
   const sizePercent = 22

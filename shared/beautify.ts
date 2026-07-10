@@ -27,7 +27,13 @@ export interface BeautifyPreset {
   /** Camera layout knobs (enabled left to caller — only if a track exists). */
   camera: Pick<
     CameraOverlayStyle,
-    'corner' | 'sizePercent' | 'shape' | 'shadowEnabled' | 'borderEnabled' | 'borderWidthPx'
+    | 'corner'
+    | 'sizePercent'
+    | 'shape'
+    | 'shadowEnabled'
+    | 'borderEnabled'
+    | 'borderWidthPx'
+    | 'borderColor'
   >
   exportQuality: ExportQualityId
 }
@@ -58,6 +64,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       shadowEnabled: true,
       borderEnabled: true,
       borderWidthPx: 2,
+      borderColor: '#E8EEF4',
     },
     exportQuality: 'good',
   },
@@ -86,6 +93,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       shadowEnabled: true,
       borderEnabled: true,
       borderWidthPx: 3,
+      borderColor: '#3DD6C6',
     },
     exportQuality: 'high',
   },
@@ -114,6 +122,7 @@ export const BEAUTIFY_PRESETS: readonly BeautifyPreset[] = [
       shadowEnabled: true,
       borderEnabled: true,
       borderWidthPx: 3,
+      borderColor: '#F0A05A',
     },
     exportQuality: 'draft',
   },
@@ -153,6 +162,7 @@ export function applyBeautifyPreset(
         shadowEnabled: preset.camera.shadowEnabled,
         borderEnabled: preset.camera.borderEnabled,
         borderWidthPx: preset.camera.borderWidthPx,
+        borderColor: preset.camera.borderColor,
       },
       preset.camera.corner,
     ),

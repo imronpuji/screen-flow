@@ -1135,6 +1135,126 @@
   background: transparent;
 }
 
+.camera-controls__field--color {
+  grid-column: 1 / -1;
+}
+
+.camera-controls__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.camera-controls__swatch {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.camera-controls__swatch:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.camera-controls__swatch--active {
+  box-shadow: 0 0 0 2px var(--panel, #0c1218), 0 0 0 4px var(--accent);
+}
+
+.camera-controls__swatch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.camera-controls__swatch-custom {
+  position: relative;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  background:
+    conic-gradient(from 90deg, #e879a9, #f0a05a, #3dd6c6, #e8eef4, #e879a9);
+}
+
+.camera-controls__swatch-custom input[type='color'] {
+  position: absolute;
+  inset: -0.35rem;
+  width: calc(100% + 0.7rem);
+  height: calc(100% + 0.7rem);
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.review__color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.review__color-swatch {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.review__color-swatch:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.review__color-swatch--active {
+  box-shadow: 0 0 0 2px var(--panel, #0c1218), 0 0 0 4px var(--accent);
+}
+
+.review__color-swatch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.review__color-swatch--custom {
+  position: relative;
+  overflow: hidden;
+  border-style: dashed;
+  background:
+    conic-gradient(from 90deg, #e879a9, #f0a05a, #3dd6c6, #e8eef4, #e879a9);
+}
+
+.review__color-swatch--custom input[type='color'] {
+  position: absolute;
+  inset: -0.35rem;
+  width: calc(100% + 0.7rem);
+  height: calc(100% + 0.7rem);
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .camera-bubble {
   position: absolute;
   z-index: 4;

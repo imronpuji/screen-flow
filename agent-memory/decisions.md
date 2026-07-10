@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Camera outline color presets (FOKUS 3E)
+
+- **Keputusan:** Outline color memakai `borderColor` (#RRGGBB) yang sudah ada di `CameraOverlayStyle`. UI menambah `CAMERA_BORDER_COLOR_PRESETS` (6 swatch) + native color picker; Beautify mengisi warna per preset (Tutorial frost `#E8EEF4`, Demo teal `#3DD6C6`, Social amber `#F0A05A`). Preview CSS dan ffmpeg `cameraBorderFfmpegColor` tetap satu sumber data.
+- **Alasan:** Width-only outline terasa setengah jadi; swatch cepat + custom = Loom/Screen Studio tanpa memaksa hex manual.
+- **Status:** aktif
+
 ## [2026-07-10] Mid-recording FaceTime toggle (FOKUS 3A)
 
 - **Keputusan:** Toggle kamera selama recording memakai **mute track** (`MediaStreamTrack.enabled`), bukan stop/start MediaRecorder (hindari WebM rusak / multi-segment). Session bisa **lazy `ensureCameraTrack()`** kalau user menyalakan kamera setelah start tanpa `includeCamera`. Visibility disimpan sebagai `CameraSyncMeta.activeRanges[]` (wall ms dari `startedAt`); IPC `recording:set-camera-active-ranges`. Preview review: `isCameraActiveAtMs`. Export: `cameraOverlayEnableExpr` → `overlay=…:enable='between(t,…)+…'` pada shadow/border/camera.
