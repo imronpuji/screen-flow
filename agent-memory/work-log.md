@@ -3,6 +3,14 @@
 Entri terbaru di ATAS.
 
 
+## [2026-07-10 07:02] Fast rounded corners + soft shadow di export (1-frame mask)
+
+- **Dikerjakan:** `shared/ffmpegBackground.ts` — path rounded/shadow pakai `color` 1-frame → `geq` alpha rounded-rect → `loop` → `alphamerge` pada card; soft shadow = still hitam rounded + `boxblur` sekali lalu loop + overlay. Plain path (radius 0, shadow off) tetap gradient+scale+overlay. Smoke `smoke:export-effects` cek alphamerge/loop/boxblur dan pastikan geq tidak jalan di input video.
+- **Hasil:** `typecheck` + `build:electron` + `lint` + smoke export-effects/background hijau. Encode 720p 3s ~0.75s (~4× realtime) vs sebelumnya ~26s + card hilang.
+- **Commit:** `58d4194`
+- **Status:** done
+- **Next:** Webcam FaceTime overlay (FOKUS 3) — enumerate kamera + bubble preview; atau cursor size/style controls (FOKUS 2); cek alignment titik cursor drawbox vs kursor asli.
+
 ## [2026-07-10 13:50] Fix export background lambat + card hilang (buang geq/boxblur)
 
 - **Gejala:** Export dengan background aktif → sangat lambat (~26s untuk klip 3 detik / ~2 menit untuk 15s) dan hasil MP4 cuma ~600 KB. Frame ternyata: card rekaman HILANG, cuma tersisa gradient + 4 artefak lingkaran di pojok + titik cursor.
