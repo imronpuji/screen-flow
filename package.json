@@ -30,7 +30,8 @@
     "smoke:beautify": "node --experimental-strip-types scripts/smoke-beautify.mts",
     "smoke:onboarding": "node --experimental-strip-types scripts/smoke-onboarding.mts",
     "smoke:shortcuts": "node --experimental-strip-types scripts/smoke-shortcuts.mts",
-    "smoke:tooltips": "node --experimental-strip-types scripts/smoke-tooltips.mts"
+    "smoke:tooltips": "node --experimental-strip-types scripts/smoke-tooltips.mts",
+    "smoke:timeline-markers": "node --experimental-strip-types scripts/smoke-timeline-markers.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

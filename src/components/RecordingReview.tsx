@@ -635,7 +635,6 @@ export function RecordingReview({
             <p className="review__coming-title">Coming next</p>
             <ul>
               <li>Per-click zoom points</li>
-              <li>Timeline clip markers</li>
             </ul>
           </div>
         </aside>

@@ -1,6 +1,17 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:00] Timeline clip markers (editor)
+
+- **Dikerjakan:**
+  - `shared/timelineMarkers.ts` — zoom spans + click ticks + trim filter helpers.
+  - Review scrubber: marker track (zoom bars / click ticks, click-to-seek) + trim shade.
+  - Smoke `smoke:timeline-markers`; remove “Timeline clip markers” from Coming next.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke timeline-markers/tooltips/autozoom/shortcuts/beautify hijau.
+- **Commit:** (pending)
+- **Status:** done (editor slice)
+- **Next:** Per-click zoom points (manual edit); visual verify Retina zoom on Mac.
+
 ## [2026-07-10 08:56] Empty-state tooltips (polish)
 
 - **Dikerjakan:**

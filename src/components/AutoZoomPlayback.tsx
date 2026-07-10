@@ -30,6 +30,10 @@ import {
   matchShortcut,
   scrubDeltaMs,
 } from '../../shared/shortcuts'
+import {
+  buildTimelineMarkers,
+  markerPercent,
+} from '../../shared/timelineMarkers'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
@@ -110,6 +114,11 @@ export function AutoZoomPlayback({
   )
 
   const clickCount = cursorEvents.filter((e) => e.kind === 'click' || e.kind === 'down').length
+
+  const timelineMarkers = useMemo(
+    () => buildTimelineMarkers(segments, cursorEvents),
+    [cursorEvents, segments],
+  )
 
   const updateCursorOverlay = useCallback(
     (tMs: number) => {
@@ -393,16 +402,82 @@ export function AutoZoomPlayback({
         <span className="zoom-playback__time">
           {formatTimeMs(currentMs)} / {formatTimeMs(durationMs)}
         </span>
-        <input
-          type="range"
-          className="zoom-playback__scrub"
-          min={trimStartMs}
-          max={Math.max(trimStartMs + 1, effectiveEndMs)}
-          value={Math.min(currentMs, effectiveEndMs)}
-          disabled={Boolean(loadError) || durationMs <= 0}
-          onChange={(e) => onScrub(Number(e.target.value))}
-          aria-label="Playback position"
-        />
+        <div className="zoom-playback__timeline">
+          <div
+            className="zoom-playback__markers"
+            role="list"
+            aria-label="Clip markers"
+          >
+            {durationMs > 0
+              ? timelineMarkers.map((marker) => {
+                  if (
+                    marker.kind === 'zoom' &&
+                    marker.startMs != null &&
+                    marker.endMs != null
+                  ) {
+                    const spanLeft = markerPercent(marker.startMs, durationMs)
+                    const spanWidth = Math.max(
+                      0.4,
+                      markerPercent(marker.endMs, durationMs) - spanLeft,
+                    )
+                    return (
+                      <button
+                        key={marker.id}
+                        type="button"
+                        role="listitem"
+                        className="zoom-playback__marker zoom-playback__marker--zoom"
+                        style={{ left: `${spanLeft}%`, width: `${spanWidth}%` }}
+                        title={`${marker.label} · ${formatTimeMs(marker.tMs)}`}
+                        aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}
+                        disabled={Boolean(loadError)}
+                        onClick={() => onScrub(marker.tMs)}
+                      />
+                    )
+                  }
+                  return (
+                    <button
+                      key={marker.id}
+                      type="button"
+                      role="listitem"
+                      className="zoom-playback__marker zoom-playback__marker--click"
+                      style={{ left: `${markerPercent(marker.tMs, durationMs)}%` }}
+                      title={`${marker.label} · ${formatTimeMs(marker.tMs)}`}
+                      aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)}`}
+                      disabled={Boolean(loadError)}
+                      onClick={() => onScrub(marker.tMs)}
+                    />
+                  )
+                })
+              : null}
+            {durationMs > 0 && (trimStartMs > 0 || effectiveEndMs < durationMs) ? (
+              <>
+                <span
+                  className="zoom-playback__trim-shade zoom-playback__trim-shade--start"
+                  style={{ width: `${markerPercent(trimStartMs, durationMs)}%` }}
+                  aria-hidden="true"
+                />
+                <span
+                  className="zoom-playback__trim-shade zoom-playback__trim-shade--end"
+                  style={{
+                    left: `${markerPercent(effectiveEndMs, durationMs)}%`,
+                    width: `${100 - markerPercent(effectiveEndMs, durationMs)}%`,
+                  }}
+                  aria-hidden="true"
+                />
+              </>
+            ) : null}
+          </div>
+          <input
+            type="range"
+            className="zoom-playback__scrub"
+            min={trimStartMs}
+            max={Math.max(trimStartMs + 1, effectiveEndMs)}
+            value={Math.min(currentMs, effectiveEndMs)}
+            disabled={Boolean(loadError) || durationMs <= 0}
+            onChange={(e) => onScrub(Number(e.target.value))}
+            aria-label="Playback position"
+          />
+        </div>
         <span className="zoom-playback__meta">
           {autoZoomEnabled
             ? `${segments.length} zoom · ${clickCount} click${clickCount === 1 ? '' : 's'}`
