@@ -709,6 +709,7 @@ export function RecordingReview({
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
             keepRanges={keepRanges}
+            magneticSnapEnabled={timelinePrefs.magneticSnapEnabled}
             onDurationMs={onDurationMs}
             onTimeMs={setPlayheadMs}
           />
@@ -1817,6 +1818,30 @@ export function RecordingReview({
               {timelinePrefs.rippleDeleteEnabled
                 ? 'Delete merges touching clips so the timeline closes up.'
                 : 'Delete keeps razor edit points separate for fine cuts.'}
+            </p>
+          </div>
+
+          <div className="review__field review__field--compact">
+            <Tooltip copy={TOOLTIPS['trim-magnetic-snap']}>
+              <label className="review__toggle">
+                <input
+                  type="checkbox"
+                  checked={timelinePrefs.magneticSnapEnabled}
+                  disabled={exporting}
+                  onChange={(e) =>
+                    setTimelinePrefs((prev) => ({
+                      ...prev,
+                      magneticSnapEnabled: e.target.checked,
+                    }))
+                  }
+                />
+                <span>Magnetic snap</span>
+              </label>
+            </Tooltip>
+            <p className="review__hint">
+              {timelinePrefs.magneticSnapEnabled
+                ? 'Scrub sticks to keep edges, trim, zooms, clicks, and camera windows.'
+                : 'Free scrub — playhead ignores nearby edit points.'}
             </p>
           </div>
 

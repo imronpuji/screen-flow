@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 14:45] Magnetic timeline snap (FOKUS 5)
+
+- **Dikerjakan:**
+  - `shared/timelineSnap.ts` — collect targets (trim/keep/markers) + `snapPlayheadMagnetically` + scaled threshold.
+  - `shared/timelinePrefs.ts` — `magneticSnapEnabled` (default on, legacy missing → on).
+  - `AutoZoomPlayback` — scrub/marker seek pakai magnetic; keyboard frame-step & gap-skip free.
+  - Timeline panel toggle + tooltip `trim-magnetic-snap`; smoke `smoke:timeline-snap`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:timeline-snap` + `smoke:tooltips` + `smoke:keep-ranges` + `smoke:shortcuts` hijau.
+- **Commit:** `2158d73`
+- **Status:** done — lanjut push/PR + owner merge callback.
+- **Next:** Clip-edge drag snap / visual verify on Mac; UI polish empty states.
+
 ## [2026-07-10 14:05] Ripple-delete toggle (FOKUS 5)
 
 - **Dikerjakan:**

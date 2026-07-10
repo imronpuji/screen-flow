@@ -40,6 +40,7 @@
     "smoke:edit-history": "node --experimental-strip-types scripts/smoke-edit-history.mts",
     "smoke:timeline-cut": "node --experimental-strip-types scripts/smoke-timeline-cut.mts",
     "smoke:keep-ranges": "node --experimental-strip-types scripts/smoke-keep-ranges.mts",
+    "smoke:timeline-snap": "node --experimental-strip-types scripts/smoke-timeline-snap.mts",
     "smoke:tooltips": "node --experimental-strip-types scripts/smoke-tooltips.mts",
     "smoke:timeline-markers": "node --experimental-strip-types scripts/smoke-timeline-markers.mts",
     "smoke:zoom-points": "node --experimental-strip-types scripts/smoke-zoom-points.mts",

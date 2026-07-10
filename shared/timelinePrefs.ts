@@ -1,5 +1,5 @@
 /**
- * Persist review timeline chrome (ripple delete toggle) across sessions.
+ * Persist review timeline chrome (ripple delete + magnetic snap) across sessions.
  */
 
 export const TIMELINE_PREFS_STORAGE_KEY = 'screen-flow:timeline-prefs'
@@ -7,10 +7,17 @@ export const TIMELINE_PREFS_STORAGE_KEY = 'screen-flow:timeline-prefs'
 export interface TimelinePrefs {
   /** When true, Delete merges touching survivors after removing a keep-range. */
   rippleDeleteEnabled: boolean
+  /**
+   * When true, scrubbing the playhead sticks to nearby edit points
+   * (keep edges, trim, zoom/click/camera markers).
+   */
+  magneticSnapEnabled: boolean
 }
 
 export const DEFAULT_TIMELINE_PREFS: TimelinePrefs = {
   rippleDeleteEnabled: false,
+  /** Default on — Screen Studio-like sticky scrub for orang awam. */
+  magneticSnapEnabled: true,
 }
 
 export function normalizeTimelinePrefs(
@@ -18,6 +25,8 @@ export function normalizeTimelinePrefs(
 ): TimelinePrefs {
   return {
     rippleDeleteEnabled: partial?.rippleDeleteEnabled === true,
+    // Legacy prefs without the key → on (match DEFAULT).
+    magneticSnapEnabled: partial?.magneticSnapEnabled !== false,
   }
 }
 
