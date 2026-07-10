@@ -1,6 +1,18 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 08:10] Keyboard shortcuts (polish)
+
+- **Dikerjakan:**
+  - `shared/shortcuts.ts` — catalog + `matchShortcut` / `isEditableTarget` / scrub deltas (setup·recording·review·exporting).
+  - Setup/recording: **R** / **Space** start-stop; **Esc** stop while recording (skip while onboarding).
+  - Review: **Space** play/pause, **←/→** scrub (Shift=5s), **E** export, **B** Beautify, **Esc** discard / cancel export.
+  - UI hints (`kbd`) + onboarding copy mentions shortcuts; smoke `smoke:shortcuts`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke shortcuts/onboarding/beautify hijau.
+- **Commit:** (pending)
+- **Status:** done (polish slice 2)
+- **Next:** Empty-state tooltips; timeline clip markers; visual verify Retina zoom on Mac.
+
 ## [2026-07-10 08:05] First-run onboarding + one-click Beautify
 
 - **Dikerjakan:**

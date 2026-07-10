@@ -197,3 +197,9 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Keputusan:** Overlay 3 langkah di setup (record → polish/beautify → export MP4). Completion flag di `localStorage` key `screen-flow:onboarding-done`. Skip = mark done. Tidak memblok Electron permission flow.
 - **Alasan:** Roadmap #11 — first-run tanpa baca manual; localStorage cukup (tanpa main-process prefs) untuk MVP.
 - **Status:** aktif
+
+## [2026-07-10] Keyboard shortcuts (context-aware)
+
+- **Keputusan:** Catalog + matcher murni di `shared/shortcuts.ts`. Konteks: **setup/recording** → R/Space toggle record (Esc stop saat recording); **review** → Space play, ←/→ scrub (Shift=5s), E export, B Beautify Tutorial, Esc discard; **exporting** → Esc cancel. Abaikan saat target editable / modifier Cmd·Ctrl·Alt. Onboarding memblok shortcut setup.
+- **Alasan:** Roadmap #11 polish — orang awam bisa rekam/review/export tanpa mouse; pure matcher smoke-testable di CI.
+- **Status:** aktif

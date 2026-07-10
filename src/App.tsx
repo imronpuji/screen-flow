@@ -48,6 +48,7 @@ import { RecordingReview } from './components/RecordingReview'
 import { hasCompletedOnboarding } from './lib/onboarding'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
+import { isEditableTarget, matchShortcut } from '../shared/shortcuts'
 import './App.css'
 
 type AppMode = 'setup' | 'recording' | 'review'
@@ -106,6 +107,7 @@ export default function App() {
   const captureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraCaptureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const toggleRecordingRef = useRef<() => void>(() => undefined)
 
   const inElectron = isElectronBridgeAvailable()
   const isRecording = mode === 'recording' || recording.state === 'recording'
@@ -416,6 +418,31 @@ export default function App() {
     }
   }
 
+  useEffect(() => {
+    toggleRecordingRef.current = () => {
+      void onToggleRecording()
+    }
+  })
+
+  // Setup / recording shortcuts (review has its own handlers).
+  useEffect(() => {
+    if (mode === 'review') return
+    if (showOnboarding && mode === 'setup') return
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return
+      const context = isRecording ? 'recording' : 'setup'
+      const action = matchShortcut(event, context)
+      if (action !== 'toggle-record') return
+      if (!isRecording && !canRecord) return
+      if (busy) return
+      event.preventDefault()
+      toggleRecordingRef.current()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [busy, canRecord, isRecording, mode, showOnboarding])
+
   async function onExportMp4(_edit: ReviewEditState) {
     if (!lastWebmPath) return
     setExporting(true)
@@ -575,6 +602,7 @@ export default function App() {
               type="button"
               className={isRecording ? 'btn btn--danger' : 'btn btn--primary'}
               disabled={!canRecord && !isRecording}
+              title={isRecording ? 'R or Esc · Stop' : 'R or Space · Start'}
               onClick={() => void onToggleRecording()}
             >
               {isRecording ? 'Stop recording' : 'Start recording'}
@@ -588,6 +616,17 @@ export default function App() {
               Refresh sources
             </button>
           </div>
+          <p className="shell__shortcuts" aria-label="Keyboard shortcuts">
+            {isRecording ? (
+              <>
+                <kbd className="kbd">R</kbd> or <kbd className="kbd">Esc</kbd> stop
+              </>
+            ) : (
+              <>
+                <kbd className="kbd">R</kbd> or <kbd className="kbd">Space</kbd> start recording
+              </>
+            )}
+          </p>
           {permission ? (
             <p
               className={

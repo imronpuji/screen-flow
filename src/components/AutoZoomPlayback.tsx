@@ -25,6 +25,11 @@ import {
   type CameraOverlayStyle,
 } from '../../shared/camera'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
+import {
+  isEditableTarget,
+  matchShortcut,
+  scrubDeltaMs,
+} from '../../shared/shortcuts'
 import { CameraBubble } from './CameraBubble'
 
 export interface AutoZoomPlaybackProps {
@@ -61,6 +66,7 @@ export function AutoZoomPlayback({
   onTimeMs,
 }: AutoZoomPlaybackProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  const currentMsRef = useRef(0)
   const [videoSize, setVideoSize] = useState<VideoSize>({ width: 1920, height: 1080 })
   const [transform, setTransform] = useState({ scale: 1, focusX: 0.5, focusY: 0.5 })
   const [cursorPos, setCursorPos] = useState<NormalizedPoint | null>(null)
@@ -117,6 +123,10 @@ export function AutoZoomPlayback({
     },
     [clickRingTriggers, cursorGeoOpts, cursorKeyframes, showCursor, videoSize],
   )
+
+  useEffect(() => {
+    currentMsRef.current = currentMs
+  }, [currentMs])
 
   useEffect(() => {
     const el = videoRef.current
@@ -183,11 +193,11 @@ export function AutoZoomPlayback({
     setTransform(next)
   }
 
-  function togglePlay() {
+  const togglePlay = useCallback(() => {
     const el = videoRef.current
     if (!el || loadError) return
     if (el.paused) {
-      if (currentMs >= effectiveEndMs - 50) {
+      if (currentMsRef.current >= effectiveEndMs - 50) {
         seekToMs(trimStartMs)
       }
       void el.play().catch(() => {
@@ -198,11 +208,34 @@ export function AutoZoomPlayback({
       el.pause()
       setPlaying(false)
     }
-  }
+  }, [effectiveEndMs, loadError, seekToMs, trimStartMs])
 
   function onScrub(value: number) {
     seekToMs(value)
   }
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented || isEditableTarget(event.target)) return
+      const action = matchShortcut(event, 'review')
+      if (action === 'toggle-play') {
+        event.preventDefault()
+        togglePlay()
+        return
+      }
+      if (action === 'scrub-back' || action === 'scrub-forward') {
+        event.preventDefault()
+        const delta = scrubDeltaMs(event.shiftKey)
+        const next =
+          action === 'scrub-back'
+            ? currentMsRef.current - delta
+            : currentMsRef.current + delta
+        seekToMs(next)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [seekToMs, togglePlay])
 
   const stageStyle =
     autoZoomEnabled
@@ -353,6 +386,7 @@ export function AutoZoomPlayback({
           className="btn btn--ghost btn--sm"
           disabled={Boolean(loadError)}
           onClick={togglePlay}
+          title="Space"
         >
           {playing ? 'Pause' : 'Play'}
         </button>

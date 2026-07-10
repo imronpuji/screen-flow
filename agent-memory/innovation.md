@@ -28,6 +28,7 @@
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik
-- [ ] Keyboard shortcuts
+- [x] Keyboard shortcuts — setup R/Space; review Space/E/B/arrows/Esc; exporting Esc
+- [ ] Empty-state tooltips
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path
