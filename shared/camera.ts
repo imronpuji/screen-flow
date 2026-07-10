@@ -19,6 +19,7 @@
  * - Snap cycle: `[` / `]` walk 8 presets clockwise (corners + edge mids) when bubble focused.
  * - Shape cycle: `C` walks circle → rounded → rectangle (keeps size/position; circle re-locks).
  * - Layout map (chrome): drag-to-place via `placeCameraAtPoint` (center → snap) +
+ *   snap guide dots while dragging (same 8 targets as live bubble) +
  *   scroll-wheel resize via `nudgeCameraSize`; same relative coords as preview/export
  *   so mid-recording edits stay visible without burn-in on screen WebM.
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).

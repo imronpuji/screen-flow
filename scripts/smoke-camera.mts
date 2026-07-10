@@ -611,6 +611,29 @@ function testPlaceAtPoint(): void {
   }
   assert(matchCameraSnapTarget(dragged) === 'bottom-right', 'drag path ends at BR snap')
 
+  // Layout-map snap guides use the same 8 targets as live bubble (centers of snap rects).
+  const mapGuides = cameraSnapTargets(
+    dragged.sizePercent,
+    CAMERA_DEFAULT_ASPECT,
+    dragged.heightPercent,
+  )
+  assert(mapGuides.length === 8, 'map drag shows 8 snap guide dots')
+  assert(
+    mapGuides.every((t) => typeof t.x === 'number' && typeof t.y === 'number'),
+    'map guide targets have coords',
+  )
+  const { w: gw, h: gh } = cameraBubbleSizeNorm(
+    dragged.sizePercent,
+    CAMERA_DEFAULT_ASPECT,
+    dragged.heightPercent,
+  )
+  for (const t of mapGuides) {
+    const cx = t.x + gw / 2
+    const cy = t.y + gh / 2
+    assert(cx > 0 && cx < 1 && cy > 0 && cy < 1, `guide center in frame (${t.id})`)
+  }
+  assert(matchCameraSnapTarget(dragged) === 'bottom-right', 'active guide = BR while snapped')
+
   // Scroll-wheel resize on map uses the same nudgeCameraSize helper.
   const beforeSize = dragged.sizePercent
   const grown = nudgeCameraSize(dragged, 'grow')
