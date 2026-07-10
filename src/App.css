@@ -1578,6 +1578,11 @@
 
 .camera-layout-map--interactive .camera-layout-map__frame {
   cursor: crosshair;
+  touch-action: none;
+}
+
+.camera-layout-map--dragging .camera-layout-map__frame {
+  cursor: grabbing;
 }
 
 .camera-layout-map--interactive .camera-layout-map__frame:focus-visible {

@@ -18,8 +18,9 @@
  * - Layout reset: key 0 / double-click → bottom-right + medium size (keeps device/chrome/shape).
  * - Snap cycle: `[` / `]` walk 8 presets clockwise (corners + edge mids) when bubble focused.
  * - Shape cycle: `C` walks circle → rounded → rectangle (keeps size/position; circle re-locks).
- * - Layout map (chrome): click-to-place via `placeCameraAtPoint` (center → snap); same relative
- *   coords as preview/export so mid-recording edits stay visible without burn-in on screen WebM.
+ * - Layout map (chrome): drag-to-place via `placeCameraAtPoint` (center → snap) +
+ *   scroll-wheel resize via `nudgeCameraSize`; same relative coords as preview/export
+ *   so mid-recording edits stay visible without burn-in on screen WebM.
  * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.

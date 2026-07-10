@@ -1162,9 +1162,9 @@ export function RecordingReview({
                       })}
                     </div>
                     <p className="review__hint">
-                      Click the layout map or drag the bubble (magnetic snap) · arrows
-                      nudge · +/- resize · 1/2/3 size · [ ] snap cycle · C shape · 0 or
-                      double-click reset · corner handles resize
+                      Drag the layout map or bubble (magnetic snap) · scroll map to
+                      resize · arrows nudge · +/- resize · 1/2/3 size · [ ] snap cycle ·
+                      C shape · 0 or double-click reset · corner handles resize
                       {edit.cameraOverlay.lockAspect
                         ? ' with aspect lock'
                         : ' freely (unlocked)'}
