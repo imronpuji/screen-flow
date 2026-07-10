@@ -4,13 +4,15 @@
  *
  * Coordinate scheme (preview ≡ export):
  * - Origin: top-left of the frame (0,0); +x right, +y down.
- * - `x`/`y`: top-left of the square bubble as fractions of frame width/height (0–1).
- * - `sizePercent`: bubble width as % of frame width; height = width in pixels (square).
+ * - `x`/`y`: top-left of the bubble as fractions of frame width/height (0–1).
+ * - `sizePercent`: bubble width as % of frame width (12–40).
+ * - `heightPercent`: bubble height as % of frame **width** (same units; 12–40).
+ *   When `lockAspect` is true (default), heightPercent === sizePercent → square in pixels.
  * - Safe margin: 3% of each axis from the frame edge (snap + clamp).
- * - Size clamp: 12–40% of frame width (min readable face; max keeps screen readable).
- * - Resize: corner handles keep the opposite corner fixed; aspect always locked (square).
+ * - Resize: corner handles keep the opposite corner fixed; aspect locked unless user unlocks
+ *   (rectangle/rounded only — circle always locked square).
  * - Snap: 4 corners + 4 edge midpoints; live magnetic snap while dragging; presets for all 8.
- * - Shapes: circle (50% radius), rounded (~22%), rectangle (0 — no ffmpeg alpha mask).
+ * - Shapes: circle (50% radius), rounded (~22% of min side), rectangle (0 — no ffmpeg alpha mask).
  * - Chrome: optional outline (width + color) + soft drop shadow — preview CSS ≡ ffmpeg bake.
  * - Mirror: horizontal flip (FaceTime selfie); preview scaleX(-1) ≡ ffmpeg hflip.
  * - Opacity: bubble fade 35–100% (preview CSS opacity ≡ ffmpeg alpha / colorchannelmixer).
@@ -48,6 +50,16 @@ export interface CameraOverlayStyle {
   y: number
   /** Bubble width as % of the preview/frame width (12–40). */
   sizePercent: number
+  /**
+   * Bubble height as % of frame **width** (same units as sizePercent, 12–40).
+   * Equals sizePercent when aspect-locked (square in pixels).
+   */
+  heightPercent: number
+  /**
+   * When true, resize keeps a pixel-square bubble (heightPercent = sizePercent).
+   * Circle always forces lock; rectangle/rounded may unlock for free resize.
+   */
+  lockAspect: boolean
   shape: CameraShape
   /** Soft drop shadow under the bubble (preview box-shadow ≡ ffmpeg still+blur). */
   shadowEnabled: boolean
@@ -119,10 +131,15 @@ export const CAMERA_BORDER_COLOR_PRESETS: readonly {
   { id: 'rose', label: 'Rose', color: '#E879A9' },
 ] as const
 
+/** True when the shape may unlock aspect (circle stays square). */
+export function cameraShapeAllowsFreeAspect(shape: CameraShape): boolean {
+  return shape === 'rectangle' || shape === 'rounded'
+}
+
 export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
   const corner: CameraCorner = 'bottom-right'
   const sizePercent = 22
-  const layout = layoutFromCorner(corner, sizePercent)
+  const layout = layoutFromCorner(corner, sizePercent, CAMERA_DEFAULT_ASPECT, sizePercent)
   return {
     enabled: false,
     deviceId: null,
@@ -131,6 +148,8 @@ export const DEFAULT_CAMERA_OVERLAY: CameraOverlayStyle = (() => {
     x: layout.x,
     y: layout.y,
     sizePercent,
+    heightPercent: sizePercent,
+    lockAspect: true,
     shape: 'circle' as CameraShape,
     shadowEnabled: true,
     borderEnabled: true,
@@ -194,14 +213,17 @@ export function cameraBubbleChromeStyle(style: CameraOverlayStyle): {
   return { border, boxShadow }
 }
 
-/** Normalized bubble size (width fraction + height fraction for a square bubble). */
+/** Normalized bubble size (width + height fractions of the frame). */
 export function cameraBubbleSizeNorm(
   sizePercent: number,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  heightPercent: number = sizePercent,
 ): { w: number; h: number } {
   const w = clamp(sizePercent, CAMERA_MIN_SIZE_PERCENT, CAMERA_MAX_SIZE_PERCENT) / 100
+  const heightPct = clamp(heightPercent, CAMERA_MIN_SIZE_PERCENT, CAMERA_MAX_SIZE_PERCENT)
   const aspect = frameAspect > 0 ? frameAspect : CAMERA_DEFAULT_ASPECT
-  const h = w * aspect
+  // heightPercent is % of frame width → pixel height / frameH = (pct/100)*frameW/frameH
+  const h = (heightPct / 100) * aspect
   return { w, h }
 }
 
@@ -210,8 +232,9 @@ export function layoutFromCorner(
   corner: CameraCorner,
   sizePercent: number,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  heightPercent: number = sizePercent,
 ): { x: number; y: number } {
-  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect)
+  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect, heightPercent)
   const m = CAMERA_SAFE_MARGIN
   let x = m
   let y = m
@@ -220,14 +243,15 @@ export function layoutFromCorner(
   return { x: clamp(x, 0, 1), y: clamp(y, 0, 1) }
 }
 
-/** Keep the square bubble fully inside the frame with safe margin. */
+/** Keep the bubble fully inside the frame with safe margin. */
 export function clampCameraLayout(
   x: number,
   y: number,
   sizePercent: number,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  heightPercent: number = sizePercent,
 ): { x: number; y: number } {
-  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect)
+  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect, heightPercent)
   const m = CAMERA_SAFE_MARGIN
   const maxX = Math.max(m, 1 - m - w)
   const maxY = Math.max(m, 1 - m - h)
@@ -237,7 +261,7 @@ export function clampCameraLayout(
   }
 }
 
-/** Corner handles for aspect-locked resize (square bubble). */
+/** Corner handles for resize (aspect-locked square, or free when unlocked). */
 export type CameraResizeHandle = 'nw' | 'ne' | 'sw' | 'se'
 
 export type CameraSnapTarget =
@@ -296,8 +320,9 @@ export function isCameraSnapTarget(value: unknown): value is CameraSnapTarget {
 export function cameraSnapTargets(
   sizePercent: number,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
+  heightPercent: number = sizePercent,
 ): Array<{ id: CameraSnapTarget; x: number; y: number }> {
-  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect)
+  const { w, h } = cameraBubbleSizeNorm(sizePercent, frameAspect, heightPercent)
   const m = CAMERA_SAFE_MARGIN
   const midX = (1 - w) / 2
   const midY = (1 - h) / 2
@@ -323,9 +348,10 @@ export function snapCameraLayout(
   sizePercent: number,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
   threshold: number = CAMERA_SNAP_THRESHOLD,
+  heightPercent: number = sizePercent,
 ): { x: number; y: number; corner: CameraCorner | null; snapped: boolean; target: CameraSnapTarget | null } {
-  const clamped = clampCameraLayout(x, y, sizePercent, frameAspect)
-  const targets = cameraSnapTargets(sizePercent, frameAspect)
+  const clamped = clampCameraLayout(x, y, sizePercent, frameAspect, heightPercent)
+  const targets = cameraSnapTargets(sizePercent, frameAspect, heightPercent)
   let best = targets[0]!
   let bestDist = Infinity
   for (const t of targets) {
@@ -355,8 +381,9 @@ export function snapCameraLayout(
 }
 
 /**
- * Aspect-locked resize from a corner handle.
- * Opposite corner stays fixed; size stays square in pixels (12–40% width).
+ * Resize from a corner handle. Opposite corner stays fixed.
+ * When lockAspect (or circle): size stays square in pixels (12–40% width).
+ * When unlocked (rectangle/rounded): width & height move independently.
  * Pointer x/y are frame-relative (0–1). Result is always `anchor: 'free'`.
  */
 export function resizeCameraFromHandle(
@@ -368,7 +395,12 @@ export function resizeCameraFromHandle(
 ): CameraOverlayStyle {
   const aspect = frameAspect > 0 ? frameAspect : CAMERA_DEFAULT_ASPECT
   const base = normalizeCameraOverlay(style, aspect)
-  const { w: curW, h: curH } = cameraBubbleSizeNorm(base.sizePercent, aspect)
+  const lock = base.lockAspect || !cameraShapeAllowsFreeAspect(base.shape)
+  const { w: curW, h: curH } = cameraBubbleSizeNorm(
+    base.sizePercent,
+    aspect,
+    base.heightPercent,
+  )
 
   // Fixed point = opposite corner of the bubble (stays put while resizing).
   let fixedX = base.x
@@ -376,31 +408,68 @@ export function resizeCameraFromHandle(
   if (handle === 'nw' || handle === 'sw') fixedX = base.x + curW
   if (handle === 'nw' || handle === 'ne') fixedY = base.y + curH
 
+  if (lock) {
+    const rawW = Math.abs(pointerX - fixedX)
+    // Height fraction → equivalent width fraction for a pixel-square bubble.
+    const rawWFromH = Math.abs(pointerY - fixedY) / aspect
+    const sizeFrac = clamp(
+      Math.max(rawW, rawWFromH),
+      CAMERA_MIN_SIZE_PERCENT / 100,
+      CAMERA_MAX_SIZE_PERCENT / 100,
+    )
+    const sizePercent = Math.round(sizeFrac * 100)
+    const { w, h } = cameraBubbleSizeNorm(sizePercent, aspect, sizePercent)
+
+    let x = fixedX
+    let y = fixedY
+    if (handle === 'nw' || handle === 'sw') x = fixedX - w
+    if (handle === 'nw' || handle === 'ne') y = fixedY - h
+
+    const clamped = clampCameraLayout(x, y, sizePercent, aspect, sizePercent)
+    return normalizeCameraOverlay(
+      {
+        ...base,
+        anchor: 'free',
+        lockAspect: true,
+        x: clamped.x,
+        y: clamped.y,
+        sizePercent,
+        heightPercent: sizePercent,
+      },
+      aspect,
+    )
+  }
+
+  // Free aspect: width from Δx, height from Δy (heightPercent in frame-width units).
   const rawW = Math.abs(pointerX - fixedX)
-  // Height fraction → equivalent width fraction for a pixel-square bubble.
-  const rawWFromH = Math.abs(pointerY - fixedY) / aspect
-  const sizeFrac = clamp(
-    Math.max(rawW, rawWFromH),
-    CAMERA_MIN_SIZE_PERCENT / 100,
-    CAMERA_MAX_SIZE_PERCENT / 100,
+  const rawHFrac = Math.abs(pointerY - fixedY)
+  const sizePercent = Math.round(
+    clamp(rawW, CAMERA_MIN_SIZE_PERCENT / 100, CAMERA_MAX_SIZE_PERCENT / 100) * 100,
   )
-  const sizePercent = Math.round(sizeFrac * 100)
-  const { w, h } = cameraBubbleSizeNorm(sizePercent, aspect)
+  const heightPercent = Math.round(
+    clamp(
+      rawHFrac / aspect,
+      CAMERA_MIN_SIZE_PERCENT / 100,
+      CAMERA_MAX_SIZE_PERCENT / 100,
+    ) * 100,
+  )
+  const { w, h } = cameraBubbleSizeNorm(sizePercent, aspect, heightPercent)
 
   let x = fixedX
   let y = fixedY
   if (handle === 'nw' || handle === 'sw') x = fixedX - w
   if (handle === 'nw' || handle === 'ne') y = fixedY - h
-  // se: x/y already at fixed (top-left); ne: x at fixed, y above; sw: y at fixed, x left
 
-  const clamped = clampCameraLayout(x, y, sizePercent, aspect)
+  const clamped = clampCameraLayout(x, y, sizePercent, aspect, heightPercent)
   return normalizeCameraOverlay(
     {
       ...base,
       anchor: 'free',
+      lockAspect: false,
       x: clamped.x,
       y: clamped.y,
       sizePercent,
+      heightPercent,
     },
     aspect,
   )
@@ -425,26 +494,27 @@ export function applyCameraSnapPreset(
   target: CameraSnapTarget,
   frameAspect: number = CAMERA_DEFAULT_ASPECT,
 ): CameraOverlayStyle {
-  const sizePercent = clamp(
-    style.sizePercent ?? DEFAULT_CAMERA_OVERLAY.sizePercent,
-    CAMERA_MIN_SIZE_PERCENT,
-    CAMERA_MAX_SIZE_PERCENT,
-  )
-  const targets = cameraSnapTargets(sizePercent, frameAspect)
+  // Normalize first so lockAspect / heightPercent stay consistent with sizePercent
+  // (avoids DEFAULT heightPercent lingering after a size-only override).
+  const base = normalizeCameraOverlay(style, frameAspect)
+  const sizePercent = base.sizePercent
+  const heightPercent = base.heightPercent
+  const targets = cameraSnapTargets(sizePercent, frameAspect, heightPercent)
   const hit = targets.find((t) => t.id === target)
   if (!hit) {
-    return normalizeCameraOverlay(style, frameAspect)
+    return base
   }
 
   if (isCameraCorner(target)) {
     return normalizeCameraOverlay(
       {
-        ...style,
+        ...base,
         corner: target,
         anchor: target,
         x: hit.x,
         y: hit.y,
         sizePercent,
+        heightPercent,
       },
       frameAspect,
     )
@@ -459,12 +529,13 @@ export function applyCameraSnapPreset(
 
   return normalizeCameraOverlay(
     {
-      ...style,
+      ...base,
       corner: cornerGuess,
       anchor: 'free',
       x: hit.x,
       y: hit.y,
       sizePercent,
+      heightPercent,
     },
     frameAspect,
   )
@@ -483,7 +554,11 @@ export function matchCameraSnapTarget(
   if (isCameraCorner(normalized.anchor)) {
     return normalized.anchor
   }
-  const targets = cameraSnapTargets(normalized.sizePercent, frameAspect)
+  const targets = cameraSnapTargets(
+    normalized.sizePercent,
+    frameAspect,
+    normalized.heightPercent,
+  )
   let best: CameraSnapTarget | null = null
   let bestDist = Infinity
   for (const t of targets) {
@@ -511,6 +586,21 @@ export function normalizeCameraOverlay(
   const sizePercent = Math.round(
     clamp(sizeRaw, CAMERA_MIN_SIZE_PERCENT, CAMERA_MAX_SIZE_PERCENT),
   )
+  const allowsFree = cameraShapeAllowsFreeAspect(shape)
+  const lockAspect =
+    !allowsFree ||
+    (typeof partial?.lockAspect === 'boolean'
+      ? partial.lockAspect
+      : DEFAULT_CAMERA_OVERLAY.lockAspect)
+  const heightRaw =
+    lockAspect
+      ? sizePercent
+      : typeof partial?.heightPercent === 'number' && Number.isFinite(partial.heightPercent)
+        ? partial.heightPercent
+        : sizePercent
+  const heightPercent = Math.round(
+    clamp(heightRaw, CAMERA_MIN_SIZE_PERCENT, CAMERA_MAX_SIZE_PERCENT),
+  )
   const deviceId =
     typeof partial?.deviceId === 'string' && partial.deviceId.trim().length > 0
       ? partial.deviceId.trim()
@@ -536,21 +626,43 @@ export function normalizeCameraOverlay(
   let resolvedAnchor = anchor
 
   if (resolvedAnchor === 'free' && hasFreeXY) {
-    const clamped = clampCameraLayout(partial!.x!, partial!.y!, sizePercent, frameAspect)
+    const clamped = clampCameraLayout(
+      partial!.x!,
+      partial!.y!,
+      sizePercent,
+      frameAspect,
+      heightPercent,
+    )
     x = clamped.x
     y = clamped.y
   } else if (isCameraCorner(resolvedAnchor)) {
-    const layout = layoutFromCorner(resolvedAnchor, sizePercent, frameAspect)
+    const layout = layoutFromCorner(
+      resolvedAnchor,
+      sizePercent,
+      frameAspect,
+      heightPercent,
+    )
     x = layout.x
     y = layout.y
     resolvedCorner = resolvedAnchor
   } else if (hasFreeXY) {
-    const clamped = clampCameraLayout(partial!.x!, partial!.y!, sizePercent, frameAspect)
+    const clamped = clampCameraLayout(
+      partial!.x!,
+      partial!.y!,
+      sizePercent,
+      frameAspect,
+      heightPercent,
+    )
     x = clamped.x
     y = clamped.y
     resolvedAnchor = 'free'
   } else {
-    const layout = layoutFromCorner(resolvedCorner, sizePercent, frameAspect)
+    const layout = layoutFromCorner(
+      resolvedCorner,
+      sizePercent,
+      frameAspect,
+      heightPercent,
+    )
     x = layout.x
     y = layout.y
     resolvedAnchor = resolvedCorner
@@ -564,6 +676,8 @@ export function normalizeCameraOverlay(
     x,
     y,
     sizePercent,
+    heightPercent: lockAspect ? sizePercent : heightPercent,
+    lockAspect,
     shape,
     shadowEnabled:
       typeof partial?.shadowEnabled === 'boolean'
@@ -604,21 +718,50 @@ export function normalizeCameraOverlay(
 }
 
 /** CSS inset + size + chrome for the bubble relative to a positioned parent frame. */
-export function cameraBubblePosition(style: CameraOverlayStyle): {
+export function cameraBubblePosition(
+  style: CameraOverlayStyle,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): {
   top: string
   left: string
   width: string
+  height: string | undefined
+  aspectRatio: string | undefined
   borderRadius: string
   border: string
   boxShadow: string
   opacity: number
 } {
-  const normalized = normalizeCameraOverlay(style)
+  const aspect = frameAspect > 0 ? frameAspect : CAMERA_DEFAULT_ASPECT
+  const normalized = normalizeCameraOverlay(style, aspect)
   const chrome = cameraBubbleChromeStyle(normalized)
+  const locked =
+    normalized.lockAspect || normalized.heightPercent === normalized.sizePercent
+  if (locked) {
+    return {
+      top: `${normalized.y * 100}%`,
+      left: `${normalized.x * 100}%`,
+      width: `${normalized.sizePercent}%`,
+      height: undefined,
+      aspectRatio: '1',
+      borderRadius: cameraShapeBorderRadius(normalized.shape),
+      border: chrome.border,
+      boxShadow: chrome.boxShadow,
+      opacity: normalized.opacity,
+    }
+  }
+  // heightPercent is % of frame width → CSS height % of parent height = pct * aspect
+  const { h } = cameraBubbleSizeNorm(
+    normalized.sizePercent,
+    aspect,
+    normalized.heightPercent,
+  )
   return {
     top: `${normalized.y * 100}%`,
     left: `${normalized.x * 100}%`,
     width: `${normalized.sizePercent}%`,
+    height: `${h * 100}%`,
+    aspectRatio: undefined,
     borderRadius: cameraShapeBorderRadius(normalized.shape),
     border: chrome.border,
     boxShadow: chrome.boxShadow,
@@ -628,7 +771,7 @@ export function cameraBubblePosition(style: CameraOverlayStyle): {
 
 /**
  * Normalized rect (0–1) for ffmpeg overlay: x/y = top-left of bubble, w/h = size.
- * Assumes square bubble (circle/rounded) sized by width percent of frame.
+ * Uses sizePercent + heightPercent (square when lockAspect).
  */
 export function cameraBubbleNormRect(
   style: CameraOverlayStyle,
@@ -640,7 +783,11 @@ export function cameraBubbleNormRect(
   }
   const aspect = frameWidth / frameHeight
   const normalized = normalizeCameraOverlay(style, aspect)
-  const { w, h } = cameraBubbleSizeNorm(normalized.sizePercent, aspect)
+  const { w, h } = cameraBubbleSizeNorm(
+    normalized.sizePercent,
+    aspect,
+    normalized.heightPercent,
+  )
   return {
     x: normalized.x,
     y: normalized.y,

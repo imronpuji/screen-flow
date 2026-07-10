@@ -22,6 +22,7 @@ import {
   CAMERA_SNAP_PRESETS,
   DEFAULT_CAMERA_OVERLAY,
   applyCameraSnapPreset,
+  cameraShapeAllowsFreeAspect,
   cameraSnapPresetLabel,
   matchCameraSnapTarget,
   normalizeCameraOverlay,
@@ -622,7 +623,10 @@ export function RecordingReview({
                     </div>
                     <p className="review__hint">
                       Drag to move (magnetic snap to corners &amp; edges) · corner handles
-                      resize with aspect lock
+                      resize
+                      {edit.cameraOverlay.lockAspect
+                        ? ' with aspect lock'
+                        : ' freely (unlocked)'}
                       {matchCameraSnapTarget(edit.cameraOverlay) == null
                         ? ' (custom)'
                         : ''}
@@ -632,7 +636,9 @@ export function RecordingReview({
 
                   <div className="review__field">
                     <label className="review__label" htmlFor="cam-size">
-                      Size {edit.cameraOverlay.sizePercent}%
+                      {edit.cameraOverlay.lockAspect
+                        ? `Size ${edit.cameraOverlay.sizePercent}%`
+                        : `Width ${edit.cameraOverlay.sizePercent}%`}
                     </label>
                     <input
                       id="cam-size"
@@ -644,10 +650,40 @@ export function RecordingReview({
                       value={edit.cameraOverlay.sizePercent}
                       disabled={exporting}
                       onChange={(e) =>
-                        patchCamera({ sizePercent: Number(e.target.value) })
+                        patchCamera({
+                          sizePercent: Number(e.target.value),
+                          heightPercent: edit.cameraOverlay.lockAspect
+                            ? Number(e.target.value)
+                            : edit.cameraOverlay.heightPercent,
+                        })
                       }
                     />
                   </div>
+
+                  {!edit.cameraOverlay.lockAspect &&
+                  cameraShapeAllowsFreeAspect(edit.cameraOverlay.shape) ? (
+                    <div className="review__field">
+                      <label className="review__label" htmlFor="cam-height">
+                        Height {edit.cameraOverlay.heightPercent}%
+                      </label>
+                      <input
+                        id="cam-height"
+                        className="review__range"
+                        type="range"
+                        min={12}
+                        max={40}
+                        step={1}
+                        value={edit.cameraOverlay.heightPercent}
+                        disabled={exporting}
+                        onChange={(e) =>
+                          patchCamera({
+                            lockAspect: false,
+                            heightPercent: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                  ) : null}
 
                   <div className="review__field">
                     <span className="review__label">Shape</span>
@@ -675,6 +711,25 @@ export function RecordingReview({
                       ))}
                     </div>
                   </div>
+
+                  {cameraShapeAllowsFreeAspect(edit.cameraOverlay.shape) ? (
+                    <label className="review__toggle">
+                      <input
+                        type="checkbox"
+                        checked={edit.cameraOverlay.lockAspect}
+                        disabled={exporting}
+                        onChange={(e) =>
+                          patchCamera({
+                            lockAspect: e.target.checked,
+                            heightPercent: e.target.checked
+                              ? edit.cameraOverlay.sizePercent
+                              : edit.cameraOverlay.heightPercent,
+                          })
+                        }
+                      />
+                      <span>Lock aspect (square)</span>
+                    </label>
+                  ) : null}
 
                   <label className="review__toggle">
                     <input

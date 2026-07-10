@@ -309,6 +309,61 @@ function testResizeHandles(): void {
   assert(huge.sizePercent === CAMERA_MAX_SIZE_PERCENT, 'huge → max size')
   assert(huge.x >= CAMERA_SAFE_MARGIN - 1e-9, 'huge still in frame x')
   assert(huge.y >= CAMERA_SAFE_MARGIN - 1e-9, 'huge still in frame y')
+  assert(huge.lockAspect === true, 'default resize stays locked')
+  assert(huge.heightPercent === huge.sizePercent, 'locked → square height')
+
+  // Free aspect (rectangle): width & height move independently.
+  const freeStart = normalizeCameraOverlay(
+    {
+      enabled: true,
+      shape: 'rectangle',
+      lockAspect: false,
+      anchor: 'free',
+      x: 0.2,
+      y: 0.2,
+      sizePercent: 20,
+      heightPercent: 20,
+    },
+    16 / 9,
+  )
+  assert(freeStart.lockAspect === false, 'rect can unlock')
+  const freeSe = resizeCameraFromHandle(
+    freeStart,
+    'se',
+    freeStart.x + 0.35,
+    freeStart.y + 0.15,
+    16 / 9,
+  )
+  assert(freeSe.lockAspect === false, 'free resize stays unlocked')
+  assert(freeSe.sizePercent > freeStart.sizePercent, 'free se grows width')
+  assert(freeSe.heightPercent !== freeSe.sizePercent, 'free se non-square')
+  assert(freeSe.heightPercent >= CAMERA_MIN_SIZE_PERCENT, 'free height min')
+  assert(freeSe.heightPercent <= CAMERA_MAX_SIZE_PERCENT, 'free height max')
+
+  // Circle forces lock even if unlock requested.
+  const circleForced = normalizeCameraOverlay({
+    shape: 'circle',
+    lockAspect: false,
+    sizePercent: 24,
+    heightPercent: 18,
+  })
+  assert(circleForced.lockAspect === true, 'circle forces lock')
+  assert(circleForced.heightPercent === 24, 'circle height = width')
+
+  const unlockedPos = cameraBubblePosition(
+    normalizeCameraOverlay({
+      shape: 'rounded',
+      lockAspect: false,
+      sizePercent: 20,
+      heightPercent: 30,
+      x: 0.1,
+      y: 0.1,
+      anchor: 'free',
+    }),
+    16 / 9,
+  )
+  assert(unlockedPos.aspectRatio === undefined, 'unlocked drops aspect-ratio')
+  assert(typeof unlockedPos.height === 'string' && unlockedPos.height.length > 0, 'unlocked sets height')
 
   console.log('ok resize handles')
 }
