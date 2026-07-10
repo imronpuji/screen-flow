@@ -21,7 +21,8 @@
     "smoke:export-autozoom": "node --experimental-strip-types scripts/smoke-export-autozoom.mts",
     "smoke:export-trim": "node --experimental-strip-types scripts/smoke-export-trim.mts",
     "smoke:cursor-smoothing": "node --experimental-strip-types scripts/smoke-cursor-smoothing.mts",
-    "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts"
+    "smoke:background": "node --experimental-strip-types scripts/smoke-background.mts",
+    "smoke:export-effects": "node --experimental-strip-types scripts/smoke-export-effects.mts"
   },
   "dependencies": {
     "react": "^19.2.6",

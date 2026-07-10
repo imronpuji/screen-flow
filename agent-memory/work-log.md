@@ -3,6 +3,13 @@
 Entri terbaru di ATAS.
 
 
+## [2026-07-10 06:25] Bake background + cursor smoothing ke ffmpeg export
+
+- **Dikerjakan:** `shared/ffmpegBackground.ts` (gradients + padding card + rounded geq + shadow boxblur); `shared/ffmpegCursor.ts` (smoothed cursor + click ring via sendcmd/drawbox); `shared/ffmpegExport.ts` orchestrator; extend IPC `ExportMp4Request.background` + `cursorSmoothing`; `transcode.ts` filter_complex path; UI export kirim review toggles; smoke `smoke:export-effects`.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke export-effects/autozoom/background/cursor-smoothing hijau.
+- **Status:** done (export MVP)
+- **Next:** Export GIF/WebM; one-click beautify preset; per-click zoom points di timeline.
+
 ## [2026-07-10 06:20] Background padding + gradient preview
 
 - **Dikerjakan:** `shared/background.ts` (5 preset gradient, padding %, corner radius, shadow); extend `ReviewEditState.background`; frame kartu di `AutoZoomPlayback` (gradient + padding + rounded + shadow); kontrol review (toggle, preset picker, padding slider, shadow); smoke `smoke:background`.

@@ -4,7 +4,9 @@
  */
 
 import type { AutoZoomOptions } from './autozoom.js'
+import type { BackgroundStyle } from './background.js'
 import type { CursorEvent } from './cursor.js'
+import type { CursorSmoothingOptions } from './cursorSmoothing.js'
 import type { TrimRange } from './edit.js'
 
 export const IPC_CHANNELS = {
@@ -132,6 +134,18 @@ export interface ExportAutoZoomRequest {
   options?: AutoZoomOptions
 }
 
+/** Bake aesthetic background frame during ffmpeg export (matches preview). */
+export interface ExportBackgroundRequest {
+  style: BackgroundStyle
+}
+
+/** Bake smoothed cursor + click rings during ffmpeg export (matches preview). */
+export interface ExportCursorSmoothingRequest {
+  /** Absolute path to cursor-events.jsonl under screen-flow temp. */
+  cursorEventsPath: string
+  options?: CursorSmoothingOptions
+}
+
 /** Trim window baked into export (matches review sliders). */
 export type ExportTrimRequest = TrimRange
 
@@ -145,6 +159,10 @@ export interface ExportMp4Request {
   cleanupTemp?: boolean
   /** When set, ffmpeg crops/scales per click zoom keyframes before encode. */
   autoZoom?: ExportAutoZoomRequest
+  /** When set, ffmpeg composites gradient padding frame before encode. */
+  background?: ExportBackgroundRequest
+  /** When set, ffmpeg draws smoothed cursor + click rings before encode. */
+  cursorSmoothing?: ExportCursorSmoothingRequest
   /** When set, ffmpeg -ss/-to trims before encode (auto-zoom events re-based to trim start). */
   trim?: ExportTrimRequest
 }
@@ -157,6 +175,10 @@ export interface ExportMp4Result {
   codec: string
   /** True when auto-zoom sendcmd filter was applied. */
   autoZoomApplied?: boolean
+  /** True when background gradient frame was composited. */
+  backgroundApplied?: boolean
+  /** True when cursor smoothing overlay was drawn. */
+  cursorApplied?: boolean
   /** True when trim range was applied during encode. */
   trimApplied?: boolean
 }
