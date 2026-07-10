@@ -696,6 +696,11 @@
   left: 0;
 }
 
+.zoom-playback__trim-shade--gap {
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink-muted) 18%, transparent);
+}
+
 .zoom-playback__scrub {
   width: 100%;
   accent-color: var(--accent);

@@ -690,6 +690,7 @@ export function RecordingReview({
             }}
             trimStartMs={edit.trimStartMs}
             trimEndMs={edit.trimEndMs}
+            keepRanges={keepRanges}
             onDurationMs={onDurationMs}
             onTimeMs={setPlayheadMs}
           />
@@ -1916,8 +1917,8 @@ export function RecordingReview({
                 ))}
               </ul>
               <p className="review__hint">
-                Gaps are skipped on export (ffmpeg concat). Split (X) then Delete to cut the
-                middle.
+                Gaps are skipped on preview playback and export (ffmpeg concat). Split (X) then
+                Delete to cut the middle.
               </p>
             </div>
           ) : null}

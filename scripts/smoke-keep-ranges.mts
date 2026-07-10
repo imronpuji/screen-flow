@@ -9,10 +9,14 @@ import {
   cutGapInKeepRanges,
   defaultKeepRanges,
   deleteKeepRangeAtPlayhead,
+  discardedKeepWindows,
   findKeepRangeIndex,
+  isInsideKeepRange,
   mergeAdjacentKeepRanges,
   normalizeKeepRanges,
   outerTrimFromKeepRanges,
+  resolveKeepPlaybackMs,
+  snapPlayheadIntoKeepRanges,
   splitKeepRangesAtPlayhead,
   totalKeepDurationMs,
 } from '../dist-electron/shared/keepRanges.js'
@@ -98,4 +102,45 @@ testCutGapConcat()
 testDeleteSegment()
 testApplyTrim()
 testSplitTooClose()
+testGapSkipPlayback()
 console.log('smoke-keep-ranges: all ok')
+
+function testGapSkipPlayback(): void {
+  const gapped = cutGapInKeepRanges(defaultKeepRanges(FULL), 3000, 6000, FULL)!
+  assert(gapped.length === 2, 'setup gapped')
+
+  const inside = resolveKeepPlaybackMs(gapped, 1500, FULL)
+  assert(inside.ms === 1500 && !inside.shouldPause, 'inside keep stays')
+
+  const atEndFirst = resolveKeepPlaybackMs(gapped, 3000, FULL)
+  assert(atEndFirst.ms === 6000 && !atEndFirst.shouldPause, 'end of first → next start')
+
+  const inGap = resolveKeepPlaybackMs(gapped, 4500, FULL)
+  assert(inGap.ms === 6000 && !inGap.shouldPause, 'gap → next start')
+
+  const atLastEnd = resolveKeepPlaybackMs(gapped, FULL, FULL)
+  assert(atLastEnd.ms === FULL && atLastEnd.shouldPause, 'last end pauses')
+
+  const before = resolveKeepPlaybackMs(gapped, 0, FULL)
+  assert(before.ms === 0 && !before.shouldPause, 'at first start')
+
+  const trimmed = normalizeKeepRanges(
+    [
+      { startMs: 500, endMs: 2000 },
+      { startMs: 7000, endMs: 9000 },
+    ],
+    FULL,
+  )
+  assert(snapPlayheadIntoKeepRanges(trimmed, 4000, FULL) === 7000, 'snap gap → next')
+  assert(snapPlayheadIntoKeepRanges(trimmed, 100, FULL) === 500, 'snap before → first')
+  assert(snapPlayheadIntoKeepRanges(trimmed, 9500, FULL) === 9000, 'snap after → last end')
+  assert(isInsideKeepRange(trimmed, 1000), 'inside true')
+  assert(!isInsideKeepRange(trimmed, 4000), 'gap false')
+
+  const gaps = discardedKeepWindows(trimmed, FULL)
+  assert(gaps.length === 3, 'lead + mid + trail gaps')
+  assert(gaps[0]!.startMs === 0 && gaps[0]!.endMs === 500, 'lead')
+  assert(gaps[1]!.startMs === 2000 && gaps[1]!.endMs === 7000, 'mid')
+  assert(gaps[2]!.startMs === 9000 && gaps[2]!.endMs === FULL, 'trail')
+  console.log('ok gap-skip playback')
+}
