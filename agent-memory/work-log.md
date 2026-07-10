@@ -1,6 +1,13 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:30] Allow owner ngrok merge callback
+
+- **Dikerjakan:** `decisions.md` — ganti blokir callback eksternal; izinkan `POST …/merge` ke tunnel ngrok owner (`pr-auto-merge`). Curl merge setelah PR.
+- **Commit:** (pending)
+- **Status:** done
+- **Next:** Rectangle camera shape; border/shadow bake; A/V drift compensation.
+
 ## [2026-07-10 09:25] Fix export hang at 100% (infinite gradients)
 
 - **Dikerjakan:** Root cause — background `gradients` + `loop=-1` infinite as overlay main input; full export omitted `-t` → ffmpeg never EOF, UI stuck at 100%, CPU panas. Fix: `shortest=1` on background overlays, trim gradients to duration, padded `-t` ceiling for effects graphs, progress "Finalizing…" at 100%. Smoke encodes **without** `-t` to catch regression.
