@@ -18,7 +18,7 @@
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake + Retina DIP mapping + anti-jitter
 - [x] Cursor smoothing + efek klik + size/style/hide/spotlight + **auto-highlight clicks** — preview + export bake + **persist prefs**
 - [~] Background gradient, padding, rounded corners, shadow — preview + export bake (1-frame alpha mask) + **frame layout presets (Compact/Standard/Wide/Flat)** + **persist prefs** + **export multi-stop/angle/accent fidelity**
-- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag**; background frame layouts done
+- [~] Timeline editor — clip markers (zoom spans + click ticks + **camera active-range spans** + seek) + per-click zoom points (enable/scale) + **add-at-playhead (Z)** + **focus nudge** + **camera mute-window edit + scrubber edge drag** + **undo/redo (coalesced)**; split/cut + ripple delete still open
 
 ## Nanti
 
@@ -28,7 +28,7 @@
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [x] Auto-highlight klik — soft filled pulse (preview + export bake) + toggle + persist + Beautify on
-- [x] Keyboard shortcuts — setup R/Space; review Space/E/B/arrows/Esc; exporting Esc
+- [x] Keyboard shortcuts — setup R/Space; review Space/E/B/Z/⌘Z/←→/Esc; exporting Esc
 - [x] Empty-state tooltips — catalog + hover tips + empty source/camera hints
 - [ ] ScreenCaptureKit helper (kualitas native)
 - [ ] Windows capture path

@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Review edit undo/redo (FOKUS 5)
+
+- **Keputusan:** `ReviewEditState` di-review memakai `shared/editHistory.ts` (past/present/future, limit 50). Setiap `setEdit` → `pushEdit` dengan **coalesce 400ms** supaya slider/drag jadi satu undo step. Shortcut: ⌘/Ctrl+Z undo, ⌘⇧Z / Ctrl+Shift+Z / Ctrl+Y redo (`matchShortcut` khusus modifier). Tombol Undo/Redo di header review + tooltip. Non-destruktif — hanya metadata edit, media asli utuh.
+- **Alasan:** FOKUS 5 — editor powerful-tapi-mudah butuh undo penuh; tanpa history, Beautify/zoom/camera edits menakutkan orang awam. Coalesce mencegah ratusan step dari range input.
+- **Status:** aktif
+
 ## [2026-07-10] FaceTime layout map clickable snap guides (FOKUS 3B)
 
 - **Keputusan:** `CameraLayoutMap` selalu menampilkan 8 snap guide dots saat interaktif (bukan hanya saat drag). Klik guide → `applyCameraSnapPreset` (exact corner/edge, stopPropagation supaya tidak mulai free-drag). Highlight aktif via `matchCameraSnapTarget`; saat drag guides lebih kuat visual (`guides--dragging`). Koordinat relatif tetap preview ≡ export.
