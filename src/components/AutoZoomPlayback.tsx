@@ -31,6 +31,7 @@ import {
 import type { CameraSyncMeta } from '../../shared/cameraSync'
 import {
   cameraStartLagMs,
+  isCameraActiveAtMs,
   screenTimeToCameraTimeSec,
 } from '../../shared/cameraSync'
 import type { CaptureGeometry } from '../../shared/cursorCoords'
@@ -293,7 +294,13 @@ export function AutoZoomPlayback({
       : 'cursor-overlay__dot'
 
   const showCamera =
-    Boolean(cameraMediaUrl) && cameraOverlay.enabled
+    Boolean(cameraMediaUrl) &&
+    cameraOverlay.enabled &&
+    isCameraActiveAtMs(
+      cameraSync?.activeRanges,
+      currentMs,
+      cameraSync?.wallDurationMs ?? durationMs,
+    )
 
   const cameraTimeSec = screenTimeToCameraTimeSec(currentMs / 1000, {
     offsetMs: cameraStartLagMs(cameraSync),

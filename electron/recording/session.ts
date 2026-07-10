@@ -26,7 +26,10 @@ import type {
 } from '../../shared/ipc.js'
 import {
   CAMERA_SYNC_FILENAME,
+  closeOpenCameraActiveRanges,
   createEmptyCameraSyncMeta,
+  normalizeCameraActiveRanges,
+  type CameraActiveRange,
   type CameraSyncMeta,
 } from '../../shared/cameraSync.js'
 import { startCursorSampler, stopCursorSampler } from './cursorSampler.js'
@@ -56,6 +59,10 @@ let writeQueue: Promise<void> = Promise.resolve()
 let cameraWriteQueue: Promise<void> = Promise.resolve()
 /** First-chunk wall offsets for screen↔camera drift compensation. */
 let syncMeta: CameraSyncMeta | null = null
+/** Mid-recording mute/unmute windows (renderer pushes via IPC). */
+let cameraActiveRanges: CameraActiveRange[] = []
+/** How many camera segment files have been opened this session (0 = camera.webm). */
+let cameraSegmentIndex = 0
 
 function writeCaptureGeometry(sessionDir: string, geometry: CaptureGeometry): string {
   const geometryPath = path.join(sessionDir, CAPTURE_GEOMETRY_FILENAME)
@@ -140,6 +147,8 @@ export async function startRecording(
   const startedAt = Date.now()
   const cursorSampler = startCursorSampler({ sessionDir, startedAt })
   syncMeta = createEmptyCameraSyncMeta(startedAt)
+  cameraActiveRanges = []
+  cameraSegmentIndex = includeCamera ? 1 : 0
 
   status = {
     state: 'recording',
@@ -161,6 +170,44 @@ export async function startRecording(
   return { ok: true, status: getRecordingStatus() }
 }
 
+/**
+ * Lazily open camera.webm (or camera-N.webm) so the user can arm FaceTime
+ * mid-recording even if includeCamera was false at start.
+ */
+export async function ensureCameraTrack(): Promise<RecordingStatus> {
+  assertRecording()
+  if (cameraWriteStream && status.cameraOutputPath) {
+    return getRecordingStatus()
+  }
+  const sessionDir = status.sessionDir
+  if (!sessionDir) {
+    throw new Error('Recording session directory missing')
+  }
+  cameraSegmentIndex += 1
+  const fileName =
+    cameraSegmentIndex <= 1 ? 'camera.webm' : `camera-${cameraSegmentIndex}.webm`
+  const cameraOutputPath = path.join(sessionDir, fileName)
+  cameraWriteStream = fs.createWriteStream(cameraOutputPath)
+  cameraWriteQueue = Promise.resolve()
+  // Mid-arm after a prior finalize: reset first-chunk so lag reflects this segment.
+  // (Multi-segment export still uses the primary path; first arm is the common case.)
+  if (syncMeta && status.cameraChunkCount === 0) {
+    syncMeta = { ...syncMeta, cameraFirstChunkMs: null }
+  }
+  status = {
+    ...status,
+    cameraOutputPath,
+  }
+  return getRecordingStatus()
+}
+
+/** Persist mid-recording camera visibility windows (mute/unmute). */
+export function setCameraActiveRanges(ranges: CameraActiveRange[]): RecordingStatus {
+  assertRecording()
+  cameraActiveRanges = normalizeCameraActiveRanges(ranges)
+  return getRecordingStatus()
+}
+
 export async function appendRecordingChunk(
   request: AppendChunkRequest,
 ): Promise<AppendChunkResult> {
@@ -178,6 +225,9 @@ export async function appendRecordingChunk(
   }
 
   if (track === 'camera') {
+    if (!cameraWriteStream || !status.cameraOutputPath) {
+      await ensureCameraTrack()
+    }
     const stream = cameraWriteStream
     if (!stream || !status.cameraOutputPath) {
       throw new Error('Camera track not enabled for this session')
@@ -268,9 +318,11 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   let cameraSyncPath: string | null = null
   let finalMeta: CameraSyncMeta | null = null
   if (syncMeta && sessionDir && cameraChunkCount > 0) {
+    const closedRanges = closeOpenCameraActiveRanges(cameraActiveRanges, durationMs)
     finalMeta = {
       ...syncMeta,
       wallDurationMs: durationMs,
+      activeRanges: closedRanges,
     }
     cameraSyncPath = path.join(sessionDir, CAMERA_SYNC_FILENAME)
     fs.writeFileSync(cameraSyncPath, JSON.stringify(finalMeta, null, 2), 'utf8')
@@ -281,6 +333,8 @@ export async function stopRecording(): Promise<StopRecordingResult> {
   writeQueue = Promise.resolve()
   cameraWriteQueue = Promise.resolve()
   syncMeta = null
+  cameraActiveRanges = []
+  cameraSegmentIndex = 0
   status = idleStatus()
 
   return {

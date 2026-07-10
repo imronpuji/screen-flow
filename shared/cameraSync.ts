@@ -9,6 +9,17 @@
  * Preview review applies the same `offsetMs` when seeking the recorded bubble.
  */
 
+/**
+ * Wall-clock window (ms from session `startedAt`) when the camera bubble is live.
+ * Used for mid-recording mute/unmute: MediaRecorder may keep writing (black frames
+ * while tracks are disabled), but preview/export only show the bubble in these ranges.
+ */
+export interface CameraActiveRange {
+  startMs: number
+  /** null = still open (closed to wallDurationMs on stop). */
+  endMs: number | null
+}
+
 /** Written beside capture.webm / camera.webm as camera-sync.json. */
 export interface CameraSyncMeta {
   version: 1
@@ -20,6 +31,11 @@ export interface CameraSyncMeta {
   cameraFirstChunkMs: number | null
   /** Wall duration of the recording session (stop − start). */
   wallDurationMs: number
+  /**
+   * Periods when FaceTime overlay should be visible (mid-recording toggle).
+   * Empty / omitted → treat as always-on for the whole camera track.
+   */
+  activeRanges?: CameraActiveRange[]
 }
 
 export interface CameraDriftCompensation {
@@ -53,7 +69,102 @@ export function createEmptyCameraSyncMeta(startedAt: number): CameraSyncMeta {
     screenFirstChunkMs: null,
     cameraFirstChunkMs: null,
     wallDurationMs: 0,
+    activeRanges: [],
   }
+}
+
+/** Normalize / clamp active-range list from IPC or JSON. */
+export function normalizeCameraActiveRanges(raw: unknown): CameraActiveRange[] {
+  if (!Array.isArray(raw)) return []
+  const out: CameraActiveRange[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const o = item as Record<string, unknown>
+    const startMs = Number(o.startMs)
+    if (!Number.isFinite(startMs) || startMs < 0) continue
+    const endRaw = o.endMs
+    const endMs =
+      endRaw == null ? null : Number.isFinite(Number(endRaw)) ? Math.max(0, Number(endRaw)) : null
+    if (endMs != null && endMs < startMs) continue
+    out.push({ startMs: Math.max(0, startMs), endMs })
+  }
+  return out
+}
+
+/** Close any open range at `atMs` (session stop or mute). */
+export function closeOpenCameraActiveRanges(
+  ranges: CameraActiveRange[],
+  atMs: number,
+): CameraActiveRange[] {
+  const t = Math.max(0, atMs)
+  return ranges.map((r) => (r.endMs == null ? { ...r, endMs: Math.max(r.startMs, t) } : r))
+}
+
+/** Append a new open range (unmute / first arm). Ignores if one is already open. */
+export function openCameraActiveRange(
+  ranges: CameraActiveRange[],
+  startMs: number,
+): CameraActiveRange[] {
+  if (ranges.some((r) => r.endMs == null)) return ranges
+  return [...ranges, { startMs: Math.max(0, startMs), endMs: null }]
+}
+
+/**
+ * True when playhead (ms from session/screen start ≈ wall offset) is inside an
+ * active range. Empty ranges → always active (legacy recordings).
+ */
+export function isCameraActiveAtMs(
+  ranges: CameraActiveRange[] | null | undefined,
+  timeMs: number,
+  wallDurationMs = Number.POSITIVE_INFINITY,
+): boolean {
+  if (!ranges || ranges.length === 0) return true
+  const t = Math.max(0, timeMs)
+  for (const r of ranges) {
+    const end = r.endMs == null ? wallDurationMs : r.endMs
+    if (t >= r.startMs && t <= end) return true
+  }
+  return false
+}
+
+/**
+ * ffmpeg overlay `enable=` expression on the **main** (screen) timeline.
+ * Returns null when the bubble should stay visible for the whole encode
+ * (no ranges, or a single range covering ~the full wall duration).
+ */
+export function cameraOverlayEnableExpr(
+  ranges: CameraActiveRange[] | null | undefined,
+  screenFirstChunkMs: number | null | undefined,
+  wallDurationMs: number,
+): string | null {
+  const normalized = normalizeCameraActiveRanges(ranges ?? [])
+  if (normalized.length === 0) return null
+
+  const screenOrigin = Math.max(0, screenFirstChunkMs ?? 0)
+  const wall = Math.max(0, wallDurationMs)
+  const parts: string[] = []
+
+  for (const r of closeOpenCameraActiveRanges(normalized, wall)) {
+    const end = r.endMs ?? wall
+    // Map wall offsets → screen timeline (t=0 ≈ first screen chunk).
+    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000)
+    const endSec = Math.max(startSec, (end - screenOrigin) / 1000)
+    if (endSec - startSec < 0.02) continue
+    parts.push(`between(t,${startSec.toFixed(3)},${endSec.toFixed(3)})`)
+  }
+
+  if (parts.length === 0) return null
+
+  // Single range covering essentially the whole clip → no enable needed.
+  if (parts.length === 1 && normalized.length === 1) {
+    const r = closeOpenCameraActiveRanges(normalized, wall)[0]!
+    const startSec = Math.max(0, (r.startMs - screenOrigin) / 1000)
+    const endSec = Math.max(startSec, ((r.endMs ?? wall) - screenOrigin) / 1000)
+    const fullSec = Math.max(0, (wall - screenOrigin) / 1000)
+    if (startSec <= 0.05 && endSec >= fullSec - 0.05) return null
+  }
+
+  return parts.join('+')
 }
 
 /** Parse camera-sync.json (tolerant — returns null on garbage). */
@@ -76,6 +187,7 @@ export function parseCameraSyncMeta(raw: unknown): CameraSyncMeta | null {
     cameraFirstChunkMs:
       cameraFirst != null && Number.isFinite(cameraFirst) ? Math.max(0, cameraFirst) : null,
     wallDurationMs: Number.isFinite(wallDurationMs) ? Math.max(0, wallDurationMs) : 0,
+    activeRanges: normalizeCameraActiveRanges(o.activeRanges),
   }
 }
 

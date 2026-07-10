@@ -28,6 +28,7 @@ import {
 import {
   appendRecordingChunk,
   cancelExport,
+  ensureCameraTrack,
   exportWebmToMp4,
   fetchAppInfo,
   fetchCaptureSources,
@@ -40,6 +41,7 @@ import {
   readCursorEvents,
   requestCameraAccess,
   saveExport,
+  setCameraActiveRanges,
   startRecording,
   stopRecording,
 } from './lib/runtime'
@@ -50,8 +52,12 @@ import { EmptyHint, Tooltip } from './components/Tooltip'
 import { hasCompletedOnboarding } from './lib/onboarding'
 import type { CursorEvent } from '../shared/cursor'
 import type { CaptureGeometry } from '../shared/cursorCoords'
-import type { CameraSyncMeta } from '../shared/cameraSync'
-import { cameraStartLagMs } from '../shared/cameraSync'
+import type { CameraActiveRange, CameraSyncMeta } from '../shared/cameraSync'
+import {
+  cameraStartLagMs,
+  closeOpenCameraActiveRanges,
+  openCameraActiveRange,
+} from '../shared/cameraSync'
 import { isEditableTarget, matchShortcut } from '../shared/shortcuts'
 import {
   TOOLTIPS,
@@ -114,11 +120,15 @@ export default function App() {
   const [cameraDevices, setCameraDevices] = useState<CameraDevice[]>([])
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  /** Live FaceTime arm during an active recording (mute/unmute without stopping MediaRecorder). */
+  const [cameraLive, setCameraLive] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding())
   const previewRef = useRef<HTMLVideoElement | null>(null)
   const captureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraCaptureRef = useRef<LiveCaptureHandle | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const cameraActiveRangesRef = useRef<CameraActiveRange[]>([])
+  const recordingStartedAtRef = useRef<number | null>(null)
   const toggleRecordingRef = useRef<() => void>(() => undefined)
 
   const inElectron = isElectronBridgeAvailable()
@@ -243,8 +253,86 @@ export default function App() {
     stopMediaStream(cameraStreamRef.current)
     cameraStreamRef.current = null
     setCameraStream(null)
+    setCameraLive(false)
     setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: false }))
     setCameraError(null)
+  }
+
+  function wallOffsetMs(): number {
+    const started = recordingStartedAtRef.current
+    if (started == null) return 0
+    return Math.max(0, Date.now() - started)
+  }
+
+  function setCameraTracksEnabled(enabled: boolean) {
+    const stream = cameraStreamRef.current
+    if (!stream) return
+    for (const track of stream.getVideoTracks()) {
+      track.enabled = enabled
+    }
+  }
+
+  function beginCameraCaptureTrack() {
+    if (!cameraStreamRef.current) return
+    if (cameraCaptureRef.current) return
+    cameraCaptureRef.current = startCameraCapture({
+      stream: cameraStreamRef.current,
+      onChunk: async (data) => {
+        const chunkResult = await appendRecordingChunk({ data, track: 'camera' })
+        setRecording((prev) =>
+          prev.state === 'recording'
+            ? {
+                ...prev,
+                cameraBytesWritten: chunkResult.bytesWritten,
+                cameraChunkCount: chunkResult.chunkCount,
+              }
+            : prev,
+        )
+      },
+      onError: (err) => setCameraError(err.message),
+    })
+  }
+
+  async function syncCameraActiveRanges(ranges: CameraActiveRange[]) {
+    cameraActiveRangesRef.current = ranges
+    try {
+      await setCameraActiveRanges({ ranges })
+    } catch {
+      /* best-effort — stop still closes open ranges */
+    }
+  }
+
+  /** Arm / mute FaceTime during an active recording (FOKUS 3A mid-recording toggle). */
+  async function setCameraLiveDuringRecording(nextLive: boolean) {
+    if (!isRecording) return
+    setCameraError(null)
+    try {
+      if (nextLive) {
+        if (!cameraStreamRef.current) {
+          await enableCameraPreview(cameraOverlay)
+          if (!cameraStreamRef.current) return
+        }
+        const ensured = await ensureCameraTrack()
+        setRecording(ensured.status)
+        setCameraTracksEnabled(true)
+        beginCameraCaptureTrack()
+        const ranges = openCameraActiveRange(cameraActiveRangesRef.current, wallOffsetMs())
+        await syncCameraActiveRanges(ranges)
+        setCameraLive(true)
+        setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: true }))
+      } else {
+        setCameraTracksEnabled(false)
+        const ranges = closeOpenCameraActiveRanges(
+          cameraActiveRangesRef.current,
+          wallOffsetMs(),
+        )
+        await syncCameraActiveRanges(ranges)
+        setCameraLive(false)
+      }
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : 'Camera toggle failed')
+      setCameraLive(false)
+    }
   }
 
   function clearReview() {
@@ -310,10 +398,24 @@ export default function App() {
         captureRef.current = null
         const cameraHandle = cameraCaptureRef.current
         cameraCaptureRef.current = null
+        // Close any open mute window before stop so camera-sync.json is complete.
+        const closedRanges = closeOpenCameraActiveRanges(
+          cameraActiveRangesRef.current,
+          wallOffsetMs(),
+        )
+        cameraActiveRangesRef.current = closedRanges
+        try {
+          await setCameraActiveRanges({ ranges: closedRanges })
+        } catch {
+          /* stop still finalizes */
+        }
         await handle?.stop()
         await cameraHandle?.stop()
         bindPreview(null)
         const result = await stopRecording()
+        recordingStartedAtRef.current = null
+        setCameraLive(false)
+        cameraActiveRangesRef.current = []
         setRecording(result.status)
         setLastWebmPath(result.outputPath)
         setLastCursorEventsPath(result.cursorEventsPath)
@@ -324,6 +426,10 @@ export default function App() {
         setReviewBytesWritten(result.bytesWritten)
         setReviewChunkCount(result.chunkCount)
         setReviewCursorEventCount(result.cursorEventCount)
+        // Keep overlay enabled in review when a camera track was captured (even if muted at end).
+        if (result.cameraChunkCount > 0) {
+          setCameraOverlay((prev) => normalizeCameraOverlay({ ...prev, enabled: true }))
+        }
 
         if (!result.outputPath) {
           setMode('setup')
@@ -378,6 +484,9 @@ export default function App() {
           includeCamera: wantCamera,
         })
         setRecording(started.status)
+        recordingStartedAtRef.current = started.status.startedAt
+        cameraActiveRangesRef.current = []
+        setCameraLive(false)
 
         try {
           const handle = await startLiveCapture({
@@ -400,26 +509,18 @@ export default function App() {
           bindPreview(handle.stream)
 
           if (wantCamera && cameraStreamRef.current) {
-            cameraCaptureRef.current = startCameraCapture({
-              stream: cameraStreamRef.current,
-              onChunk: async (data) => {
-                const chunkResult = await appendRecordingChunk({ data, track: 'camera' })
-                setRecording((prev) =>
-                  prev.state === 'recording'
-                    ? {
-                        ...prev,
-                        cameraBytesWritten: chunkResult.bytesWritten,
-                        cameraChunkCount: chunkResult.chunkCount,
-                      }
-                    : prev,
-                )
-              },
-              onError: (err) => setCameraError(err.message),
-            })
+            setCameraTracksEnabled(true)
+            beginCameraCaptureTrack()
+            const ranges = openCameraActiveRange([], wallOffsetMs())
+            await syncCameraActiveRanges(ranges)
+            setCameraLive(true)
           }
         } catch (captureErr) {
           void cameraCaptureRef.current?.stop()
           cameraCaptureRef.current = null
+          recordingStartedAtRef.current = null
+          setCameraLive(false)
+          cameraActiveRangesRef.current = []
           try {
             await stopRecording()
           } catch {
@@ -694,10 +795,14 @@ export default function App() {
               <label className="camera-controls__toggle">
                 <input
                   type="checkbox"
-                  checked={cameraOverlay.enabled}
-                  disabled={busy || isRecording}
+                  checked={isRecording ? cameraLive : cameraOverlay.enabled}
+                  disabled={busy}
                   onChange={(e) => {
                     const checked = e.target.checked
+                    if (isRecording) {
+                      void setCameraLiveDuringRecording(checked)
+                      return
+                    }
                     if (checked) {
                       void enableCameraPreview(cameraOverlay)
                     } else {
@@ -705,10 +810,16 @@ export default function App() {
                     }
                   }}
                 />
-                <span>FaceTime camera overlay</span>
+                <span>
+                  {isRecording
+                    ? cameraLive
+                      ? 'FaceTime camera (live)'
+                      : 'FaceTime camera (muted)'
+                    : 'FaceTime camera overlay'}
+                </span>
               </label>
             </Tooltip>
-            {cameraOverlay.enabled ? (
+            {cameraOverlay.enabled || cameraLive ? (
               <div className="camera-controls__row">
                 <label className="camera-controls__field">
                   <span>Camera</span>
@@ -857,8 +968,8 @@ export default function App() {
             <p className="shell__status" role="status">
               Live capture · {formatBytes(recording.bytesWritten)} · {recording.chunkCount}{' '}
               chunks · cursor trail
-              {recording.cameraOutputPath
-                ? ` · camera ${formatBytes(recording.cameraBytesWritten)}`
+              {recording.cameraChunkCount > 0
+                ? ` · camera ${formatBytes(recording.cameraBytesWritten)}${cameraLive ? '' : ' (muted)'}`
                 : ''}
             </p>
           ) : null}
@@ -888,9 +999,13 @@ export default function App() {
               Hide the live FaceTime bubble while recording so full-display capture
               does not burn it into screen WebM (review overlays camera.webm once).
             */}
-            {isRecording && cameraOverlay.enabled ? (
+            {isRecording && cameraLive ? (
               <div className="camera-recording-badge" role="status">
                 Camera recording
+              </div>
+            ) : isRecording && recording.cameraChunkCount > 0 ? (
+              <div className="camera-recording-badge camera-recording-badge--muted" role="status">
+                Camera muted
               </div>
             ) : (
               <CameraBubble

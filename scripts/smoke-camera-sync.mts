@@ -5,9 +5,13 @@ import {
   CAMERA_SYNC_OFFSET_EPSILON_MS,
   cameraDriftNeedsCompensation,
   cameraDriftSetptsExpr,
+  cameraOverlayEnableExpr,
   cameraStartLagMs,
+  closeOpenCameraActiveRanges,
   computeCameraDrift,
   createEmptyCameraSyncMeta,
+  isCameraActiveAtMs,
+  openCameraActiveRange,
   parseCameraSyncMeta,
   screenTimeToCameraTimeSec,
 } from '../shared/cameraSync.ts'
@@ -26,6 +30,7 @@ function testParseMeta(): void {
   const empty = createEmptyCameraSyncMeta(1_000)
   assert(empty.version === 1, 'version')
   assert(empty.screenFirstChunkMs == null, 'no screen yet')
+  assert(Array.isArray(empty.activeRanges), 'activeRanges default')
   assert(parseCameraSyncMeta(null) == null, 'null')
   assert(parseCameraSyncMeta({ version: 2 }) == null, 'bad version')
   const parsed = parseCameraSyncMeta({
@@ -34,9 +39,11 @@ function testParseMeta(): void {
     screenFirstChunkMs: 10,
     cameraFirstChunkMs: 210,
     wallDurationMs: 5000,
+    activeRanges: [{ startMs: 200, endMs: 4000 }],
   })
   assert(parsed != null, 'parsed')
   assert(parsed!.cameraFirstChunkMs === 210, 'camera first')
+  assert(parsed!.activeRanges?.length === 1, 'active range kept')
   console.log('ok camera sync parse')
 }
 
@@ -104,6 +111,33 @@ function testSetptsAndReviewMap(): void {
   console.log('ok setpts + review map')
 }
 
+function testActiveRanges(): void {
+  let ranges = openCameraActiveRange([], 100)
+  assert(ranges.length === 1 && ranges[0]!.endMs == null, 'open range')
+  ranges = closeOpenCameraActiveRanges(ranges, 2500)
+  assert(ranges[0]!.endMs === 2500, 'closed')
+  ranges = openCameraActiveRange(ranges, 4000)
+  assert(ranges.length === 2, 'second open')
+  assert(isCameraActiveAtMs(ranges, 150, 10_000), 'active in first')
+  assert(!isCameraActiveAtMs(ranges, 3000, 10_000), 'muted gap')
+  assert(isCameraActiveAtMs(ranges, 4500, 10_000), 'active in open second')
+  assert(isCameraActiveAtMs([], 999, 10_000), 'empty = always on')
+
+  const full = cameraOverlayEnableExpr([{ startMs: 0, endMs: 5000 }], 0, 5000)
+  assert(full == null, 'full coverage → no enable')
+  const partial = cameraOverlayEnableExpr(
+    [
+      { startMs: 500, endMs: 2000 },
+      { startMs: 3000, endMs: 4500 },
+    ],
+    0,
+    5000,
+  )
+  assert(partial != null && partial.includes('between(t,'), `partial enable (got ${partial})`)
+  assert(partial!.includes('+'), 'OR of windows')
+  console.log('ok camera active ranges')
+}
+
 function testPlanInjectsSetpts(): void {
   const style = { ...DEFAULT_CAMERA_OVERLAY, enabled: true, shape: 'circle' as const }
   const plan = planCameraExport(
@@ -122,6 +156,17 @@ function testPlanInjectsSetpts(): void {
   const plain = planCameraExport(style, { width: 320, height: 180 }, 'vbase', 'vout', 1, null)
   assert(!plain.driftApplied, 'no drift')
   assert(!plain.filterComplex.includes('setpts='), 'no setpts without drift')
+
+  const gated = planCameraExport(
+    style,
+    { width: 320, height: 180 },
+    'vbase',
+    'vout',
+    1,
+    null,
+    'between(t,1.000,2.000)',
+  )
+  assert(gated.filterComplex.includes("enable='between(t,1.000,2.000)'"), 'enable in overlay')
   console.log('ok plan injects setpts')
 }
 
@@ -129,5 +174,6 @@ testParseMeta()
 testStartLag()
 testComputeDrift()
 testSetptsAndReviewMap()
+testActiveRanges()
 testPlanInjectsSetpts()
 console.log('smoke:camera-sync passed')

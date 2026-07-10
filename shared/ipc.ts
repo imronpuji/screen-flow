@@ -7,7 +7,7 @@ import type { CaptureGeometry } from './cursorCoords.js'
 import type { AutoZoomOptions } from './autozoom.js'
 import type { BackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
-import type { CameraSyncMeta } from './cameraSync.js'
+import type { CameraSyncMeta, CameraActiveRange } from './cameraSync.js'
 import type { CursorAppearance } from './cursorAppearance.js'
 import type { CursorEvent } from './cursor.js'
 import type { CursorSmoothingOptions } from './cursorSmoothing.js'
@@ -26,6 +26,10 @@ export const IPC_CHANNELS = {
   RECORDING_STOP: 'recording:stop',
   RECORDING_GET_STATUS: 'recording:get-status',
   RECORDING_APPEND_CHUNK: 'recording:append-chunk',
+  /** Lazily open camera.webm writer mid-session (FaceTime armed after start). */
+  RECORDING_ENSURE_CAMERA: 'recording:ensure-camera',
+  /** Push mid-recording camera mute/unmute active ranges into session sync meta. */
+  RECORDING_SET_CAMERA_ACTIVE_RANGES: 'recording:set-camera-active-ranges',
   EXPORT_WEBM_TO_MP4: 'export:webm-to-mp4',
   /** Main → renderer push while ffmpeg encodes. */
   EXPORT_PROGRESS: 'export:progress',
@@ -166,6 +170,20 @@ export interface AppendChunkResult {
   chunkCount: number
   /** Echo of the track that was written. */
   track: RecordingTrack
+}
+
+export interface SetCameraActiveRangesRequest {
+  ranges: CameraActiveRange[]
+}
+
+export interface EnsureCameraTrackResult {
+  ok: true
+  status: RecordingStatus
+}
+
+export interface SetCameraActiveRangesResult {
+  ok: true
+  status: RecordingStatus
 }
 
 /** Bake auto-zoom from cursor JSONL during ffmpeg export (matches preview engine). */
@@ -334,6 +352,12 @@ export interface ScreenFlowApi {
   stopRecording: () => Promise<StopRecordingResult>
   getRecordingStatus: () => Promise<RecordingStatus>
   appendRecordingChunk: (request: AppendChunkRequest) => Promise<AppendChunkResult>
+  /** Open camera.webm writer if the session started without includeCamera. */
+  ensureCameraTrack: () => Promise<EnsureCameraTrackResult>
+  /** Persist FaceTime mute/unmute windows for export/review. */
+  setCameraActiveRanges: (
+    request: SetCameraActiveRangesRequest,
+  ) => Promise<SetCameraActiveRangesResult>
   exportWebmToMp4: (request: ExportMp4Request) => Promise<ExportMp4Result>
   /** Subscribe to encode progress; returns unsubscribe. */
   onExportProgress: (listener: (event: ExportProgressEvent) => void) => () => void

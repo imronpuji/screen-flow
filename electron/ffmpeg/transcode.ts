@@ -32,7 +32,7 @@ import type { ExportMp4Request, ExportMp4Result, ExportProgressEvent } from '../
 import { readCursorEventsFile } from '../recording/readCursorEvents.js'
 import { readCaptureGeometryBeside } from '../recording/readCaptureGeometry.js'
 import { resolveCameraSyncMeta } from '../recording/readCameraSync.js'
-import { computeCameraDrift } from '../../shared/cameraSync.js'
+import { computeCameraDrift, cameraOverlayEnableExpr } from '../../shared/cameraSync.js'
 import { probeVideoFile } from './probe.js'
 import {
   clampPercent,
@@ -426,6 +426,11 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       style: request.camera.style,
       inputIndex: 1,
       drift: cameraDrift,
+      enableExpr: cameraOverlayEnableExpr(
+        syncMeta?.activeRanges,
+        syncMeta?.screenFirstChunkMs ?? null,
+        syncMeta?.wallDurationMs ?? fullDurationMs,
+      ),
     }
     extraInputs = [cameraPath]
   }

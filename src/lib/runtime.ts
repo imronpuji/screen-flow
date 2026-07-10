@@ -5,6 +5,7 @@ import type {
   CameraAccessResult,
   CancelExportResult,
   CaptureSource,
+  EnsureCameraTrackResult,
   ExportMp4Request,
   ExportMp4Result,
   ExportProgressEvent,
@@ -17,6 +18,8 @@ import type {
   RecordingStatus,
   SaveExportRequest,
   SaveExportResult,
+  SetCameraActiveRangesRequest,
+  SetCameraActiveRangesResult,
   StartRecordingRequest,
   StartRecordingResult,
   StopRecordingResult,
@@ -116,6 +119,22 @@ export async function appendRecordingChunk(
     throw new Error('Recording requires the Electron app')
   }
   return window.screenFlow.appendRecordingChunk(request)
+}
+
+export async function ensureCameraTrack(): Promise<EnsureCameraTrackResult> {
+  if (!window.screenFlow?.ensureCameraTrack) {
+    throw new Error('Recording requires the Electron app')
+  }
+  return window.screenFlow.ensureCameraTrack()
+}
+
+export async function setCameraActiveRanges(
+  request: SetCameraActiveRangesRequest,
+): Promise<SetCameraActiveRangesResult> {
+  if (!window.screenFlow?.setCameraActiveRanges) {
+    throw new Error('Recording requires the Electron app')
+  }
+  return window.screenFlow.setCameraActiveRanges(request)
 }
 
 export async function exportWebmToMp4(request: ExportMp4Request): Promise<ExportMp4Result> {

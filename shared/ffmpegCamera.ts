@@ -99,6 +99,8 @@ export function planCameraExport(
   outputLabel = 'vout',
   cameraInputIndex = 1,
   drift?: Pick<CameraDriftCompensation, 'offsetMs' | 'ptsRate'> | null,
+  /** Main-timeline enable expr from cameraOverlayEnableExpr (mid-recording mute). */
+  enableExpr?: string | null,
 ): CameraFilterPlan {
   const normalized = normalizeCameraOverlay(style)
   const empty: CameraFilterPlan = {
@@ -140,6 +142,8 @@ export function planCameraExport(
   const setpts = drift ? cameraDriftSetptsExpr(drift) : null
   const driftApplied = setpts != null
   const ptsPrefix = setpts ? `setpts=${setpts},` : ''
+  const enableSuffix =
+    enableExpr && enableExpr.trim().length > 0 ? `:enable='${enableExpr.trim()}'` : ''
 
   // Cover-fit camera into (possibly inset) bubble. fps+setsar stabilize MediaRecorder
   // VFR WebM; final format=yuv420p avoids libx264 "Conversion failed!" after rgba.
@@ -178,7 +182,7 @@ export function planCameraExport(
     }
     lines.push(`[${shadowSrc}]loop=loop=-1:size=1[${shadowLoop}]`)
     lines.push(
-      `[${baseLabel}][${shadowLoop}]overlay=${shadowX}:${shadowY}:format=auto:shortest=1[${withShadow}]`,
+      `[${baseLabel}][${shadowLoop}]overlay=${shadowX}:${shadowY}:format=auto:shortest=1${enableSuffix}[${withShadow}]`,
     )
     baseLabel = withShadow
   }
@@ -197,7 +201,7 @@ export function planCameraExport(
       )
       lines.push(`[${plateStill}]loop=loop=-1:size=1[${plateLoop}]`)
       lines.push(
-        `[${baseLabel}][${plateLoop}]overlay=${x}:${y}:format=auto:shortest=1[${withBorder}]`,
+        `[${baseLabel}][${plateLoop}]overlay=${x}:${y}:format=auto:shortest=1${enableSuffix}[${withBorder}]`,
       )
     } else {
       const plateRaw = `${outputLabel}_plateraw`
@@ -215,7 +219,7 @@ export function planCameraExport(
       lines.push(`[${plateRaw}][${maskLoop}]alphamerge[${plateMasked}]`)
       lines.push(`[${plateMasked}]loop=loop=-1:size=1[${plateLoop}]`)
       lines.push(
-        `[${baseLabel}][${plateLoop}]overlay=${x}:${y}:format=auto:shortest=1[${withBorder}]`,
+        `[${baseLabel}][${plateLoop}]overlay=${x}:${y}:format=auto:shortest=1${enableSuffix}[${withBorder}]`,
       )
     }
     baseLabel = withBorder
@@ -226,7 +230,7 @@ export function planCameraExport(
   if (normalized.shape === 'rectangle') {
     lines.push(`${camScaled},format=yuv420p[${camRaw}]`)
     lines.push(
-      `[${baseLabel}][${camRaw}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
+      `[${baseLabel}][${camRaw}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1${enableSuffix},` +
         `format=yuv420p[${outputLabel}]`,
     )
   } else {
@@ -246,7 +250,7 @@ export function planCameraExport(
     lines.push(`[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`)
     lines.push(`[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`)
     lines.push(
-      `[${baseLabel}][${camMasked}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
+      `[${baseLabel}][${camMasked}]overlay=${camX}:${camY}:format=auto:eof_action=pass:repeatlast=1:shortest=1${enableSuffix},` +
         `format=yuv420p[${outputLabel}]`,
     )
   }

@@ -40,6 +40,8 @@ export interface ExportEffectsRequest {
     inputIndex?: number
     /** Screen↔camera drift compensation (setpts on camera input). */
     drift?: Pick<CameraDriftCompensation, 'offsetMs' | 'ptsRate'> | null
+    /** Mid-recording mute windows → overlay enable='…' on main timeline. */
+    enableExpr?: string | null
   }
 }
 
@@ -151,6 +153,7 @@ export function planExportFilters(
           'vout',
           cameraInputIndex,
           effects.camera.drift,
+          effects.camera.enableExpr,
         )
       : null
 
