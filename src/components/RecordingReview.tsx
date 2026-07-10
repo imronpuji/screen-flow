@@ -595,7 +595,8 @@ export function RecordingReview({
                       ))}
                     </div>
                     <p className="review__hint">
-                      Drag the bubble on the preview — snaps to corners &amp; edges
+                      Drag to move (snaps to corners &amp; edges) · corner handles resize
+                      with aspect lock
                       {edit.cameraOverlay.anchor === 'free' ? ' (custom)' : ''}.
                     </p>
                   </div>

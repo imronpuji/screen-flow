@@ -108,12 +108,18 @@ const SHADOW_OFFSET_Y = 4
  * Paths:
  * - plain: gradient + scale + overlay (no radius/shadow)
  * - rounded/shadow: 1-frame geq mask → loop → alphamerge; optional still boxblur shadow
+ *
+ * Critical: `gradients` and `loop=-1` are infinite sources. Overlays that use them
+ * as the main input MUST pass `shortest=1` (and ideally a duration trim) or ffmpeg
+ * never EOFs — UI hits 100% while encode spins forever and cooks the laptop.
  */
 export function planBackgroundExport(
   style: BackgroundStyle,
   videoSize: VideoSize,
   inputLabel = 'vsrc',
   outputLabel = 'vbg',
+  /** Export duration — trims infinite lavfi sources so the graph can end. */
+  durationMs?: number,
 ): BackgroundFilterPlan {
   const normalized = normalizeBackgroundStyle(style)
   if (!normalized.enabled) {
@@ -136,14 +142,24 @@ export function planBackgroundExport(
   const needsShadow = shadowEnabled
   const bgLabel = `${outputLabel}_grad`
   const cardLabel = `${outputLabel}_card`
+  const durationSec =
+    durationMs != null && Number.isFinite(durationMs) && durationMs > 0
+      ? Math.max(0.1, durationMs / 1000)
+      : null
+  // Cap infinite lavfi generators; shortest=1 on overlays is the hard stop.
+  const gradTail = durationSec
+    ? `,trim=duration=${durationSec.toFixed(3)},setpts=PTS-STARTPTS`
+    : ''
 
   const lines: string[] = [
-    `gradients=s=${frameW}x${frameH}:c0=${c0}:c1=${c1}:x0=0:y0=0:x1=${frameW}:y1=${frameH}[${bgLabel}]`,
+    `gradients=s=${frameW}x${frameH}:c0=${c0}:c1=${c1}:x0=0:y0=0:x1=${frameW}:y1=${frameH}${gradTail}[${bgLabel}]`,
   ]
 
   if (!needsMask && !needsShadow) {
     lines.push(`[${inputLabel}]scale=${cardW}:${cardH}[${cardLabel}]`)
-    lines.push(`[${bgLabel}][${cardLabel}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`)
+    lines.push(
+      `[${bgLabel}][${cardLabel}]overlay=${padX}:${padY}:format=auto:shortest=1[${outputLabel}]`,
+    )
     return {
       hasBackground: true,
       layout,
@@ -191,13 +207,13 @@ export function planBackgroundExport(
     )
     lines.push(`[${shadowSrc}]loop=loop=-1:size=1[${shadowLoop}]`)
     lines.push(
-      `[${bgLabel}][${shadowLoop}]overlay=${shadowX}:${shadowY}:format=auto[${withShadow}]`,
+      `[${bgLabel}][${shadowLoop}]overlay=${shadowX}:${shadowY}:format=auto:shortest=1[${withShadow}]`,
     )
     baseForCard = withShadow
   }
 
   lines.push(
-    `[${baseForCard}][${cardForOverlay}]overlay=${padX}:${padY}:format=auto[${outputLabel}]`,
+    `[${baseForCard}][${cardForOverlay}]overlay=${padX}:${padY}:format=auto:shortest=1[${outputLabel}]`,
   )
 
   return {

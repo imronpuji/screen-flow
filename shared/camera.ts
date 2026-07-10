@@ -8,6 +8,7 @@
  * - `sizePercent`: bubble width as % of frame width; height = width in pixels (square).
  * - Safe margin: 3% of each axis from the frame edge (snap + clamp).
  * - Size clamp: 12–40% of frame width (min readable face; max keeps screen readable).
+ * - Resize: corner handles keep the opposite corner fixed; aspect always locked (square).
  */
 
 export type CameraCorner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left'
@@ -121,6 +122,9 @@ export function clampCameraLayout(
   }
 }
 
+/** Corner handles for aspect-locked resize (square bubble). */
+export type CameraResizeHandle = 'nw' | 'ne' | 'sw' | 'se'
+
 export type CameraSnapTarget =
   | CameraCorner
   | 'top-center'
@@ -188,6 +192,58 @@ export function snapCameraLayout(
     snapped: false,
     target: null,
   }
+}
+
+/**
+ * Aspect-locked resize from a corner handle.
+ * Opposite corner stays fixed; size stays square in pixels (12–40% width).
+ * Pointer x/y are frame-relative (0–1). Result is always `anchor: 'free'`.
+ */
+export function resizeCameraFromHandle(
+  style: Partial<CameraOverlayStyle> | CameraOverlayStyle,
+  handle: CameraResizeHandle,
+  pointerX: number,
+  pointerY: number,
+  frameAspect: number = CAMERA_DEFAULT_ASPECT,
+): CameraOverlayStyle {
+  const aspect = frameAspect > 0 ? frameAspect : CAMERA_DEFAULT_ASPECT
+  const base = normalizeCameraOverlay(style, aspect)
+  const { w: curW, h: curH } = cameraBubbleSizeNorm(base.sizePercent, aspect)
+
+  // Fixed point = opposite corner of the bubble (stays put while resizing).
+  let fixedX = base.x
+  let fixedY = base.y
+  if (handle === 'nw' || handle === 'sw') fixedX = base.x + curW
+  if (handle === 'nw' || handle === 'ne') fixedY = base.y + curH
+
+  const rawW = Math.abs(pointerX - fixedX)
+  // Height fraction → equivalent width fraction for a pixel-square bubble.
+  const rawWFromH = Math.abs(pointerY - fixedY) / aspect
+  const sizeFrac = clamp(
+    Math.max(rawW, rawWFromH),
+    CAMERA_MIN_SIZE_PERCENT / 100,
+    CAMERA_MAX_SIZE_PERCENT / 100,
+  )
+  const sizePercent = Math.round(sizeFrac * 100)
+  const { w, h } = cameraBubbleSizeNorm(sizePercent, aspect)
+
+  let x = fixedX
+  let y = fixedY
+  if (handle === 'nw' || handle === 'sw') x = fixedX - w
+  if (handle === 'nw' || handle === 'ne') y = fixedY - h
+  // se: x/y already at fixed (top-left); ne: x at fixed, y above; sw: y at fixed, x left
+
+  const clamped = clampCameraLayout(x, y, sizePercent, aspect)
+  return normalizeCameraOverlay(
+    {
+      ...base,
+      anchor: 'free',
+      x: clamped.x,
+      y: clamped.y,
+      sizePercent,
+    },
+    aspect,
+  )
 }
 
 /** Apply a corner preset — sets anchor + recomputes x/y. */

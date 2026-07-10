@@ -100,7 +100,7 @@ export function planCameraExport(
       `geq=r=0:g=0:b=0:a='${alphaExpr}'[${maskStill}]`,
     `[${maskStill}]loop=loop=-1:size=1[${maskLoop}]`,
     `[${camRaw}][${maskLoop}]alphamerge[${camMasked}]`,
-    `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1,` +
+    `[${baseInputLabel}][${camMasked}]overlay=${x}:${y}:format=auto:eof_action=pass:repeatlast=1:shortest=1,` +
       `format=yuv420p[${outputLabel}]`,
   ]
 

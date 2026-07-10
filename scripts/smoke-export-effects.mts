@@ -41,6 +41,7 @@ function testBackgroundPlan(): void {
   assert(plan.hasBackground, 'background enabled')
   assert(plan.filterComplex.includes('gradients='), 'uses gradients filter')
   assert(plan.filterComplex.includes('overlay='), 'composites card')
+  assert(plan.filterComplex.includes('shortest=1'), 'shortest=1 stops infinite gradients')
   // Default style has radius + shadow → 1-frame mask path (not per-frame geq on video).
   assert(plan.filterComplex.includes('alphamerge'), 'rounded via alphamerge')
   assert(plan.filterComplex.includes('loop=loop=-1:size=1'), 'mask/shadow still is looped')
@@ -49,6 +50,16 @@ function testBackgroundPlan(): void {
     !plan.filterComplex.match(/\[vsrc\][^;]*geq=/),
     'geq must not run on the video input',
   )
+
+  const withDur = planBackgroundExport(
+    DEFAULT_BACKGROUND_STYLE,
+    { width: 320, height: 180 },
+    'vsrc',
+    'vbg',
+    1500,
+  )
+  assert(withDur.filterComplex.includes('trim=duration=1.500'), 'duration trims gradients')
+  assert(withDur.filterComplex.includes('shortest=1'), 'duration path still shortest')
 
   const plain = planBackgroundExport(
     { ...DEFAULT_BACKGROUND_STYLE, cornerRadiusPx: 0, shadowEnabled: false },
@@ -228,10 +239,81 @@ async function testFfmpegCompositeEncode(): Promise<void> {
   })
 }
 
+async function testFfmpegBackgroundEncodeNoHang(): Promise<void> {
+  // Real export omits a hard -t for plain paths; effects graphs must still EOF
+  // via shortest=1. This guards the "100% forever / laptop melts" regression.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'screen-flow-bg-hang-'))
+  const outPath = path.join(dir, 'out.mp4')
+  const plan = planExportFilters(
+    { width: 320, height: 180 },
+    1200,
+    { background: DEFAULT_BACKGROUND_STYLE },
+  )
+  assert(plan.filterComplex != null, 'filter graph for hang test')
+  assert(plan.filterComplex!.includes('shortest=1'), 'hang test requires shortest')
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      'ffmpeg',
+      [
+        '-y',
+        '-f',
+        'lavfi',
+        '-i',
+        'color=c=gray:s=320x180:d=1.2',
+        '-filter_complex',
+        plan.filterComplex!,
+        '-map',
+        `[${plan.outputLabel}]`,
+        // Intentionally NO -t — graph must end on its own.
+        '-c:v',
+        'libx264',
+        '-preset',
+        'ultrafast',
+        '-pix_fmt',
+        'yuv420p',
+        outPath,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    )
+    let stderr = ''
+    const timer = setTimeout(() => {
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        /* ignore */
+      }
+      reject(new Error('ffmpeg hung without -t (infinite gradients/overlay?)'))
+    }, 12_000)
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString('utf8')
+    })
+    child.on('error', () => {
+      clearTimeout(timer)
+      console.log('skip ffmpeg hang test (ffmpeg not installed)')
+      resolve()
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (code === 0 && fs.existsSync(outPath) && fs.statSync(outPath).size > 0) {
+        console.log('ok ffmpeg background encode ends without -t')
+        resolve()
+        return
+      }
+      if (code !== 0) {
+        reject(new Error(`ffmpeg hang-test failed: ${stderr.slice(-800)}`))
+        return
+      }
+      resolve()
+    })
+  })
+}
+
 testBackgroundLayout()
 testBackgroundPlan()
 testCursorPlan()
 testCompositePlan()
 await testFfmpegBackgroundEncode()
 await testFfmpegCompositeEncode()
+await testFfmpegBackgroundEncodeNoHang()
 console.log('smoke:export-effects ok')
