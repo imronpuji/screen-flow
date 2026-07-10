@@ -198,6 +198,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** Roadmap #11 — first-run tanpa baca manual; localStorage cukup (tanpa main-process prefs) untuk MVP.
 - **Status:** aktif
 
+## [2026-07-10] Timeline clip markers (review scrubber)
+
+- **Keputusan:** `shared/timelineMarkers.ts` membangun marker murni dari zoom segments (span start→end, seek = peakMs) + click/down ticks (capped). UI track di atas scrubber: zoom bars + click ticks + trim shade; klik marker → seek. Smoke `smoke:timeline-markers`.
+- **Alasan:** Roadmap #9 — orang awam melihat di mana zoom/klik terjadi dan lompat ke situ tanpa scrub buta; pure helpers CI-friendly.
+- **Status:** aktif
+
 ## [2026-07-10] Empty-state tooltips (catalog + hover)
 
 - **Keputusan:** Copy tip terpusat di `shared/tooltips.ts` (id → title/body + resolver Start/sources). UI: `Tooltip` (hover/focus panel + native `title` fallback) untuk kontrol; `EmptyHint` selalu terlihat untuk empty sources / no-camera. Smoke `smoke:tooltips` tanpa Electron.
