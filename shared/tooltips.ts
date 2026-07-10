@@ -34,6 +34,7 @@ export type TooltipId =
   | 'trim-ripple-delete'
   | 'trim-magnetic-snap'
   | 'trim-timeline-zoom'
+  | 'trim-zoom-drag'
 
 export interface TooltipCopy {
   id: TooltipId
@@ -174,12 +175,17 @@ export const TOOLTIPS: Record<TooltipId, TooltipCopy> = {
   'trim-magnetic-snap': {
     id: 'trim-magnetic-snap',
     title: 'Magnetic snap · Stick playhead & clip edges to edit points',
-    body: 'When on, scrubbing and keep-clip edge drags snap to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing and free edge drag.',
+    body: 'When on, scrubbing, keep-clip edge drags, and zoom-event drags snap to keep edges, trim, zooms, clicks, and camera windows. Turn off for free scrubbing and free edge drag.',
   },
   'trim-timeline-zoom': {
     id: 'trim-timeline-zoom',
     title: 'Timeline zoom · Magnify the scrubber (= / −, Fit 0)',
     body: 'Zoom in to edit fine cuts on long clips. Ctrl/⌘+scroll zooms; Shift+scroll pans. Click the zoom label to fit the full clip.',
+  },
+  'trim-zoom-drag': {
+    id: 'trim-zoom-drag',
+    title: 'Drag zoom events · Move peaks on the timeline',
+    body: 'Drag a teal zoom span to retarget when the zoom hits. Magnetic snap sticks to cuts, clicks, and camera windows. Preview and export stay in sync.',
   },
 }
 

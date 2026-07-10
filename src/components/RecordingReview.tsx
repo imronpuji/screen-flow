@@ -861,6 +861,38 @@ export function RecordingReview({
               if (exporting) return
               setEdit((prev) => withKeepRanges(prev, ranges, durationMsRef.current))
             }}
+            onZoomPeakChange={(change) => {
+              if (exporting) return
+              setEdit((prev) => {
+                if (change.kind === 'manual') {
+                  const point = prev.manualZoomPoints.find((p) => p.id === change.id)
+                  if (!point) return prev
+                  return {
+                    ...prev,
+                    manualZoomPoints: upsertManualZoomPoint(prev.manualZoomPoints, {
+                      ...point,
+                      peakMs: Math.max(0, change.peakMs),
+                    }),
+                  }
+                }
+                const existing = prev.zoomPointOverrides.find(
+                  (o) => o.index === change.index,
+                )
+                return {
+                  ...prev,
+                  zoomPointOverrides: upsertZoomPointOverride(prev.zoomPointOverrides, {
+                    index: change.index,
+                    enabled: existing?.enabled !== false,
+                    ...(existing?.peakScale != null
+                      ? { peakScale: existing.peakScale }
+                      : {}),
+                    ...(existing?.focusX != null ? { focusX: existing.focusX } : {}),
+                    ...(existing?.focusY != null ? { focusY: existing.focusY } : {}),
+                    peakMs: Math.max(0, change.peakMs),
+                  }),
+                }
+              })
+            }}
             magneticSnapEnabled={timelinePrefs.magneticSnapEnabled}
             timelineZoom={timelinePrefs.timelineZoom}
             onTimelineZoomChange={(zoom) =>
@@ -955,6 +987,10 @@ export function RecordingReview({
                 <span className="review__label">
                   Zoom points · {enabledZoomCount}/{totalZoomSlots} on
                 </span>
+                <p className="review__hint">
+                  Drag teal zoom spans on the scrubber to move peaks
+                  {timelinePrefs.magneticSnapEnabled ? ' (magnetic snap on)' : ''}.
+                </p>
                 <div className="review__zoom-actions">
                   <button
                     type="button"

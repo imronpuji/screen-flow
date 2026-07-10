@@ -122,6 +122,15 @@ export interface AutoZoomPlaybackProps {
    */
   onKeepRangesChange?: (ranges: KeepRange[]) => void
   /**
+   * Drag zoom-event peaks on the scrubber (FOKUS 5). Auto clicks use
+   * `zoomIndex`; Add-at-playhead zooms use `manualZoomId`.
+   */
+  onZoomPeakChange?: (
+    change:
+      | { kind: 'auto'; index: number; peakMs: number }
+      | { kind: 'manual'; id: string; peakMs: number },
+  ) => void
+  /**
    * When true, scrubber seeks stick to nearby edit points (FOKUS 5 magnetic
    * timeline). Keyboard frame-step and internal gap-skip seeks stay free.
    */
@@ -157,6 +166,7 @@ export function AutoZoomPlayback({
   trimEndMs,
   keepRanges,
   onKeepRangesChange,
+  onZoomPeakChange,
   magneticSnapEnabled = true,
   timelineZoom = 1,
   onTimelineZoomChange,
@@ -177,6 +187,14 @@ export function AutoZoomPlayback({
     rangeIndex: number
     edge: 'start' | 'end'
     pointerId: number
+  } | null>(null)
+  const zoomPeakDragRef = useRef<{
+    kind: 'auto' | 'manual'
+    index?: number
+    id?: string
+    markerId: string
+    pointerId: number
+    moved: boolean
   } | null>(null)
   const effectiveCameraRangesRef = useRef<CameraActiveRange[] | null | undefined>(
     cameraActiveRangesOverride,
@@ -340,13 +358,20 @@ export function AutoZoomPlayback({
         cameraActiveRanges: effectiveCameraRanges,
         screenFirstChunkMs: cameraSync?.screenFirstChunkMs,
         wallDurationMs: cameraWallDurationMs,
+        autoZoomSegments: autoZoomEnabled ? baseSegments : [],
+        zoomPointOverrides,
+        manualZoomPoints,
       }),
     [
+      autoZoomEnabled,
+      baseSegments,
       cameraSync?.screenFirstChunkMs,
       cameraWallDurationMs,
       cursorEvents,
       effectiveCameraRanges,
+      manualZoomPoints,
       segments,
+      zoomPointOverrides,
     ],
   )
 
@@ -608,6 +633,127 @@ export function AutoZoomPlayback({
       trimStartMs,
       updateCursorOverlay,
     ],
+  )
+
+  const applyZoomPeakAtClientX = useCallback(
+    (
+      clientX: number,
+      source:
+        | { kind: 'auto'; index: number; markerId: string }
+        | { kind: 'manual'; id: string; markerId: string },
+    ) => {
+      if (!onZoomPeakChange || durationMs <= 0) return
+      const track = markersTrackRef.current
+      if (!track) return
+      const rect = track.getBoundingClientRect()
+      if (rect.width <= 0) return
+      const vp =
+        viewportRef.current.endMs > viewportRef.current.startMs
+          ? viewportRef.current
+          : { startMs: 0, endMs: durationMs }
+      let tMs = clientXToTimelineMs(clientX, rect.left, rect.width, vp)
+
+      if (magneticSnapEnabled) {
+        const targets = collectTimelineSnapTargets({
+          durationMs,
+          trimStartMs,
+          trimEndMs: effectiveEndMs,
+          keepRanges: keepRangesRef.current,
+          markers: timelineMarkers,
+        })
+        const snapped = snapKeepEdgeMagnetically(
+          tMs,
+          targets,
+          [source.markerId, `${source.markerId}-start`, `${source.markerId}-end`],
+          snapThresholdMs,
+        )
+        tMs = snapped.ms
+      }
+
+      tMs = Math.max(0, Math.min(durationMs, tMs))
+      if (source.kind === 'auto') {
+        onZoomPeakChange({ kind: 'auto', index: source.index, peakMs: tMs })
+      } else {
+        onZoomPeakChange({ kind: 'manual', id: source.id, peakMs: tMs })
+      }
+    },
+    [
+      durationMs,
+      effectiveEndMs,
+      magneticSnapEnabled,
+      onZoomPeakChange,
+      snapThresholdMs,
+      timelineMarkers,
+      trimStartMs,
+    ],
+  )
+
+  const onZoomPeakPointerDown = useCallback(
+    (
+      event: ReactPointerEvent<HTMLElement>,
+      source:
+        | { kind: 'auto'; index: number; markerId: string }
+        | { kind: 'manual'; id: string; markerId: string },
+    ) => {
+      if (!onZoomPeakChange || Boolean(loadError)) return
+      event.preventDefault()
+      event.stopPropagation()
+      const target = event.currentTarget
+      target.setPointerCapture(event.pointerId)
+      zoomPeakDragRef.current = {
+        kind: source.kind,
+        index: source.kind === 'auto' ? source.index : undefined,
+        id: source.kind === 'manual' ? source.id : undefined,
+        markerId: source.markerId,
+        pointerId: event.pointerId,
+        moved: false,
+      }
+    },
+    [loadError, onZoomPeakChange],
+  )
+
+  const onZoomPeakPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const drag = zoomPeakDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      drag.moved = true
+      if (drag.kind === 'auto' && drag.index != null) {
+        applyZoomPeakAtClientX(event.clientX, {
+          kind: 'auto',
+          index: drag.index,
+          markerId: drag.markerId,
+        })
+      } else if (drag.kind === 'manual' && drag.id) {
+        applyZoomPeakAtClientX(event.clientX, {
+          kind: 'manual',
+          id: drag.id,
+          markerId: drag.markerId,
+        })
+      }
+    },
+    [applyZoomPeakAtClientX],
+  )
+
+  const onZoomPeakPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>, seekMs?: number) => {
+      const drag = zoomPeakDragRef.current
+      if (!drag || drag.pointerId !== event.pointerId) return
+      event.preventDefault()
+      event.stopPropagation()
+      const didMove = drag.moved
+      zoomPeakDragRef.current = null
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      } catch {
+        /* already released */
+      }
+      if (!didMove && seekMs != null) {
+        seekToMs(seekMs, { magnetic: true })
+      }
+    },
+    [seekToMs],
   )
 
   function onLoadedMetadata() {
@@ -1011,6 +1157,47 @@ export function AutoZoomPlayback({
                             onPointerMove={onCameraRangeEdgePointerMove}
                             onPointerUp={onCameraRangeEdgePointerUp}
                             onPointerCancel={onCameraRangeEdgePointerUp}
+                          />
+                        </div>
+                      )
+                    }
+                    const canDragZoom =
+                      marker.kind === 'zoom' &&
+                      Boolean(onZoomPeakChange) &&
+                      !loadError &&
+                      (marker.zoomIndex != null || marker.manualZoomId != null)
+                    if (canDragZoom) {
+                      const zoomSource =
+                        marker.zoomIndex != null
+                          ? ({
+                              kind: 'auto' as const,
+                              index: marker.zoomIndex,
+                              markerId: marker.id,
+                            })
+                          : ({
+                              kind: 'manual' as const,
+                              id: marker.manualZoomId!,
+                              markerId: marker.id,
+                            })
+                      return (
+                        <div
+                          key={marker.id}
+                          role="listitem"
+                          className="zoom-playback__marker zoom-playback__marker--zoom zoom-playback__marker--zoom-editable"
+                          style={{ left: `${span.left}%`, width: `${span.width}%` }}
+                          title={`${marker.label} · drag to move · ${formatTimeMs(marker.tMs)}`}
+                        >
+                          <button
+                            type="button"
+                            className="zoom-playback__marker-body zoom-playback__marker-body--zoom-drag"
+                            aria-label={`${marker.label} at ${formatTimeMs(marker.tMs)} · drag to move`}
+                            aria-valuemin={0}
+                            aria-valuemax={durationMs}
+                            aria-valuenow={marker.tMs}
+                            onPointerDown={(e) => onZoomPeakPointerDown(e, zoomSource)}
+                            onPointerMove={onZoomPeakPointerMove}
+                            onPointerUp={(e) => onZoomPeakPointerUp(e, marker.tMs)}
+                            onPointerCancel={(e) => onZoomPeakPointerUp(e)}
                           />
                         </div>
                       )

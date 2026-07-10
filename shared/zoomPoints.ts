@@ -16,6 +16,11 @@ export interface ZoomPointOverride {
   /** Optional focus override (0–1); omit to keep click-derived focus. */
   focusX?: number
   focusY?: number
+  /**
+   * Optional peak-time override (ms on the full recording timeline).
+   * When set, the whole segment (in/hold/out) shifts so relative timing stays.
+   */
+  peakMs?: number
 }
 
 /** Cardinal direction for focus nudge (frame coords, origin top-left). */
@@ -61,6 +66,51 @@ export function clampZoomPeakScale(scale: number): number {
 function clamp01(value: number, fallback = 0.5): number {
   if (!Number.isFinite(value)) return fallback
   return Math.max(0, Math.min(1, value))
+}
+
+/**
+ * Shift a zoom segment so its peak lands at `newPeakMs`, keeping in/hold/out
+ * durations. Clamps peak into [0, durationMs] (durationMs ≤ 0 → no upper clamp).
+ */
+export function shiftZoomSegmentToPeak(
+  segment: ZoomSegment,
+  newPeakMs: number,
+  durationMs = 0,
+): ZoomSegment {
+  const peakTarget = Number.isFinite(newPeakMs) ? newPeakMs : segment.peakMs
+  const upper =
+    Number.isFinite(durationMs) && durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
+  const peakMs = Math.max(0, Math.min(upper, peakTarget))
+  const delta = peakMs - segment.peakMs
+  if (delta === 0) {
+    return { ...segment, peakMs }
+  }
+  return {
+    ...segment,
+    startMs: Math.max(0, segment.startMs + delta),
+    peakMs,
+    holdEndMs: Math.max(peakMs, segment.holdEndMs + delta),
+    endMs: Math.max(peakMs, segment.endMs + delta),
+  }
+}
+
+/** Move a manual zoom's peak (rebuilds timing via manualZoomToSegment). */
+export function moveManualZoomPeak(
+  points: ManualZoomPoint[],
+  id: string,
+  newPeakMs: number,
+  durationMs = 0,
+): ManualZoomPoint[] {
+  const idx = points.findIndex((p) => p.id === id)
+  if (idx < 0) return points
+  const current = points[idx]!
+  const upper =
+    Number.isFinite(durationMs) && durationMs > 0 ? durationMs : Number.POSITIVE_INFINITY
+  const peakMs = Math.max(0, Math.min(upper, Number.isFinite(newPeakMs) ? newPeakMs : 0))
+  if (peakMs === current.peakMs) return points
+  const copy = points.slice()
+  copy[idx] = { ...current, peakMs }
+  return copy
 }
 
 /**
@@ -216,6 +266,9 @@ function cleanOverride(item: ZoomPointOverride): ZoomPointOverride {
   }
   if (item.focusX != null) cleaned.focusX = clamp01(item.focusX)
   if (item.focusY != null) cleaned.focusY = clamp01(item.focusY)
+  if (item.peakMs != null && Number.isFinite(item.peakMs)) {
+    cleaned.peakMs = Math.max(0, item.peakMs)
+  }
   return cleaned
 }
 
@@ -250,12 +303,16 @@ export function applyZoomPointOverrides(
       next.push(seg)
       continue
     }
-    next.push({
+    let patched: ZoomSegment = {
       ...seg,
       ...(ov.peakScale != null ? { peakScale: ov.peakScale } : {}),
       ...(ov.focusX != null ? { focusX: ov.focusX } : {}),
       ...(ov.focusY != null ? { focusY: ov.focusY } : {}),
-    })
+    }
+    if (ov.peakMs != null) {
+      patched = shiftZoomSegmentToPeak(patched, ov.peakMs)
+    }
+    next.push(patched)
   }
   return next
 }
@@ -304,6 +361,19 @@ export function resolveZoomPointFocus(
     focusX: ov?.focusX != null ? clamp01(ov.focusX) : clamp01(segment.focusX),
     focusY: ov?.focusY != null ? clamp01(ov.focusY) : clamp01(segment.focusY),
   }
+}
+
+/** Resolve peak time for a segment (override or click-derived default). */
+export function resolveZoomPointPeakMs(
+  segment: ZoomSegment,
+  index: number,
+  overrides: ZoomPointOverride[] | null | undefined,
+): number {
+  const ov = overrides?.find((o) => o.index === index)
+  if (ov?.peakMs != null && Number.isFinite(ov.peakMs)) {
+    return Math.max(0, ov.peakMs)
+  }
+  return Math.max(0, segment.peakMs)
 }
 
 export function countEnabledZoomPoints(

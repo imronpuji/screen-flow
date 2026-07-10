@@ -7,6 +7,16 @@ import type { ZoomSegment } from './autozoom.js'
 import type { CameraActiveRange } from './cameraSync.js'
 import { closeOpenCameraActiveRanges, normalizeCameraActiveRanges } from './cameraSync.js'
 import type { CursorEvent } from './cursor.js'
+import {
+  isZoomPointEnabled,
+  manualZoomToSegment,
+  resolveZoomPointFocus,
+  resolveZoomPointPeakMs,
+  resolveZoomPointPeakScale,
+  shiftZoomSegmentToPeak,
+  type ManualZoomPoint,
+  type ZoomPointOverride,
+} from './zoomPoints.js'
 
 export type TimelineMarkerKind = 'zoom' | 'click' | 'camera'
 
@@ -25,6 +35,16 @@ export interface TimelineMarker {
    * Used by scrubber edge-drag to resize the matching window.
    */
   rangeIndex?: number
+  /**
+   * Index into auto-built zoom segments (zoom markers only).
+   * Used by scrubber drag to move the matching click zoom.
+   */
+  zoomIndex?: number
+  /**
+   * Manual zoom point id (zoom markers only).
+   * Used by scrubber drag to move Add-at-playhead zooms.
+   */
+  manualZoomId?: string
 }
 
 export interface BuildTimelineMarkersOptions {
@@ -43,6 +63,13 @@ export interface BuildTimelineMarkersOptions {
   wallDurationMs?: number
   /** Include camera active-range spans (default true when ranges provided). */
   includeCamera?: boolean
+  /**
+   * When set, zoom markers keep `zoomIndex` / `manualZoomId` for scrubber
+   * drag (FOKUS 5). Falls back to anonymous `segments` argument when omitted.
+   */
+  autoZoomSegments?: ZoomSegment[] | null
+  zoomPointOverrides?: ZoomPointOverride[] | null
+  manualZoomPoints?: ManualZoomPoint[] | null
 }
 
 function isClickTrigger(event: CursorEvent): boolean {
@@ -107,6 +134,71 @@ export function buildCameraActiveRangeMarkers(
 }
 
 /**
+ * Resolve an auto zoom segment with overrides (peak time / focus / scale).
+ * Matches preview + export apply path for a single index.
+ */
+export function resolveAutoZoomMarkerSegment(
+  segment: ZoomSegment,
+  index: number,
+  overrides: ZoomPointOverride[] | null | undefined,
+): ZoomSegment {
+  const focus = resolveZoomPointFocus(segment, index, overrides)
+  const peakScale = resolveZoomPointPeakScale(segment, index, overrides)
+  const peakMs = resolveZoomPointPeakMs(segment, index, overrides)
+  return shiftZoomSegmentToPeak(
+    { ...segment, focusX: focus.focusX, focusY: focus.focusY, peakScale },
+    peakMs,
+  )
+}
+
+/**
+ * Build zoom-event markers with stable source ids for scrubber drag.
+ * Disabled auto points are omitted; disabled manuals are omitted.
+ */
+export function buildZoomEventMarkers(
+  autoSegments: ZoomSegment[],
+  overrides: ZoomPointOverride[] | null | undefined,
+  manualPoints: ManualZoomPoint[] | null | undefined,
+): TimelineMarker[] {
+  const markers: TimelineMarker[] = []
+  let labelN = 0
+
+  for (let i = 0; i < autoSegments.length; i++) {
+    if (!isZoomPointEnabled(i, overrides)) continue
+    const seg = resolveAutoZoomMarkerSegment(autoSegments[i]!, i, overrides)
+    labelN += 1
+    markers.push({
+      id: `zoom-auto-${i}`,
+      kind: 'zoom',
+      tMs: seg.peakMs,
+      startMs: seg.startMs,
+      endMs: seg.endMs,
+      label: `Zoom ${labelN}`,
+      zoomIndex: i,
+    })
+  }
+
+  if (manualPoints) {
+    for (const point of manualPoints) {
+      const seg = manualZoomToSegment(point)
+      if (!seg) continue
+      labelN += 1
+      markers.push({
+        id: `zoom-manual-${point.id}`,
+        kind: 'zoom',
+        tMs: seg.peakMs,
+        startMs: seg.startMs,
+        endMs: seg.endMs,
+        label: `Zoom ${labelN}`,
+        manualZoomId: point.id,
+      })
+    }
+  }
+
+  return markers
+}
+
+/**
  * Build scrubber markers from auto-zoom segments + optional click ticks +
  * optional camera active-range spans.
  * Zoom/camera markers use start→end as a span; zoom seek = peakMs, camera seek = start.
@@ -121,16 +213,26 @@ export function buildTimelineMarkers(
   const maxClicks = options.maxClicks ?? 48
   const markers: TimelineMarker[] = []
 
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]!
-    markers.push({
-      id: `zoom-${i}-${seg.startMs}`,
-      kind: 'zoom',
-      tMs: seg.peakMs,
-      startMs: seg.startMs,
-      endMs: seg.endMs,
-      label: `Zoom ${i + 1}`,
-    })
+  if (options.autoZoomSegments) {
+    markers.push(
+      ...buildZoomEventMarkers(
+        options.autoZoomSegments,
+        options.zoomPointOverrides,
+        options.manualZoomPoints,
+      ),
+    )
+  } else {
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]!
+      markers.push({
+        id: `zoom-${i}-${seg.startMs}`,
+        kind: 'zoom',
+        tMs: seg.peakMs,
+        startMs: seg.startMs,
+        endMs: seg.endMs,
+        label: `Zoom ${i + 1}`,
+      })
+    }
   }
 
   if (includeClicks) {
