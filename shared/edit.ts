@@ -1,5 +1,5 @@
 import type { BackgroundStyle } from './background.js'
-import { DEFAULT_BACKGROUND_STYLE } from './background.js'
+import { DEFAULT_BACKGROUND_STYLE, normalizeBackgroundStyle } from './background.js'
 import type { CameraOverlayStyle } from './camera.js'
 import { DEFAULT_CAMERA_OVERLAY, normalizeCameraOverlay } from './camera.js'
 import type { CameraActiveRange } from './cameraSync.js'
@@ -74,6 +74,7 @@ export function defaultReviewEdit(
   durationMs: number,
   cameraOverlay?: Partial<CameraOverlayStyle> | null,
   exportQuality?: ExportQualityId | null,
+  background?: BackgroundStyle | null,
 ): ReviewEditState {
   return {
     trimStartMs: 0,
@@ -83,7 +84,9 @@ export function defaultReviewEdit(
     manualZoomPoints: [],
     cursorSmoothingEnabled: true,
     cursorAppearance: { ...DEFAULT_CURSOR_APPEARANCE },
-    background: { ...DEFAULT_BACKGROUND_STYLE },
+    background: normalizeBackgroundStyle(
+      background ? { ...DEFAULT_BACKGROUND_STYLE, ...background } : { ...DEFAULT_BACKGROUND_STYLE },
+    ),
     cameraOverlay: normalizeCameraOverlay(cameraOverlay ?? DEFAULT_CAMERA_OVERLAY),
     cameraActiveRangesOverride: null,
     exportQuality: normalizeExportQuality(exportQuality ?? DEFAULT_EXPORT_QUALITY),

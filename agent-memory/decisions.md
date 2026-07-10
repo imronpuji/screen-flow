@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Persist aesthetic background prefs
+
+- **Keputusan:** Seluruh `BackgroundStyle` (enabled, presetId, paddingPercent, cornerRadiusPx, shadowEnabled) disimpan di renderer `localStorage` (`screen-flow:background-style`) lewat `shared/backgroundPrefs.ts` + `normalizeBackgroundStyle`. Review hydrate via `defaultReviewEdit(..., background)`; save on every `edit.background` change (Beautify / frame layout / sliders ikut). Pola sama FaceTime `cameraPrefs`.
+- **Alasan:** Framing + warna sering di-set sekali; orang awam tidak mau ulang tiap rekaman; preview≡export tetap satu sumber data di review state.
+- **Status:** aktif
+
 ## [2026-07-10] Camera active-range scrubber edge drag (FOKUS 3A/B)
 
 - **Keputusan:** Amber camera spans di scrubber punya handle start/end. Drag memanggil `resizeCameraActiveRangeEdge(ranges, index, edge, wallMs, wallDurationMs)` — materialize always-on dulu, clamp ke tetangga + wall, min window `CAMERA_ACTIVE_RANGE_MIN_MS` (20), merge overlapping/adjacent. Marker membawa `rangeIndex`. UI menulis `cameraActiveRangesOverride` lewat `onCameraActiveRangesChange` → preview ≡ export (ranges yang sama ke `cameraOverlayEnableExpr`).
