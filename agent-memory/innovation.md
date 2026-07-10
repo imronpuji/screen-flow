@@ -24,7 +24,7 @@
 
 - [ ] Preset background
 - [ ] Export GIF / WebM
-- [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + free drag/snap + corner resize + circle/rounded/rectangle shapes + border/shadow bake + **A/V drift compensation**; mid-recording toggle still open
+- [~] Webcam overlay — enumerate + live bubble + TCC/media permission + parallel camera.webm + review playback + ffmpeg export bake + free drag/snap + corner resize + circle/rounded/rectangle shapes + border/shadow bake + A/V drift compensation + **mid-recording mute/unmute (activeRanges)**; border color picker polish still open
 - [x] One-click beautify — Tutorial / Product demo / Social presets (review)
 - [~] First-run onboarding — 3-step overlay + localStorage done flag
 - [ ] Auto-highlight klik

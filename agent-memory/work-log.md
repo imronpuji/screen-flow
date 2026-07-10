@@ -1,6 +1,19 @@
 # Screen Flow — Work Log
 
 Entri terbaru di ATAS.
+## [2026-07-10 09:55] Mid-recording FaceTime camera toggle (FOKUS 3A)
+
+- **Dikerjakan:**
+  - `shared/cameraSync.ts` — `activeRanges`, open/close helpers, `isCameraActiveAtMs`, `cameraOverlayEnableExpr`.
+  - Session IPC `recording:ensure-camera` + `recording:set-camera-active-ranges`; lazy camera.webm writer.
+  - App: checkbox aktif saat recording (live/muted); mute via `track.enabled`; arm mid-session opens stream + capture.
+  - Export/review: overlay `enable=` + hide bubble outside ranges.
+  - Smoke `smoke:camera-sync` covers ranges + enable injection.
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera-sync/camera/export-camera/beautify/export-effects hijau.
+- **Commit:** `421d96d`
+- **Status:** done (FOKUS 3A slice — mid-recording toggle)
+- **Next:** Optional border color picker polish; visual verify on Mac; multi-segment camera file if MediaRecorder restart needed.
+
 ## [2026-07-10 09:50] Camera A/V drift compensation (FOKUS 3A)
 
 - **Dikerjakan:**

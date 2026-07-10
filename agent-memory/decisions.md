@@ -2,6 +2,12 @@
 
 Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digantikan)
 
+## [2026-07-10] Mid-recording FaceTime toggle (FOKUS 3A)
+
+- **Keputusan:** Toggle kamera selama recording memakai **mute track** (`MediaStreamTrack.enabled`), bukan stop/start MediaRecorder (hindari WebM rusak / multi-segment). Session bisa **lazy `ensureCameraTrack()`** kalau user menyalakan kamera setelah start tanpa `includeCamera`. Visibility disimpan sebagai `CameraSyncMeta.activeRanges[]` (wall ms dari `startedAt`); IPC `recording:set-camera-active-ranges`. Preview review: `isCameraActiveAtMs`. Export: `cameraOverlayEnableExpr` → `overlay=…:enable='between(t,…)+…'` pada shadow/border/camera.
+- **Alasan:** FOKUS 3A — arm/mute FaceTime tanpa putus screen track; preview≡export lewat ranges yang sama.
+- **Status:** aktif
+
 ## [2026-07-10] Camera A/V drift compensation (FOKUS 3A)
 
 - **Keputusan:** Screen & camera tetap share `startedAt`. Main mencatat **first-chunk wall offset** per track (`screenFirstChunkMs` / `cameraFirstChunkMs`) dan menulis `camera-sync.json` saat stop. Export: `ffprobe` durasi kedua WebM → `computeCameraDrift` → `setpts` di awal filter kamera (`PTS*rate+offset/TB`). Review: `screenTimeToCameraTimeSec` memakai offset yang sama (ptsRate=1 di preview). Stretch hanya jika |rate−1| ≥ 0.5% dan rate ∈ [0.9, 1.1]; start lag diabaikan bila &lt; 40ms, di-clamp ±5s.
