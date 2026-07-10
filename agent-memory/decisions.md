@@ -86,6 +86,12 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 - **Alasan:** User langsung lihat efek signature setelah stop tanpa decode video; logika pure bisa di-smoke-test di CI; path guard konsisten dengan export.
 - **Status:** aktif (preview); export bake → lihat “Auto-zoom export bake”
 
+## [2026-07-10] Background frame preview
+
+- **Keputusan:** `shared/background.ts` mendefinisikan preset gradient (Midnight/Aurora/Sunset/Slate/Minimal), padding %, corner radius, shadow. Renderer membungkus video di `AutoZoomPlayback` dengan kartu ber-padding di atas gradient; toggle + preset picker + padding slider di review. Export bake belum — preview only.
+- **Alasan:** Signature feature #3 terlihat langsung setelah stop tanpa decode video; pure functions smoke-testable; auto-zoom tetap pada stage dalam kartu agar fokus selaras dengan Screen Studio.
+- **Status:** aktif (preview); export bake = follow-up
+
 ## [2026-07-10] Cursor smoothing preview
 
 - **Keputusan:** `shared/cursorSmoothing.ts` membangun keyframes dari JSONL, smoothing weighted window (~48ms), click ring animasi cubic fade (~450ms). Renderer overlay di `AutoZoomPlayback` (dot + ring, ikut zoom transform). Toggle `cursorSmoothingEnabled` di review (default on). Export bake belum — preview only.

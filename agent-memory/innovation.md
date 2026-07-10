@@ -17,7 +17,7 @@
 - [x] Cursor event capture (posisi + klik) — JSONL per session via uIOhook + poll fallback
 - [~] Auto-zoom ikut klik (spring/cubic-bezier) — engine + preview + export bake
 - [~] Cursor smoothing + efek klik — preview overlay + toggle; export bake belum
-- [ ] Background gradient, padding, rounded corners, shadow
+- [~] Background gradient, padding, rounded corners, shadow — preview + presets; export bake belum
 - [ ] Timeline editor
 
 ## Nanti

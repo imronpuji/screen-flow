@@ -14,12 +14,14 @@ import {
   type NormalizedPoint,
 } from '../../shared/cursorSmoothing'
 import { formatTimeMs } from '../../shared/edit'
+import { resolveBackgroundFrame, type BackgroundStyle } from '../../shared/background'
 
 export interface AutoZoomPlaybackProps {
   mediaUrl: string
   cursorEvents: CursorEvent[]
   autoZoomEnabled?: boolean
   cursorSmoothingEnabled?: boolean
+  background?: BackgroundStyle
   trimStartMs?: number
   trimEndMs?: number
   onDurationMs?: (ms: number) => void
@@ -31,6 +33,7 @@ export function AutoZoomPlayback({
   cursorEvents,
   autoZoomEnabled = true,
   cursorSmoothingEnabled = true,
+  background,
   trimStartMs = 0,
   trimEndMs,
   onDurationMs,
@@ -178,6 +181,59 @@ export function AutoZoomPlayback({
       ? `${videoSize.width} / ${videoSize.height}`
       : '16 / 9'
 
+  const backgroundFrame = useMemo(
+    () => (background ? resolveBackgroundFrame(background) : null),
+    [background],
+  )
+
+  const stage = (
+    <div
+      className="zoom-playback__stage"
+      style={{ aspectRatio, ...stageStyle }}
+    >
+      <video
+        ref={videoRef}
+        className="zoom-playback__video"
+        muted
+        playsInline
+        preload="auto"
+        onLoadedMetadata={onLoadedMetadata}
+        onTimeUpdate={onTimeUpdate}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        onError={() => {
+          setLoading(false)
+          setLoadError('Could not play recording. Try recording again or export directly.')
+        }}
+        onCanPlay={() => setLoading(false)}
+      />
+      {cursorSmoothingEnabled && cursorPos ? (
+        <div className="cursor-overlay" aria-hidden="true">
+          {clickRings.map((ring, i) => (
+            <span
+              key={`${ring.x}-${ring.y}-${i}`}
+              className="cursor-overlay__ring"
+              style={{
+                left: `${ring.x * 100}%`,
+                top: `${ring.y * 100}%`,
+                transform: `translate(-50%, -50%) scale(${ring.scale})`,
+                opacity: ring.opacity,
+              }}
+            />
+          ))}
+          <span
+            className="cursor-overlay__dot"
+            style={{
+              left: `${cursorPos.x * 100}%`,
+              top: `${cursorPos.y * 100}%`,
+            }}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+
   return (
     <div className="zoom-playback">
       <div className="zoom-playback__viewport">
@@ -189,51 +245,31 @@ export function AutoZoomPlayback({
             {loadError}
           </p>
         ) : null}
-        <div
-          className="zoom-playback__stage"
-          style={{ aspectRatio, ...stageStyle }}
-        >
-          <video
-            ref={videoRef}
-            className="zoom-playback__video"
-            muted
-            playsInline
-            preload="auto"
-            onLoadedMetadata={onLoadedMetadata}
-            onTimeUpdate={onTimeUpdate}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onEnded={() => setPlaying(false)}
-            onError={() => {
-              setLoading(false)
-              setLoadError('Could not play recording. Try recording again or export directly.')
-            }}
-            onCanPlay={() => setLoading(false)}
-          />
-          {cursorSmoothingEnabled && cursorPos ? (
-            <div className="cursor-overlay" aria-hidden="true">
-              {clickRings.map((ring, i) => (
-                <span
-                  key={`${ring.x}-${ring.y}-${i}`}
-                  className="cursor-overlay__ring"
-                  style={{
-                    left: `${ring.x * 100}%`,
-                    top: `${ring.y * 100}%`,
-                    transform: `translate(-50%, -50%) scale(${ring.scale})`,
-                    opacity: ring.opacity,
-                  }}
-                />
-              ))}
-              <span
-                className="cursor-overlay__dot"
+        {backgroundFrame ? (
+          <div
+            className="zoom-playback__background"
+            style={{ background: backgroundFrame.backgroundCss }}
+          >
+            <div
+              className="zoom-playback__frame"
+              style={{
+                padding: `${backgroundFrame.paddingPercent}%`,
+              }}
+            >
+              <div
+                className="zoom-playback__card"
                 style={{
-                  left: `${cursorPos.x * 100}%`,
-                  top: `${cursorPos.y * 100}%`,
+                  borderRadius: `${backgroundFrame.cornerRadiusPx}px`,
+                  boxShadow: backgroundFrame.boxShadow,
                 }}
-              />
+              >
+                {stage}
+              </div>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          stage
+        )}
       </div>
 
       <div className="zoom-playback__controls">
@@ -263,6 +299,7 @@ export function AutoZoomPlayback({
             ? `${segments.length} zoom · ${clickCount} click${clickCount === 1 ? '' : 's'}`
             : 'Auto-zoom off'}
           {cursorSmoothingEnabled ? ' · cursor on' : ''}
+          {backgroundFrame ? ' · background on' : ''}
         </span>
       </div>
     </div>
