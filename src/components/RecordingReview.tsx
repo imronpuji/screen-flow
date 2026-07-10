@@ -627,7 +627,8 @@ export function RecordingReview({
                     </div>
                     <p className="review__hint">
                       Drag to move (magnetic snap to corners &amp; edges) · arrows nudge ·
-                      +/- resize · 1/2/3 size · 0 or double-click reset · corner handles resize
+                      +/- resize · 1/2/3 size · [ ] snap cycle · C shape · 0 or double-click
+                      reset · corner handles resize
                       {edit.cameraOverlay.lockAspect
                         ? ' with aspect lock'
                         : ' freely (unlocked)'}

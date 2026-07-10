@@ -13,6 +13,8 @@ import {
   cameraBubbleSizeNorm,
   cameraSizePresetFromDigitKey,
   cameraSnapTargets,
+  cycleCameraShape,
+  cycleCameraSnapPreset,
   normalizeCameraOverlay,
   nudgeCameraLayout,
   nudgeCameraSize,
@@ -298,6 +300,24 @@ export function CameraBubble({
       return
     }
 
+    // [ / ] cycle snap presets around the frame; C cycles shape.
+    if (e.key === ']' || e.key === '[') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        cycleCameraSnapPreset(style, e.key === ']' ? 'next' : 'prev', aspect),
+      )
+      return
+    }
+    if (e.key === 'c' || e.key === 'C') {
+      e.preventDefault()
+      e.stopPropagation()
+      onLayoutChange(
+        cycleCameraShape(style, e.shiftKey ? 'prev' : 'next', aspect),
+      )
+      return
+    }
+
     // +/- (and =/_ without shift) grow/shrink width; Shift = larger step.
     const grow =
       e.key === '+' || e.key === '=' || e.key === 'Add'
@@ -485,8 +505,8 @@ export function CameraBubble({
         title={
           interactive
             ? displayStyle.lockAspect
-              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize · 1/2/3 size · 0 or double-click reset · corner handles (aspect locked)'
-              : 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize width · 1/2/3 size · 0 or double-click reset · corner handles free resize'
+              ? 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize · 1/2/3 size · [ ] snap cycle · C shape · 0 or double-click reset · corner handles (aspect locked)'
+              : 'Drag to reposition — snaps to corners & edges · arrows nudge · +/- resize width · 1/2/3 size · [ ] snap cycle · C shape · 0 or double-click reset · corner handles free resize'
             : undefined
         }
         onPointerDown={interactive ? onMovePointerDown : undefined}
