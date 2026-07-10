@@ -9,7 +9,7 @@ Entri terbaru di ATAS.
   - Setup + Review — S/M/L preset buttons next to size slider; review hint mentions +/-.
   - Smoke `smoke:camera` covers size nudge clamp + presets + free-aspect height keep.
 - **Hasil:** `typecheck` + `build` + `lint` + smoke camera/camera-prefs/camera-sync/export-camera/beautify/export-effects hijau.
-- **Commit:** `deec949` (feature)
+- **Commit:** `deec949` (feature) / `ee6a4cc` (memory)
 - **Status:** done — lanjut push/PR + owner merge callback.
 - **Next:** Visual verify on Mac; multi-segment only if MediaRecorder restart required; background presets polish atau zoom add-at-playhead.
 
