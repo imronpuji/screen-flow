@@ -19,6 +19,22 @@ Entri terbaru di ATAS.
 - **Status:** done (FOKUS 3 slice 1)
 - **Next:** Bake camera overlay ke ffmpeg export (overlay filter + norm rect); playback camera di review; atau cursor size/style/hide (FOKUS 2).
 
+## [2026-07-10 07:20] Bake FaceTime camera bubble ke ffmpeg export
+
+- **Dikerjakan:** Cherry-pick FOKUS 3 slice 1 dari `54c7`; `shared/ffmpegCamera.ts` (scale/crop + 1-frame circle/rounded mask + overlay); `planExportFilters` urutan zoom→bg→cursor→camera; IPC `ExportMp4Request.camera`; transcode input kedua `camera.webm` + trim `-ss` selaras; UI `lastCameraPath` → export; smoke `smoke:export-camera` (plan + lavfi encode).
+- **Hasil:** `typecheck` + `build` + `lint` + smoke camera/export-camera/export-effects hijau.
+- **Commit:** `1fb2e0e` (plus cherry-picks `4b110fd`/`325bedd`)
+- **Status:** done (FOKUS 3 slice 2 — export bake)
+- **Next:** Camera bubble di review playback; cursor size/style/hide (FOKUS 2); polish auto-zoom Retina/anti-jitter; quality presets export.
+
+## [2026-07-10 07:10] FaceTime camera overlay — enumerate + bubble + parallel camera.webm
+
+- **Dikerjakan:** `shared/camera.ts` (corner/size/shape, CSS position + norm rect untuk ffmpeg nanti); `src/lib/cameraDevices.ts` (enumerate + getUserMedia + permission errors); `CameraBubble` live preview; session/IPC `track: screen|camera` + `includeCamera` → `camera.webm` sibling; UI toggle/device/corner/size/shape; smoke `smoke:camera`.
+- **Hasil:** `typecheck` + `build` + `lint` + `smoke:camera` hijau. Sinkronisasi: screen & camera share `startedAt` wall-clock (belum ffmpeg overlay).
+- **Commit:** `b1643f8` / cherry-pick `4b110fd`
+- **Status:** done (FOKUS 3 slice 1)
+- **Next:** Bake camera overlay ke ffmpeg export (overlay filter + norm rect); playback camera di review; atau cursor size/style/hide (FOKUS 2).
+
 ## [2026-07-10 07:02] Fast rounded corners + soft shadow di export (1-frame mask)
 
 - **Dikerjakan:** `shared/ffmpegBackground.ts` — path rounded/shadow pakai `color` 1-frame → `geq` alpha rounded-rect → `loop` → `alphamerge` pada card; soft shadow = still hitam rounded + `boxblur` sekali lalu loop + overlay. Plain path (radius 0, shadow off) tetap gradient+scale+overlay. Smoke `smoke:export-effects` cek alphamerge/loop/boxblur dan pastikan geq tidak jalan di input video.

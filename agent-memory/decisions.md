@@ -90,7 +90,13 @@ Format: `## [YYYY-MM-DD] <judul>` · Keputusan · Alasan · Status (aktif/digant
 
 - **Keputusan:** Webcam direkam sebagai `camera.webm` terpisah di session temp (bukan dibakar ke screen WebM). `StartRecordingRequest.includeCamera` membuka writer kedua; `AppendChunkRequest.track: 'screen' | 'camera'`. Screen & camera memakai `startedAt` wall-clock yang sama (ms sejak epoch session) untuk sinkronisasi nanti — tidak mengandalkan urutan frame. Layout bubble di `shared/camera.ts` (corner, sizePercent, shape) dipakai preview sekarang dan ffmpeg overlay nanti via `cameraBubbleNormRect`.
 - **Alasan:** Mirror pola cursor-as-data: kamera bisa di-toggle/posisi/ukuran ulang saat export; drift antar stream lebih mudah dikoreksi dengan timestamp bersama; CI Linux tetap typecheck tanpa hardware kamera.
-- **Status:** aktif (capture + live bubble); ffmpeg composite = follow-up
+- **Status:** aktif (capture + live bubble + export bake)
+
+## [2026-07-10] Kamera export bake (ffmpeg overlay + 1-frame mask)
+
+- **Keputusan:** `shared/ffmpegCamera.ts` → scale/crop camera input ke bubble square → 1-frame geq alpha (circle/rounded) → loop → alphamerge → overlay pada frame final. Urutan filter: zoom → background → cursor → **camera** (kamera di atas). IPC `ExportMp4Request.camera` (`cameraPath` + `style`); transcode menambah `-i camera.webm` sebagai input 1 dengan `-ss` yang sama untuk trim. UI meneruskan `lastCameraPath` + `cameraOverlay` saat export.
+- **Alasan:** Preview live & export harus match layout `cameraBubbleNormRect`; mask 1-frame menghindari geq per-frame (pelajaran background); `eof_action=pass` biar screen tetap jalan kalau camera lebih pendek.
+- **Status:** aktif (MVP); review playback bubble + fine A/V sync drift = follow-up
 
 ## [2026-07-10] Background rounded/shadow via 1-frame alpha mask
 

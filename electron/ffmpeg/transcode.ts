@@ -155,13 +155,27 @@ async function transcodeOnce(
     trim?: TrimRange
     /** Expected output duration for progress % when trimming. */
     expectedDurationSec?: number
+    /** Extra inputs after the screen capture (e.g. camera.webm as input 1). */
+    extraInputs?: string[]
   } = {},
 ): Promise<{ code: number; stderr: string }> {
   const args = ['-y']
-  if (options.trim && options.trim.startMs > 0) {
-    args.push('-ss', msToFfmpegSec(options.trim.startMs))
+  const seekSec =
+    options.trim && options.trim.startMs > 0 ? msToFfmpegSec(options.trim.startMs) : null
+
+  if (seekSec) {
+    args.push('-ss', seekSec)
   }
   args.push('-i', inputPath)
+
+  for (const extra of options.extraInputs ?? []) {
+    // Same wall-clock seek as screen so overlay stays aligned after trim.
+    if (seekSec) {
+      args.push('-ss', seekSec)
+    }
+    args.push('-i', extra)
+  }
+
   if (options.trim) {
     args.push('-to', msToFfmpegSec(options.trim.endMs))
   }
@@ -283,9 +297,11 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
   let autoZoomApplied = false
   let backgroundApplied = false
   let cursorApplied = false
+  let cameraApplied = false
   let videoFilter: string | undefined
   let filterComplex: string | undefined
   let outputLabel: string | undefined
+  let extraInputs: string[] = []
 
   const sessionDir = path.dirname(outputPath)
   const cursorEventsPath =
@@ -319,8 +335,24 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     }
   }
 
+  let cameraPath: string | null = null
+  if (request.camera?.cameraPath && request.camera.style?.enabled) {
+    cameraPath = assertUnderScreenFlowTemp(request.camera.cameraPath)
+    if (!fs.existsSync(cameraPath) || fs.statSync(cameraPath).size === 0) {
+      throw new Error('Camera WebM is missing or empty')
+    }
+    effects.camera = {
+      style: request.camera.style,
+      inputIndex: 1,
+    }
+    extraInputs = [cameraPath]
+  }
+
   const hasEffects =
-    effects.autoZoom != null || effects.background != null || effects.cursorSmoothing != null
+    effects.autoZoom != null ||
+    effects.background != null ||
+    effects.cursorSmoothing != null ||
+    effects.camera != null
 
   if (hasEffects) {
     const plan = planExportFilters(
@@ -331,6 +363,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     autoZoomApplied = plan.autoZoomApplied
     backgroundApplied = plan.backgroundApplied
     cursorApplied = plan.cursorApplied
+    cameraApplied = plan.cameraApplied
 
     if (plan.zoomSendCmd) {
       zoomSendCmdPath = path.join(sessionDir, 'zoom-sendcmd.txt')
@@ -372,6 +405,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
     if (autoZoomApplied) baked.push('auto-zoom')
     if (backgroundApplied) baked.push('background')
     if (cursorApplied) baked.push('cursor')
+    if (cameraApplied) baked.push('camera')
     if (baked.length > 0) {
       emitProgress({
         phase: 'starting',
@@ -389,6 +423,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       outputLabel,
       trim: trimRange,
       expectedDurationSec,
+      extraInputs: cameraApplied ? extraInputs : [],
     }
     let result = await transcodeOnce(inputPath, outputPath, encoder, transcodeOptions)
 
@@ -429,6 +464,13 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
         /* best-effort; export still succeeded */
       }
     }
+    if (cleanupTemp && cameraPath && cameraPath !== outputPath) {
+      try {
+        fs.unlinkSync(cameraPath)
+      } catch {
+        /* best-effort */
+      }
+    }
 
     const bytesWritten = fs.statSync(outputPath).size
     emitProgress({
@@ -445,6 +487,7 @@ export async function exportWebmToMp4(request: ExportMp4Request): Promise<Export
       autoZoomApplied,
       backgroundApplied,
       cursorApplied,
+      cameraApplied,
       trimApplied,
     }
   } catch (err) {

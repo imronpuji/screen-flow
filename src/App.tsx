@@ -81,6 +81,7 @@ export default function App() {
   const [lastSummary, setLastSummary] = useState<string | null>(null)
   const [lastWebmPath, setLastWebmPath] = useState<string | null>(null)
   const [lastCursorEventsPath, setLastCursorEventsPath] = useState<string | null>(null)
+  const [lastCameraPath, setLastCameraPath] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [playbackCursorEvents, setPlaybackCursorEvents] = useState<CursorEvent[]>([])
   const [reviewDurationMs, setReviewDurationMs] = useState(0)
@@ -217,6 +218,7 @@ export default function App() {
     setMode('setup')
     setLastWebmPath(null)
     setLastCursorEventsPath(null)
+    setLastCameraPath(null)
     setPlaybackUrl(null)
     setPlaybackCursorEvents([])
     setReviewDurationMs(0)
@@ -278,6 +280,7 @@ export default function App() {
         setRecording(result.status)
         setLastWebmPath(result.outputPath)
         setLastCursorEventsPath(result.cursorEventsPath)
+        setLastCameraPath(result.cameraOutputPath)
         setReviewDurationMs(result.durationMs)
         setReviewBytesWritten(result.bytesWritten)
         setReviewChunkCount(result.chunkCount)
@@ -300,9 +303,14 @@ export default function App() {
           setPlaybackCursorEvents(cursor.events)
           setMode('review')
           setLastSummary(
-            result.cameraChunkCount > 0
-              ? `Camera track saved (${formatBytes(result.cameraBytesWritten)}) — overlay bake next.`
-              : null,
+            [
+              `Ready to review · ${(result.durationMs / 1000).toFixed(1)}s`,
+              result.cameraChunkCount > 0
+                ? `camera track ${formatBytes(result.cameraBytesWritten)}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · '),
           )
         } catch (loadErr) {
           setMode('setup')
@@ -404,6 +412,12 @@ export default function App() {
           appearance: _edit.cursorAppearance,
         }
       }
+      if (lastCameraPath && cameraOverlay.enabled) {
+        exportRequest.camera = {
+          cameraPath: lastCameraPath,
+          style: cameraOverlay,
+        }
+      }
       const result = await exportWebmToMp4(exportRequest)
       clearReview()
       setExportProgress({ phase: 'done', percent: 100, message: 'Saving…' })
@@ -413,6 +427,7 @@ export default function App() {
       if (result.autoZoomApplied) baked.push('auto-zoom')
       if (result.backgroundApplied) baked.push('background')
       if (result.cursorApplied) baked.push('cursor')
+      if (result.cameraApplied) baked.push('camera')
       const bakedLabel = baked.length ? `, ${baked.join(' + ')} baked` : ''
 
       const saved = await saveExport({
